@@ -4,11 +4,11 @@ import { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 're
 import '@videojs/react/video/skin.css'
 import { createPlayer } from '@videojs/react'
 import { VideoSkin, Video as VjsVideo, videoFeatures } from '@videojs/react/video'
+import videojs from 'video.js'
 import { Video, saveProgress, API_BASE } from '@/lib/api'
-import { AlertCircle, Play, Pause, RotateCcw, RotateCw } from 'lucide-react'
+import { AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { cn } from '@/lib/utils'
 
 const Player = createPlayer({ features: videoFeatures })
 
@@ -23,10 +23,9 @@ export interface VideoPlayerHandle {
 
 const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video }, ref) => {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const playerRef = useRef<any>(null)
   const [streamError, setStreamError] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
-  const [showControls, setShowControls] = useState(true)
-  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   const streamUrl = `${API_BASE}/api/stream/${video.id}`
@@ -49,22 +48,46 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video }, 
     if (!videoRef.current) return
     if (videoRef.current.paused) videoRef.current.play()
     else videoRef.current.pause()
-    resetControlsTimeout()
   }
 
   const skip = (seconds: number) => {
     if (!videoRef.current) return
     videoRef.current.currentTime += seconds
-    resetControlsTimeout()
   }
 
-  const resetControlsTimeout = () => {
-    setShowControls(true)
-    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current)
-    controlsTimeoutRef.current = setTimeout(() => {
-      if (isPlaying) setShowControls(false)
-    }, 1500)
-  }
+  useEffect(() => {
+    // Hijack Video.js fullscreen to ensure iOS compatibility
+    const initPlayerHack = () => {
+      if (!videoRef.current) return
+      const player = videojs.getPlayer(videoRef.current) as any
+      if (!player) return
+      playerRef.current = player
+
+      const fsToggle = player.controlBar && player.controlBar.fullscreenToggle
+      if (fsToggle) {
+        fsToggle.off('tap')
+        fsToggle.off('click')
+        const handleFs = (e: Event) => {
+          e.preventDefault()
+          e.stopPropagation()
+          const vidEl = player.el().querySelector('video')
+          if (vidEl && vidEl.webkitEnterFullscreen) {
+              vidEl.webkitEnterFullscreen()
+          } else if (!player.isFullscreen()) {
+              player.requestFullscreen()
+          } else {
+              player.exitFullscreen()
+          }
+        }
+        fsToggle.on('tap', handleFs)
+        fsToggle.on('click', handleFs)
+      }
+    }
+    
+    // Attempt initialization after a slight delay to ensure player is mounted by @videojs/react
+    const timer = setTimeout(initPlayerHack, 500)
+    return () => clearTimeout(timer)
+  }, [])
 
   useEffect(() => {
     if (isPlaying) {
@@ -79,10 +102,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video }, 
           saveProgress(video.id, videoRef.current.currentTime, safeDuration).catch(() => {})
         }
       }, 5000)
-      resetControlsTimeout()
     } else {
       if (progressIntervalRef.current) clearInterval(progressIntervalRef.current)
-      setShowControls(true)
     }
     return () => { if (progressIntervalRef.current) clearInterval(progressIntervalRef.current) }
   }, [isPlaying, video.id])
@@ -111,16 +132,13 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video }, 
     window.addEventListener('keydown', handleKeydown)
     return () => {
       window.removeEventListener('keydown', handleKeydown)
-      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current)
     }
   }, [])
 
   return (
     <div className="w-full flex justify-center">
       <Card 
-        className="relative w-full max-w-[1400px] overflow-hidden bg-black border-none shadow-2xl rounded-2xl group/player"
-        onMouseMove={resetControlsTimeout}
-        onClick={resetControlsTimeout}
+        className="relative w-full max-w-[1400px] overflow-hidden bg-black border-none shadow-2xl rounded-xl group/player"
       >
         <div className="relative w-full h-full max-h-[85vh] aspect-video">
           <Player.Provider>
@@ -137,42 +155,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video }, 
               />
             </VideoSkin>
           </Player.Provider>
-
-          {/* Cinematic Centered Controls */}
-          {!streamError && (
-            <div className={cn(
-              "absolute inset-0 z-40 flex items-center justify-center gap-8 bg-black/20 transition-opacity duration-300",
-              showControls || !isPlaying ? "opacity-100" : "opacity-0 pointer-events-none"
-            )}>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="w-16 h-16 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/10 text-white shrink-0 transition-transform active:scale-90"
-                onClick={(e) => { e.stopPropagation(); skip(-10); }}
-              >
-                <RotateCcw size={28} />
-              </Button>
-
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="w-20 h-20 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-3xl border border-white/10 text-white shadow-2xl shrink-0 transition-transform active:scale-90"
-                onClick={(e) => { e.stopPropagation(); togglePlay(); }}
-              >
-                {isPlaying ? <Pause size={32} className="fill-current" /> : <Play size={32} className="fill-current ml-1" />}
-              </Button>
-
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="w-16 h-16 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/10 text-white shrink-0 transition-transform active:scale-90"
-                onClick={(e) => { e.stopPropagation(); skip(10); }}
-              >
-                <RotateCw size={28} />
-              </Button>
-
-            </div>
-          )}
 
           {streamError && (
             <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/95 backdrop-blur-md p-8 text-center">
