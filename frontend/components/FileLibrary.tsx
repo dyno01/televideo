@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { FileText, File, Sheet, Archive, Download, Eye, Image as ImageIcon } from 'lucide-react'
-import { TelegramFile } from '@/lib/api'
+import { TelegramFile, API_BASE } from '@/lib/api'
 import DocumentModal from './DocumentModal'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -96,7 +96,7 @@ export default function FileLibrary({ files, channelUsername }: FileLibraryProps
         <DocumentModal
           isOpen={!!selectedFile}
           onClose={() => setSelectedFile(null)}
-          fileUrl={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/stream/file/${selectedFile.id}`}
+          fileUrl={`${API_BASE}/api/stream/file/${selectedFile.id}`}
           fileName={selectedFile.file_name || 'Document'}
           mimeType={selectedFile.mime_type || 'application/octet-stream'}
         />

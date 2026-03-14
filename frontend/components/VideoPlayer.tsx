@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 're
 import '@videojs/react/video/skin.css'
 import { createPlayer } from '@videojs/react'
 import { VideoSkin, Video as VjsVideo, videoFeatures } from '@videojs/react/video'
-import { Video, saveProgress } from '@/lib/api'
+import { Video, saveProgress, API_BASE } from '@/lib/api'
 import { AlertCircle, Play, Pause, RotateCcw, RotateCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -29,8 +29,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video }, 
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
-  const streamUrl = `${apiUrl}/api/stream/${video.id}`
+  const streamUrl = `${API_BASE}/api/stream/${video.id}`
   const telegramUrl = video.channel_username ? `https://t.me/${video.channel_username}/${video.message_id}` : null
 
   useImperativeHandle(ref, () => ({
@@ -71,7 +70,13 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video }, 
     if (isPlaying) {
       progressIntervalRef.current = setInterval(() => {
         if (videoRef.current) {
-          saveProgress(video.id, videoRef.current.currentTime, videoRef.current.duration).catch(() => {})
+          const durationToUse = isNaN(videoRef.current.duration) || videoRef.current.duration === 0 
+            ? video.duration 
+            : videoRef.current.duration;
+            
+          const safeDuration = durationToUse > 0 ? durationToUse : 1;
+          
+          saveProgress(video.id, videoRef.current.currentTime, safeDuration).catch(() => {})
         }
       }, 5000)
       resetControlsTimeout()

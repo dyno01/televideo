@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Plus, List, Video as VideoIcon, File as FileIcon, Edit2, Trash2, Link as LinkIcon, ChevronRight, BookOpen, Clock, CheckCircle, Loader2 } from 'lucide-react'
-import { Channel, Batch, getBatches, deleteBatch, getBatchSequence, SequenceItem, Video, TelegramFile } from '@/lib/api'
+import { Channel, Batch, getBatches, deleteBatch, getBatchSequence, SequenceItem, Video, TelegramFile, API_BASE } from '@/lib/api'
 import NewBatchModal from './NewBatchModal'
 import DocumentModal from './DocumentModal'
 import Link from 'next/link'
@@ -287,7 +287,7 @@ function BatchDetail({ batch, channelUsername }: { batch: Batch; channelUsername
         <DocumentModal
           isOpen={!!selectedFile}
           onClose={() => setSelectedFile(null)}
-          fileUrl={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/stream/file/${selectedFile.id}`}
+          fileUrl={`${API_BASE}/api/stream/file/${selectedFile.id}`}
           fileName={selectedFile.file_name || 'Document'}
           mimeType={selectedFile.mime_type || 'application/octet-stream'}
         />

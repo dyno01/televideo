@@ -4,7 +4,7 @@
  */
 import axios, { AxiosResponse } from 'axios'
 
-const API_BASE =
+export const API_BASE =
   (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_URL) ||
   'http://localhost:4000'
 
