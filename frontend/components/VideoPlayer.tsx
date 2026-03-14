@@ -87,36 +87,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video }, 
     }
   }
 
-  const triggerFeedback = (type: string) => {
-    setFeedback({ type, visible: true })
-    if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current)
-    feedbackTimeoutRef.current = setTimeout(() => {
-      setFeedback(prev => ({ ...prev, visible: false }))
-    }, 500)
-  }
-
-  const handleZoneTap = (zone: 'left' | 'center' | 'right') => {
-    const now = Date.now()
-    const DOUBLE_TAP_DELAY = 300
-
-    if (now - lastTap.time < DOUBLE_TAP_DELAY && lastTap.zone === zone) {
-      // Double tap confirmed
-      if (zone === 'left') {
-        skip(-10)
-        triggerFeedback('rewind')
-      } else if (zone === 'right') {
-        skip(10)
-        triggerFeedback('forward')
-      } else if (zone === 'center') {
-        togglePlay()
-        triggerFeedback(isPlaying ? 'pause' : 'play')
-      }
-      setLastTap({ time: 0, zone: '' }) // Reset
-    } else {
-      setLastTap({ time: now, zone })
-    }
-  }
-
   useEffect(() => {
     // Hijack Video.js fullscreen to ensure iOS compatibility
     const initPlayerHack = () => {
@@ -240,36 +210,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video }, 
           {feedback.visible && (
             <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
               <div className="bg-black/40 backdrop-blur-md rounded-full p-6 animate-in zoom-in fade-in duration-300">
-                {feedback.type === 'rewind' && <RotateCcw size={48} className="text-white fill-current" />}
-                {feedback.type === 'forward' && <RotateCw size={48} className="text-white fill-current" />}
-                {feedback.type === 'play' && <Play size={48} className="text-white fill-current" />}
-                {feedback.type === 'pause' && <Pause size={48} className="text-white fill-current" />}
-              </div>
-            </div>
-          )}
-
-          {/* Mobile Double-Tap Zones */}
-          {!streamError && (
-            <div className="absolute inset-0 z-10 flex">
-              <div 
-                className="flex-1 h-full cursor-pointer select-none touch-none" 
-                onClick={(e) => { e.stopPropagation(); handleZoneTap('left'); }}
-              />
-              <div 
-                className="flex-1 h-full cursor-pointer select-none touch-none" 
-                onClick={(e) => { e.stopPropagation(); handleZoneTap('center'); }}
-              />
-              <div 
-                className="flex-1 h-full cursor-pointer select-none touch-none" 
-                onClick={(e) => { e.stopPropagation(); handleZoneTap('right'); }}
-              />
-            </div>
-          )}
-
-          {/* Centered Visual Feedback (YouTube Style) */}
-          {feedback.visible && (
-            <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
-              <div className="bg-black/50 backdrop-blur-md rounded-full p-6 animate-in zoom-in fade-in duration-300">
                 {feedback.type === 'rewind' && <RotateCcw size={48} className="text-white fill-current" />}
                 {feedback.type === 'forward' && <RotateCw size={48} className="text-white fill-current" />}
                 {feedback.type === 'play' && <Play size={48} className="text-white fill-current" />}
