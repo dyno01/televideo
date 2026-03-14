@@ -1,0 +1,19 @@
+# litestream.yml
+# This configuration replicates the SQLite database to an S3-compatible service (like Cloudflare R2).
+
+# The database to replicate
+dbs:
+  - path: /app/db/app.db
+    replicas:
+      - type: s3
+        # These environment variables will be provided in your hosting panel (Render/Railway)
+        bucket: "${LITESTREAM_BUCKET}"
+        endpoint: "${LITESTREAM_ENDPOINT}"
+        access-key-id: "${LITESTREAM_ACCESS_KEY_ID}"
+        secret-access-key: "${LITESTREAM_SECRET_ACCESS_KEY}"
+        
+        # KEEP LAST 3 BACKUPS:
+        # Snapshots every 8 hours with a 24-hour retention policy 
+        # effectively keeps the last 3 snapshots and deletes the rest.
+        snapshot-interval: 8h
+        retention: 24h
