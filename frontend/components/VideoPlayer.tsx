@@ -188,9 +188,9 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video }, 
             </VideoSkin>
           </Player.Provider>
 
-          {/* Double-Tap Zones */}
+          {/* Double-Tap Zones (Shifted up to clear control bar) */}
           {!streamError && (
-            <div className="absolute inset-0 z-10 flex">
+            <div className="absolute top-0 left-0 right-0 bottom-14 z-10 flex">
               <div 
                 className="flex-1 h-full cursor-pointer select-none touch-none" 
                 onClick={(e) => { e.stopPropagation(); handleZoneTap('left'); }}
