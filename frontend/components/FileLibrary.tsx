@@ -96,7 +96,7 @@ export default function FileLibrary({ files, channelUsername }: FileLibraryProps
         <DocumentModal
           isOpen={!!selectedFile}
           onClose={() => setSelectedFile(null)}
-          fileUrl={`http://localhost:4000/api/stream/file/${selectedFile.id}`}
+          fileUrl={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/stream/file/${selectedFile.id}`}
           fileName={selectedFile.file_name || 'Document'}
           mimeType={selectedFile.mime_type || 'application/octet-stream'}
         />

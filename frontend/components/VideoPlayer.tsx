@@ -29,7 +29,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video }, 
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  const streamUrl = `http://localhost:4000/api/stream/${video.id}`
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+  const streamUrl = `${apiUrl}/api/stream/${video.id}`
   const telegramUrl = video.channel_username ? `https://t.me/${video.channel_username}/${video.message_id}` : null
 
   useImperativeHandle(ref, () => ({
