@@ -6,7 +6,7 @@ import { createPlayer } from '@videojs/react'
 import { VideoSkin, Video as VjsVideo, videoFeatures } from '@videojs/react/video'
 import videojs from 'video.js'
 import { Video, saveProgress, API_BASE } from '@/lib/api'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, RotateCcw, RotateCw, Play, Pause } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 
@@ -26,7 +26,10 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video }, 
   const playerRef = useRef<any>(null)
   const [streamError, setStreamError] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [lastTap, setLastTap] = useState({ time: 0, zone: '' })
+  const [feedback, setFeedback] = useState<{ type: string; visible: boolean }>({ type: '', visible: false })
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const streamUrl = `${API_BASE}/api/stream/${video.id}`
   const telegramUrl = video.channel_username ? `https://t.me/${video.channel_username}/${video.message_id}` : null
@@ -53,6 +56,65 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video }, 
   const skip = (seconds: number) => {
     if (!videoRef.current) return
     videoRef.current.currentTime += seconds
+  }
+
+  const triggerFeedback = (type: string) => {
+    setFeedback({ type, visible: true })
+    if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current)
+    feedbackTimeoutRef.current = setTimeout(() => {
+      setFeedback(prev => ({ ...prev, visible: false }))
+    }, 500)
+  }
+
+  const handleZoneTap = (zone: 'left' | 'center' | 'right') => {
+    const now = Date.now()
+    const DOUBLE_TAP_DELAY = 300
+
+    if (now - lastTap.time < DOUBLE_TAP_DELAY && lastTap.zone === zone) {
+      if (zone === 'left') {
+        skip(-10)
+        triggerFeedback('rewind')
+      } else if (zone === 'right') {
+        skip(10)
+        triggerFeedback('forward')
+      } else if (zone === 'center') {
+        togglePlay()
+        triggerFeedback(isPlaying ? 'pause' : 'play')
+      }
+      setLastTap({ time: 0, zone: '' })
+    } else {
+      setLastTap({ time: now, zone })
+    }
+  }
+
+  const triggerFeedback = (type: string) => {
+    setFeedback({ type, visible: true })
+    if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current)
+    feedbackTimeoutRef.current = setTimeout(() => {
+      setFeedback(prev => ({ ...prev, visible: false }))
+    }, 500)
+  }
+
+  const handleZoneTap = (zone: 'left' | 'center' | 'right') => {
+    const now = Date.now()
+    const DOUBLE_TAP_DELAY = 300
+
+    if (now - lastTap.time < DOUBLE_TAP_DELAY && lastTap.zone === zone) {
+      // Double tap confirmed
+      if (zone === 'left') {
+        skip(-10)
+        triggerFeedback('rewind')
+      } else if (zone === 'right') {
+        skip(10)
+        triggerFeedback('forward')
+      } else if (zone === 'center') {
+        togglePlay()
+        triggerFeedback(isPlaying ? 'pause' : 'play')
+      }
+      setLastTap({ time: 0, zone: '' }) // Reset
+    } else {
+      setLastTap({ time: now, zone })
+    }
   }
 
   useEffect(() => {
@@ -138,7 +200,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video }, 
   return (
     <div className="w-full flex justify-center">
       <Card 
-        className="relative w-full max-w-[1400px] overflow-hidden bg-black border-none shadow-2xl rounded-xl group/player"
+        className="relative w-full max-w-[1400px] overflow-hidden bg-black border-none shadow-2xl rounded-lg group/player"
       >
         <div className="relative w-full h-full max-h-[85vh] aspect-video">
           <Player.Provider>
@@ -155,6 +217,66 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video }, 
               />
             </VideoSkin>
           </Player.Provider>
+
+          {/* Double-Tap Zones */}
+          {!streamError && (
+            <div className="absolute inset-0 z-10 flex">
+              <div 
+                className="flex-1 h-full cursor-pointer select-none touch-none" 
+                onClick={(e) => { e.stopPropagation(); handleZoneTap('left'); }}
+              />
+              <div 
+                className="flex-1 h-full cursor-pointer select-none touch-none" 
+                onClick={(e) => { e.stopPropagation(); handleZoneTap('center'); }}
+              />
+              <div 
+                className="flex-1 h-full cursor-pointer select-none touch-none" 
+                onClick={(e) => { e.stopPropagation(); handleZoneTap('right'); }}
+              />
+            </div>
+          )}
+
+          {/* Visual Feedback Overlay */}
+          {feedback.visible && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
+              <div className="bg-black/40 backdrop-blur-md rounded-full p-6 animate-in zoom-in fade-in duration-300">
+                {feedback.type === 'rewind' && <RotateCcw size={48} className="text-white fill-current" />}
+                {feedback.type === 'forward' && <RotateCw size={48} className="text-white fill-current" />}
+                {feedback.type === 'play' && <Play size={48} className="text-white fill-current" />}
+                {feedback.type === 'pause' && <Pause size={48} className="text-white fill-current" />}
+              </div>
+            </div>
+          )}
+
+          {/* Mobile Double-Tap Zones */}
+          {!streamError && (
+            <div className="absolute inset-0 z-10 flex">
+              <div 
+                className="flex-1 h-full cursor-pointer select-none touch-none" 
+                onClick={(e) => { e.stopPropagation(); handleZoneTap('left'); }}
+              />
+              <div 
+                className="flex-1 h-full cursor-pointer select-none touch-none" 
+                onClick={(e) => { e.stopPropagation(); handleZoneTap('center'); }}
+              />
+              <div 
+                className="flex-1 h-full cursor-pointer select-none touch-none" 
+                onClick={(e) => { e.stopPropagation(); handleZoneTap('right'); }}
+              />
+            </div>
+          )}
+
+          {/* Centered Visual Feedback (YouTube Style) */}
+          {feedback.visible && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
+              <div className="bg-black/50 backdrop-blur-md rounded-full p-6 animate-in zoom-in fade-in duration-300">
+                {feedback.type === 'rewind' && <RotateCcw size={48} className="text-white fill-current" />}
+                {feedback.type === 'forward' && <RotateCw size={48} className="text-white fill-current" />}
+                {feedback.type === 'play' && <Play size={48} className="text-white fill-current" />}
+                {feedback.type === 'pause' && <Pause size={48} className="text-white fill-current" />}
+              </div>
+            </div>
+          )}
 
           {streamError && (
             <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/95 backdrop-blur-md p-8 text-center">
