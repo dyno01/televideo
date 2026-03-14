@@ -206,15 +206,30 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video }, 
             </div>
           )}
 
-          {/* Visual Feedback Overlay */}
+          {/* Visual Feedback Overlays (Sleek side-specific ripple) */}
           {feedback.visible && (
-            <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
-              <div className="bg-black/40 backdrop-blur-md rounded-full p-6 animate-in zoom-in fade-in duration-300">
-                {feedback.type === 'rewind' && <RotateCcw size={48} className="text-white fill-current" />}
-                {feedback.type === 'forward' && <RotateCw size={48} className="text-white fill-current" />}
-                {feedback.type === 'play' && <Play size={48} className="text-white fill-current" />}
-                {feedback.type === 'pause' && <Pause size={48} className="text-white fill-current" />}
-              </div>
+            <div className="absolute inset-0 z-50 pointer-events-none flex items-center justify-center">
+              {feedback.type === 'rewind' && (
+                <div className="absolute left-[15%] flex flex-col items-center gap-2 animate-in fade-in zoom-in slide-in-from-right-4 duration-300">
+                  <div className="bg-white/20 backdrop-blur-xl rounded-full p-6 ring-1 ring-white/30">
+                    <RotateCcw size={32} className="text-white fill-current" />
+                  </div>
+                  <span className="text-white text-xs font-bold tracking-widest drop-shadow-md">10s</span>
+                </div>
+              )}
+              {feedback.type === 'forward' && (
+                <div className="absolute right-[15%] flex flex-col items-center gap-2 animate-in fade-in zoom-in slide-in-from-left-4 duration-300">
+                  <div className="bg-white/20 backdrop-blur-xl rounded-full p-6 ring-1 ring-white/30">
+                    <RotateCw size={32} className="text-white fill-current" />
+                  </div>
+                  <span className="text-white text-xs font-bold tracking-widest drop-shadow-md">10s</span>
+                </div>
+              )}
+              {['play', 'pause'].includes(feedback.type) && (
+                <div className="bg-white/20 backdrop-blur-3xl rounded-full p-8 ring-1 ring-white/50 animate-in fade-in zoom-in duration-300">
+                  {feedback.type === 'play' ? <Play size={40} className="text-white fill-current" /> : <Pause size={40} className="text-white fill-current" />}
+                </div>
+              )}
             </div>
           )}
 
