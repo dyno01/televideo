@@ -15,7 +15,8 @@ import {
   Maximize, 
   Settings,
   Tv,
-  Type
+  Type,
+  Loader2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Video, API_BASE } from '@/lib/api'
@@ -45,6 +46,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video, on
   const [showControls, setShowControls] = useState(true)
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [playbackSpeed, setPlaybackSpeed] = useState(1)
+  const [isWaiting, setIsWaiting] = useState(false)
 
   const speeds = [1, 1.25, 1.5, 2]
 
@@ -96,13 +98,22 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video, on
       }
     }
 
+    const handleWaiting = () => setIsWaiting(true)
+    const handlePlaying = () => setIsWaiting(false)
+
     v.addEventListener('loadedmetadata', handleLoadedMetadata)
     v.addEventListener('timeupdate', handleTimeUpdate)
+    v.addEventListener('waiting', handleWaiting)
+    v.addEventListener('playing', handlePlaying)
+    v.addEventListener('canplay', handlePlaying)
     v.addEventListener('ended', onEnded || (() => {}))
 
     return () => {
       v.removeEventListener('loadedmetadata', handleLoadedMetadata)
       v.removeEventListener('timeupdate', handleTimeUpdate)
+      v.removeEventListener('waiting', handleWaiting)
+      v.removeEventListener('playing', handlePlaying)
+      v.removeEventListener('canplay', handlePlaying)
       v.removeEventListener('ended', onEnded || (() => {}))
     }
   }, [video.id, onProgress])
@@ -152,13 +163,13 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video, on
     const isRightSide = x > rect.width / 2
 
     if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
-      // Double tap detected
+      // Double tap detected -> skip
       skip(isRightSide ? 10 : -10)
-      lastTapRef.current = 0 // Reset to avoid triple tap skipping twice
+      lastTapRef.current = 0 
     } else {
+      // Single tap detected -> just toggle controls visibility
+      setShowControls((prev) => !prev)
       lastTapRef.current = now
-      // Single tap - just toggle play
-      togglePlay()
     }
   }
 
@@ -250,6 +261,13 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video, on
       {/* Centered Controls: Play, RotateCcw, RotateCw */}
       {showControls && (
         <div className="absolute inset-0 flex items-center justify-center gap-6 lg:gap-12 z-10 pointer-events-none -translate-y-8 lg:translate-y-0">
+          {/* Buffering/Loading Spinner */}
+          {isWaiting && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/10 backdrop-blur-[2px] z-20 pointer-events-none">
+              <Loader2 className="animate-spin text-white/80" size={48} />
+            </div>
+          )}
+
            <button 
              onClick={(e) => { e.stopPropagation(); skip(-10); }}
              className="size-10 lg:size-14 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/80 hover:bg-white/10 hover:text-white transition-all active:scale-95 pointer-events-auto shadow-2xl"

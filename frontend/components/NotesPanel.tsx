@@ -24,6 +24,7 @@ export default function NotesPanel({ videoId, playerRef }: NotesPanelProps) {
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showInput, setShowInput] = useState(false)
+  const [bookmarkTime, setBookmarkTime] = useState<number | null>(null)
 
   useEffect(() => {
     getNotes(videoId)
@@ -48,11 +49,46 @@ export default function NotesPanel({ videoId, playerRef }: NotesPanelProps) {
     }
   }
 
+  async function handleDeleteNote(e: React.MouseEvent, id: number) {
+    e.stopPropagation()
+    if (!confirm('Are you sure you want to delete this note?')) return
+    try {
+      await deleteNote(id)
+      setNotes((prev) => prev.filter((n) => n.id !== id))
+    } catch (err) {
+      console.error('Failed to delete note:', err)
+    }
+  }
+
+  function handleSeek(timestamp: number) {
+    const currentTime = playerRef.current?.getCurrentTime?.() ?? 0
+    // Set bookmark to current time before jumping
+    setBookmarkTime(currentTime)
+    playerRef.current?.seekTo(timestamp)
+  }
+
+  function handleReturn() {
+    if (bookmarkTime !== null) {
+      playerRef.current?.seekTo(bookmarkTime)
+      setBookmarkTime(null)
+    }
+  }
+
   return (
     <section className="flex flex-col gap-10 h-full">
         {/* --- Header --- */}
         <div className="flex items-center justify-between px-1">
-          <h4 className="text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-500">Context Notes</h4>
+          <div className="flex flex-col gap-1">
+            <h4 className="text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-500">Context Notes</h4>
+            {bookmarkTime !== null && (
+              <button 
+                onClick={handleReturn}
+                className="text-[10px] font-bold text-white hover:text-zinc-400 underline underline-offset-4 decoration-white/20"
+              >
+                RETURN TO SEGMENT ({formatTimestamp(bookmarkTime)})
+              </button>
+            )}
+          </div>
           <button 
             onClick={() => setShowInput(!showInput)}
             className="flex items-center gap-2 text-[11px] font-bold text-white hover:text-zinc-400 transition-colors"
@@ -78,9 +114,13 @@ export default function NotesPanel({ videoId, playerRef }: NotesPanelProps) {
                   </p>
                </div>
             ) : notes.map((note) => (
-              <div key={note.id} className="relative group">
+              <div 
+                key={note.id} 
+                className="relative group cursor-pointer hover:bg-white/5 -mx-4 px-4 py-2 rounded-lg transition-colors"
+                onClick={() => handleSeek(note.timestamp_sec)}
+              >
                 {/* Timeline Marker (White Solid) */}
-                <div className="absolute -left-[1.35rem] top-1.5 size-2.5 rounded-full bg-white ring-4 ring-[#09090b]" />
+                <div className="absolute left-[0.15rem] top-3.5 size-2.5 rounded-full bg-white ring-4 ring-[#09090b]" />
 
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center justify-between">
@@ -89,7 +129,17 @@ export default function NotesPanel({ videoId, playerRef }: NotesPanelProps) {
                         {formatTimestamp(note.timestamp_sec)} MARKER
                       </span>
                     </div>
-                    <span className="text-[10px] font-medium text-zinc-600 uppercase">Jan 12</span>
+                    <div className="flex items-center gap-4">
+                      <span className="text-[10px] font-medium text-zinc-600 uppercase">
+                        {new Date(note.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      </span>
+                      <button 
+                        onClick={(e) => handleDeleteNote(e, note.id)}
+                        className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-red-500 transition-all p-1"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
                   <div className="text-[15px] text-zinc-400 italic font-medium leading-relaxed pr-6">
                     "{note.note_text}"
