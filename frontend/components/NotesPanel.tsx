@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, RefObject } from 'react'
-import { Plus, Trash2, Loader2 } from 'lucide-react'
+import { Plus, Trash2, Loader2, Play } from 'lucide-react'
 import { getNotes, createNote, deleteNote, Note } from '@/lib/api'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Textarea } from '@/components/ui/textarea'
@@ -83,9 +83,12 @@ export default function NotesPanel({ videoId, playerRef }: NotesPanelProps) {
             {bookmarkTime !== null && (
               <button 
                 onClick={handleReturn}
-                className="text-[10px] font-bold text-white hover:text-zinc-400 underline underline-offset-4 decoration-white/20"
+                className="mt-1 flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 backdrop-blur-md border border-white/10 rounded-lg text-[10px] font-bold text-white transition-all active:scale-95 group/btn"
               >
-                RETURN TO SEGMENT ({formatTimestamp(bookmarkTime)})
+                <div className="size-4 flex items-center justify-center bg-white text-[#09090b] rounded-full scale-90 group-hover/btn:scale-100 transition-transform">
+                  <Play size={10} fill="currentColor" />
+                </div>
+                <span>CONTINUE WHERE YOU LEFT OFF ({formatTimestamp(bookmarkTime)})</span>
               </button>
             )}
           </div>
