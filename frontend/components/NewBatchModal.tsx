@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Loader2, Link as LinkIcon, Info } from 'lucide-react'
+import { Loader2, Link as LinkIcon, Info, Sparkles } from 'lucide-react'
 import { createBatch, updateBatch, Batch } from '@/lib/api'
 import { 
   Dialog, 
@@ -67,22 +67,32 @@ export default function NewBatchModal({ isOpen, onClose, onSuccess, channelId, e
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-bold tracking-tight">
-            {editingBatch ? 'Modify Batch' : 'Assemble New Batch'}
-          </DialogTitle>
-          <DialogDescription className="text-xs">
+      <DialogContent className="sm:max-w-[480px] bg-[#1a1a1a] border border-zinc-800 rounded-2xl shadow-2xl p-0 overflow-hidden">
+        <DialogHeader className="p-8 bg-[#1e1e1e] border-b border-zinc-800/50">
+          <div className="flex items-center gap-3 mb-4">
+             <div className="size-10 rounded-xl bg-white flex items-center justify-center text-zinc-950 shadow-lg">
+                <Sparkles size={20} fill="currentColor" />
+             </div>
+             <div className="flex flex-col">
+                <DialogTitle className="text-2xl font-black tracking-tight text-white leading-tight">
+                  {editingBatch ? 'Modify Batch' : 'Assemble New Batch'}
+                </DialogTitle>
+                <DialogDescription className="text-zinc-500 text-xs font-medium uppercase tracking-widest mt-0.5">
+                  Knowledge Curation Engine
+                </DialogDescription>
+             </div>
+          </div>
+          <p className="text-zinc-500 text-sm leading-relaxed">
             {editingBatch 
               ? 'Update the name or range for this curated channel segment.' 
               : 'Define a specific range of messages to organize as a learning batch.'}
-          </DialogDescription>
+          </p>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6 pt-4">
-          <div className="space-y-2">
-            <Label htmlFor="batch-name" className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground mr-1">
-              Title
+        <form onSubmit={handleSubmit} className="p-8 space-y-8">
+          <div className="space-y-3">
+            <Label htmlFor="batch-name" className="text-[10px] uppercase font-black tracking-[0.2em] text-zinc-600 block pl-1">
+              Vault Title
             </Label>
             <Input
               id="batch-name"
@@ -90,51 +100,53 @@ export default function NewBatchModal({ isOpen, onClose, onSuccess, channelId, e
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Physics Phase 01: Kinematics"
-              className="bg-card border-border/50 focus-visible:ring-primary/20 h-10"
+              className="bg-zinc-900/50 border-zinc-800 text-zinc-100 focus:border-white h-12 rounded-xl transition-all placeholder:text-zinc-800"
               maxLength={120}
             />
-            <div className="flex justify-end pr-1">
-              <span className="text-[10px] font-mono text-muted-foreground/60 uppercase">{name.length}/120</span>
+            <div className="flex justify-end pr-1 transition-opacity">
+              <span className="text-[10px] font-mono text-zinc-800 uppercase tracking-tighter">{name.length}/120</span>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="tg-link" className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">
-              Telegram Blueprint (Link or Range)
+          <div className="space-y-3">
+            <Label htmlFor="tg-link" className="text-[10px] uppercase font-black tracking-[0.2em] text-zinc-600 block pl-1">
+              Telegram Blueprint
             </Label>
             <div className="relative group">
-              <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={14} />
+              <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-700 group-focus-within:text-white transition-colors" size={16} />
               <Input
                 id="tg-link"
                 value={link}
                 onChange={(e) => setLink(e.target.value)}
-                className="pl-9 bg-card border-border/50 focus-visible:ring-primary/20 h-10"
+                className="pl-12 bg-zinc-900/50 border-zinc-800 text-zinc-100 focus:border-white h-12 rounded-xl transition-all placeholder:text-zinc-800"
                 placeholder="https://t.me/c/123/100-200"
               />
             </div>
-            <div className="flex items-start gap-2 p-2.5 rounded-lg bg-muted/50 border border-border/50">
-              <Info className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
-              <p className="text-[10px] text-muted-foreground leading-normal">
-                Format: <code className="bg-background px-1 rounded font-mono text-[9px]">.../ID/start-end</code>
-                {editingBatch && <span className="block mt-1 font-bold text-amber-500/80 italic">Updating the range will trigger a sequence rescan.</span>}
-              </p>
+            <div className="flex items-start gap-3 p-4 rounded-xl bg-zinc-900 border border-zinc-800">
+              <Info className="w-4 h-4 text-zinc-600 mt-0.5 shrink-0" />
+              <div className="space-y-1">
+                 <p className="text-[11px] text-zinc-500 leading-relaxed">
+                   Enter a message link or range to sync content.
+                 </p>
+                 <code className="text-zinc-600 font-mono text-[9px] block">/channel/start-end</code>
+              </div>
             </div>
           </div>
 
           {error && (
-            <div className="text-[11px] font-semibold text-destructive bg-destructive/5 p-2.5 rounded-lg border border-destructive/10 animate-in fade-in slide-in-from-top-1">
+            <div className="text-[11px] font-bold text-destructive bg-destructive/5 p-4 rounded-xl border border-destructive/10 animate-in fade-in slide-in-from-top-1">
               {error}
             </div>
           )}
 
-          <DialogFooter className="pt-2">
+          <DialogFooter className="pt-4">
             <Button
               type="submit"
               disabled={loading || !name}
-              className="w-full font-bold shadow-sm h-10"
+              className="w-full bg-white text-zinc-950 font-black h-14 rounded-xl hover:bg-zinc-200 active:scale-95 transition-all text-sm uppercase tracking-widest shadow-xl shadow-white/5"
             >
-              {loading && <Loader2 size={16} className="mr-2 animate-spin" />}
-              {editingBatch ? 'Synchronize Changes' : 'Initialize Discovery'}
+              {loading && <Loader2 size={18} className="mr-2 animate-spin" />}
+              {editingBatch ? 'Sync Changes' : 'Initialize Discovery'}
             </Button>
           </DialogFooter>
         </form>

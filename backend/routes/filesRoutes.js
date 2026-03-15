@@ -31,4 +31,13 @@ router.get('/channel/:username/files', (req, res) => {
   res.json(files);
 });
 
+// ─── GET /api/file/:id ──────────────────────────────────────────────────────
+router.get('/file/:id', (req, res) => {
+  const file = getOne('SELECT * FROM files WHERE id = ?', [req.params.id]);
+  if (!file) {
+    return res.status(404).json({ error: 'File not found' });
+  }
+  res.json(file);
+});
+
 module.exports = router;

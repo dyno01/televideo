@@ -102,6 +102,9 @@ export const getVideo = (id: number): Promise<Video> =>
 export const getFiles = (username: string): Promise<TelegramFile[]> =>
   api.get<TelegramFile[]>(`/api/channel/${username}/files`).then(d)
 
+export const getFile = (id: number): Promise<TelegramFile> =>
+  api.get<TelegramFile>(`/api/file/${id}`).then(d)
+
 export const getProgress = (videoId: number): Promise<Progress> =>
   api.get<Progress>(`/api/progress/${videoId}`).then(d)
 

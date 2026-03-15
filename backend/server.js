@@ -22,15 +22,19 @@ const batchRoutes    = require('./routes/batchRoutes');
 const app  = express();
 const PORT = process.env.PORT || 4000;
 
-// ─── Middleware ────────────────────────────────────────────────────────────
+// --- Middleware ---
+const allowedOrigins = process.env.CORS_ORIGINS 
+  ? process.env.CORS_ORIGINS.split(',') 
+  : [
+      'http://localhost:3000', 
+      'http://127.0.0.1:3000', 
+      'http://localhost:3001', 
+      'http://127.0.0.1:3001',
+      'https://televideo.vercel.app'
+    ];
+
 app.use(cors({
-  origin: [
-    'http://localhost:3000', 
-    'http://127.0.0.1:3000', 
-    'http://localhost:3001', 
-    'http://127.0.0.1:3001',
-    'https://televideo.vercel.app'
-  ],
+  origin: allowedOrigins,
   methods: ['GET', 'POST', 'DELETE', 'PUT', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Range'],
   exposedHeaders: ['Content-Range', 'Accept-Ranges', 'Content-Length'],

@@ -9,9 +9,15 @@ export function cleanTitle(title: string): string {
     .replace(/[📁📂]Batch Name\s*:\s*/gi, '')
     .replace(/@\w+/g, '')
     .replace(/\.mkv|\.mp4/gi, '')
+    .replace(/\[\d+x\d+p\]/gi, '') // Remove resolution [640x360p]
+    .replace(/Extracted By\s*>.+/gi, '') // Remove Extracted By info
+    .replace(/Join\s*⭐/gi, '') // Remove Join stars
+    .replace(/https?:\/\/\S+/gi, '') // Remove any links
+    .replace(/[💖📚🌟✨🔥🚀]/g, '') // Remove common emojis
+    .replace(/Video Title\s*:\s*.+/gi, '')
     .replace(/Batch Name\s*:\s*.+/gi, '')
-    .replace(/Extracted By\s*>.+/gi, '')
     .replace(/\s*[|•-]\s*$/g, '')
+    .replace(/\s+/g, ' ') // Collapse spaces
     .trim()
 }
 

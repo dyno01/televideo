@@ -1,37 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { FileText, File, Sheet, Archive, Download, Eye, Image as ImageIcon } from 'lucide-react'
+import { FileText, File, ExternalLink, Eye, Download, Search, LayoutGrid, List } from 'lucide-react'
 import { TelegramFile, API_BASE } from '@/lib/api'
 import DocumentModal from './DocumentModal'
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
-
-function formatSize(bytes: number | null): string {
-  if (!bytes) return '--'
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
-}
-
-function getFileIcon(mimeType: string, fileName: string) {
-  const lower = (mimeType + fileName).toLowerCase()
-  if (lower.includes('pdf')) return <FileText className="w-5 h-5 text-destructive" />
-  if (lower.includes('sheet') || lower.includes('xlsx') || lower.includes('csv') || lower.includes('xls'))
-    return <Sheet className="w-5 h-5 text-emerald-500" />
-  if (lower.includes('zip') || lower.includes('rar') || lower.includes('7z') || lower.includes('tar'))
-    return <Archive className="w-5 h-5 text-amber-500" />
-  if (lower.includes('jpg') || lower.includes('png') || lower.includes('jpeg'))
-    return <ImageIcon className="w-5 h-5 text-primary" />
-  return <File className="w-5 h-5 text-muted-foreground" />
-}
-
-function getFileExtension(fileName: string): string {
-  const parts = fileName.split('.')
-  return parts.length > 1 ? parts[parts.length - 1].toUpperCase() : 'FILE'
-}
 
 interface FileLibraryProps {
   files: TelegramFile[]
@@ -40,54 +15,99 @@ interface FileLibraryProps {
 
 export default function FileLibrary({ files, channelUsername }: FileLibraryProps) {
   const [selectedFile, setSelectedFile] = useState<TelegramFile | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const filteredFiles = files.filter(f => 
+    f.file_name?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  if (files.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-zinc-600 border border-dashed border-zinc-800 rounded-2xl bg-zinc-900/10">
+        <p className="font-semibold text-zinc-500 text-sm uppercase tracking-widest">Resource Vault Empty</p>
+      </div>
+    )
+  }
 
   return (
-    <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {files.map((file) => {
-          const ext = getFileExtension(file.file_name || 'unknown')
-          const isViewable = ['PDF', 'JPG', 'PNG', 'JPEG', 'WEBP'].includes(ext.toUpperCase())
-          const telegramUrl = `https://t.me/${channelUsername}/${file.message_id}`
+    <div className="flex flex-col gap-10">
+      {/* --- Filter Bar --- */}
+      <div className="flex flex-col sm:flex-row items-center gap-6 justify-between">
+        <div className="relative w-full sm:max-w-md group">
+          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-700 group-focus-within:text-white transition-colors" />
+          <Input 
+            className="pl-12 h-12 bg-zinc-900/50 border-zinc-800 text-zinc-100 rounded-xl focus:border-zinc-600 outline-none transition-all placeholder:text-zinc-800"
+            placeholder="Search across files..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 p-1 rounded-xl">
+           <button className="p-2 rounded-lg bg-white text-zinc-950 shadow-lg transition-all">
+             <LayoutGrid size={18} />
+           </button>
+           <button className="p-2 rounded-lg text-zinc-600 hover:text-white transition-all">
+             <List size={18} />
+           </button>
+        </div>
+      </div>
+
+      {/* --- File Grid --- */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        {filteredFiles.map((file) => {
+          const extension = (file.file_name?.split('.').pop() || '').toUpperCase()
+          const isViewable = ['PDF', 'JPG', 'PNG', 'JPEG', 'WEBP'].includes(extension)
+          const sizeMB = file.file_size ? (file.file_size / (1024 * 1024)).toFixed(2) : '?'
 
           return (
-            <Card 
+            <div 
               key={file.id} 
-              className="group relative flex flex-col h-full bg-card/40 border-border/50 hover:border-primary/50 transition-all duration-300 overflow-hidden cursor-pointer shadow-sm hover:shadow-md"
-              onClick={() => isViewable ? setSelectedFile(file) : window.open(telegramUrl, '_blank')}
+              className="group flex flex-col bg-[#1a1a1a]/40 border border-zinc-900 rounded-2xl overflow-hidden hover:border-zinc-700 transition-all duration-300 card-hover"
             >
-              <CardHeader className="p-4 flex flex-row items-start justify-between space-y-0">
-                <div className="p-2.5 rounded-xl bg-muted/50 border border-border/50 group-hover:bg-primary/5 group-hover:border-primary/20 transition-colors">
-                  {getFileIcon(file.mime_type || '', file.file_name || '')}
+              <div className="aspect-[16/10] relative bg-zinc-950 flex items-center justify-center overflow-hidden border-b border-zinc-900/50">
+                <div className="absolute inset-0 bg-gradient-to-br from-zinc-800/10 to-transparent"></div>
+                <div className="relative size-16 rounded-2xl bg-[#121212] flex items-center justify-center text-zinc-800 transition-all group-hover:scale-110 shadow-xl border border-zinc-900">
+                  <FileText size={32} />
                 </div>
-                <Badge variant="secondary" className="text-[9px] font-black uppercase tracking-widest px-1.5 h-5 border-none bg-muted/80">
-                  {ext}
-                </Badge>
-              </CardHeader>
+                <div className="absolute inset-0 bg-zinc-950/20 group-hover:bg-transparent transition-colors"></div>
+              </div>
 
-              <CardContent className="px-4 pb-4 flex-1">
-                <h4 className="text-sm font-bold leading-tight line-clamp-2 min-h-[2.5rem] group-hover:text-primary transition-colors">
-                  {file.file_name || 'Untitled Discovery'}
-                </h4>
-                <div className="mt-3 flex items-center gap-3">
-                  <span className="text-[10px] font-mono font-bold text-muted-foreground bg-muted/30 px-1.5 py-0.5 rounded">
-                    {formatSize(file.file_size)}
-                  </span>
-                  <span className="text-[9px] font-black text-muted-foreground/50 uppercase tracking-tighter">
-                    Msg #{file.message_id}
-                  </span>
+              <div className="p-6 flex flex-col gap-6">
+                <div className="flex flex-col gap-2 min-w-0">
+                  <h3 className="text-zinc-100 text-[15px] font-bold truncate leading-snug group-hover:text-white">
+                    {file.file_name}
+                  </h3>
+                  <div className="flex justify-between items-center">
+                    <span className="text-zinc-600 text-[10px] font-black uppercase tracking-widest">{sizeMB} MB</span>
+                    <span className="text-zinc-500 text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded bg-zinc-900 border border-zinc-800 transition-colors group-hover:bg-white group-hover:text-black group-hover:border-white">
+                      {extension}
+                    </span>
+                  </div>
                 </div>
-              </CardContent>
 
-              <CardFooter className="px-4 py-3 bg-muted/20 border-t border-border/40 flex items-center justify-between group-hover:bg-primary/5 transition-colors">
-                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground group-hover:text-primary transition-colors">
-                  {isViewable ? <Eye size={12} /> : <Download size={12} />}
-                  {isViewable ? 'Preview' : 'Download'}
+                <div className="flex gap-2.5">
+                  <Button 
+                    variant="outline"
+                    className="flex-1 h-10 rounded-xl bg-zinc-900/50 border-zinc-800 text-zinc-400 font-bold text-[11px] uppercase tracking-widest hover:bg-white hover:text-zinc-950 transition-all"
+                    onClick={() => isViewable 
+                      ? setSelectedFile(file) 
+                      : window.open(`https://t.me/${channelUsername}/${file.message_id}`, '_blank')}
+                  >
+                    {isViewable ? <Eye size={14} className="mr-2" /> : <ExternalLink size={14} className="mr-2" />}
+                    {isViewable ? 'Preview' : 'Open'}
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    className="size-10 shrink-0 p-0 rounded-xl bg-zinc-900/50 border-zinc-800 text-zinc-500 hover:bg-zinc-800 hover:text-white transition-all"
+                    asChild
+                  >
+                    <a href={`${API_BASE}/api/stream/file/${file.id}`} download={file.file_name}>
+                       <Download size={14} />
+                    </a>
+                  </Button>
                 </div>
-                <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Download size={12} />
-                </Button>
-              </CardFooter>
-            </Card>
+              </div>
+            </div>
           )
         })}
       </div>
@@ -101,6 +121,6 @@ export default function FileLibrary({ files, channelUsername }: FileLibraryProps
           mimeType={selectedFile.mime_type || 'application/octet-stream'}
         />
       )}
-    </>
+    </div>
   )
 }
