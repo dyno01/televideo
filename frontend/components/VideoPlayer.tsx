@@ -147,10 +147,85 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video, on
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  const handleMouseMove = () => {
+  const [isDragging, setIsDragging] = useState(false)
+
+  const handleSeek = (e: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent) => {
+    const progressBar = document.getElementById('video-progress-bar')
+    if (!progressBar || !videoRef.current) return
+
+    const rect = progressBar.getBoundingClientRect()
+    let clientX: number
+
+    if ('clientX' in e) {
+      clientX = e.clientX
+    } else {
+      clientX = e.touches[0].clientX
+    }
+
+    const pos = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+    const newTime = pos * videoRef.current.duration
+    
+    // Update visual progress immediately
+    setProgress(pos * 100)
+    setCurrentTime(newTime)
+    
+    return newTime
+  }
+
+  const handleMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation()
+    setIsDragging(true)
     setShowControls(true)
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current)
-    controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 3000)
+    
+    // Initial seek on click
+    const newTime = handleSeek(e)
+    if (newTime !== undefined && videoRef.current) {
+      videoRef.current.currentTime = newTime
+    }
+  }
+
+  useEffect(() => {
+    const handleMouseMoveGlobal = (e: MouseEvent | TouchEvent) => {
+      if (!isDragging || !videoRef.current) return
+      const newTime = handleSeek(e)
+      if (newTime !== undefined) {
+        videoRef.current.currentTime = newTime
+      }
+    }
+
+    const handleMouseUpGlobal = () => {
+      if (isDragging) {
+        setIsDragging(false)
+        resetControlsTimeout()
+      }
+    }
+
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMoveGlobal)
+      window.addEventListener('mouseup', handleMouseUpGlobal)
+      window.addEventListener('touchmove', handleMouseMoveGlobal)
+      window.addEventListener('touchend', handleMouseUpGlobal)
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMoveGlobal)
+      window.removeEventListener('mouseup', handleMouseUpGlobal)
+      window.removeEventListener('touchmove', handleMouseMoveGlobal)
+      window.removeEventListener('touchend', handleMouseUpGlobal)
+    }
+  }, [isDragging])
+
+  const resetControlsTimeout = () => {
+    setShowControls(true)
+    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current)
+    controlsTimeoutRef.current = setTimeout(() => {
+      if (!isDragging) setShowControls(false)
+    }, 3000)
+  }
+
+  const handleMouseMove = () => {
+    if (!isDragging) resetControlsTimeout()
   }
 
   const lastTapRef = useRef<number>(0)
@@ -167,8 +242,13 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video, on
       skip(isRightSide ? 10 : -10)
       lastTapRef.current = 0 
     } else {
-      // Single tap detected -> just toggle controls visibility
-      setShowControls((prev) => !prev)
+      // Single tap detected -> toggle controls visibility
+      if (showControls) {
+        setShowControls(false)
+        if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current)
+      } else {
+        resetControlsTimeout()
+      }
       lastTapRef.current = now
     }
   }
@@ -177,7 +257,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video, on
     <div 
       className="relative group bg-zinc-950 rounded-2xl overflow-hidden aspect-video border border-zinc-900 shadow-2xl"
       onMouseMove={handleMouseMove}
-      onMouseLeave={() => setShowControls(false)}
+      onMouseLeave={() => !isDragging && setShowControls(false)}
     >
       <video
         ref={videoRef}
@@ -190,7 +270,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video, on
       {/* --- Immersive Controls Layer --- */}
       <div className={cn(
         "absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent transition-opacity duration-500 flex flex-col justify-end p-6 z-20 pointer-events-none",
-        showControls ? "opacity-100" : "opacity-0"
+        showControls || isDragging ? "opacity-100" : "opacity-0"
       )}>
         
         {/* Time Markers Area (Above Progress) */}
@@ -205,17 +285,22 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video, on
 
         {/* Thick Progress Bar */}
         <div 
-          className="relative h-1.5 w-full bg-white/10 rounded-full cursor-pointer overflow-hidden mb-6 pointer-events-auto"
-          onClick={(e) => {
-            e.stopPropagation();
-            const rect = e.currentTarget.getBoundingClientRect()
-            const pos = (e.clientX - rect.left) / rect.width
-            if (videoRef.current) videoRef.current.currentTime = pos * videoRef.current.duration
-          }}
+          id="video-progress-bar"
+          className="relative h-1.5 w-full bg-white/10 rounded-full cursor-pointer mb-6 pointer-events-auto group/progress"
+          onMouseDown={handleMouseDown}
+          onTouchStart={handleMouseDown}
         >
           <div 
-            className="absolute h-full bg-white transition-all duration-300"
+            className="absolute h-full bg-white transition-all duration-150 rounded-full"
             style={{ width: `${progress}%` }}
+          />
+          {/* Draggable Knob */}
+          <div 
+            className={cn(
+              "absolute top-1/2 -translate-y-1/2 size-3 bg-white rounded-full shadow-lg transition-transform scale-0 group-hover/progress:scale-100",
+              isDragging && "scale-125"
+            )}
+            style={{ left: `calc(${progress}% - 6px)` }}
           />
         </div>
 
