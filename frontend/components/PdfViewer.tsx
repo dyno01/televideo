@@ -53,7 +53,7 @@ export default function PdfViewer({ fileUrl, fileName, mimeType, onClose, isStan
   const [rotation, setRotation] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState('1')
-  const isPdf = mimeType === 'application/pdf'
+  const isPdf = mimeType === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf')
 
   // Update page input when current page changes
   useEffect(() => {
@@ -171,22 +171,6 @@ export default function PdfViewer({ fileUrl, fileName, mimeType, onClose, isStan
             </div>
           </div>
 
-          <div className="pt-4 border-t border-zinc-900">
-            <h3 className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em] mb-4">Recent Pages</h3>
-            <div className="space-y-4">
-               {[1, 2].map(i => (
-                 <div key={i} className="group relative rounded-xl overflow-hidden border border-zinc-900 bg-[#121212] cursor-pointer hover:border-zinc-700 transition-all">
-                    <div className="aspect-[3/4] flex items-center justify-center">
-                      <span className="text-[8px] text-zinc-700 uppercase font-black tracking-widest italic">Preview {i}</span>
-                    </div>
-                    <div className="absolute bottom-0 inset-x-0 p-2.5 bg-black/60 backdrop-blur-md text-[9px] text-zinc-400 flex justify-between font-black uppercase tracking-tight">
-                      <span>Page {i === 1 ? '12' : '45'}</span>
-                      <span className="opacity-0 group-hover:opacity-100 transition-opacity text-white">Go</span>
-                    </div>
-                 </div>
-               ))}
-            </div>
-          </div>
         </div>
       </ScrollArea>
     </div>
@@ -362,11 +346,10 @@ export default function PdfViewer({ fileUrl, fileName, mimeType, onClose, isStan
 
       {/* --- Main Contents --- */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Left Sidebar */}
         <aside className={cn(
           "fixed inset-y-16 left-0 w-64 md:relative md:inset-y-0 transition-all duration-500 ease-in-out z-[70]",
-          leftSidebarOpen ? "translate-x-0" : "-translate-x-full md:-ml-64",
-          isMobileLeftOpen ? "translate-x-0" : ""
+          leftSidebarOpen ? "md:translate-x-0" : "md:-translate-x-full md:-ml-64",
+          isMobileLeftOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}>
           {LeftSidebar}
         </aside>
@@ -397,8 +380,6 @@ export default function PdfViewer({ fileUrl, fileName, mimeType, onClose, isStan
                        value={pageInput}
                        onChange={(e) => setPageInput(e.target.value)}
                      />
-                     <span className="text-zinc-700 px-1 font-medium">/</span>
-                     <span className="text-zinc-500">142</span>
                   </form>
                   <button 
                     onClick={() => handlePageChange(currentPage + 1)}
@@ -467,11 +448,6 @@ export default function PdfViewer({ fileUrl, fileName, mimeType, onClose, isStan
                 </div>
               )}
               
-              {isPdf && (
-                 <div className="w-full aspect-[1/1.414] rounded-sm bg-[#1a1a1a] border border-zinc-900/50 shadow-inner flex items-center justify-center transition-all duration-500 hover:bg-[#222] cursor-pointer group opacity-30 grayscale hover:grayscale-0 hover:opacity-100">
-                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-700 group-hover:text-zinc-400">Next Page Preview (Coming Soon)</span>
-                 </div>
-              )}
             </div>
           </div>
 
