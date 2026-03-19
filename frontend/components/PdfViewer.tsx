@@ -10,6 +10,7 @@ import {
   Printer, 
   ChevronLeft, 
   ChevronRight,
+  ExternalLink,
   Grid,
   List as ListIcon,
   FileText,
@@ -53,7 +54,16 @@ export default function PdfViewer({ fileUrl, fileName, mimeType, onClose, isStan
   const [rotation, setRotation] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState('1')
+  const [isMobile, setIsMobile] = useState(false)
   const isPdf = mimeType === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf')
+
+  // Detect mobile
+  useEffect(() => {
+    const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+    if (/android|iphone|ipad|ipod/i.test(userAgent.toLowerCase())) {
+      setIsMobile(true)
+    }
+  }, [])
 
   // Update page input when current page changes
   useEffect(() => {
@@ -426,10 +436,22 @@ export default function PdfViewer({ fileUrl, fileName, mimeType, onClose, isStan
                 <div className="w-full bg-[#1e1e1e] shadow-[0_40px_80px_rgba(0,0,0,0.6)] rounded-sm min-h-[1100px] relative overflow-hidden ring-1 ring-white/5 group">
                    <iframe
                       id="pdf-iframe"
-                      src={`${fileUrl}#page=${currentPage}&toolbar=0`}
+                      src={isMobile 
+                        ? `https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true` 
+                        : `${fileUrl}#page=${currentPage}&toolbar=0`
+                      }
                       className="w-full h-full border-none opacity-90 group-hover:opacity-100 transition-opacity"
                       title={fileName}
                     />
+                    {isMobile && (
+                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50">
+                        <Button variant="outline" className="bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20 text-[10px] font-black uppercase tracking-widest px-6" asChild>
+                          <a href={fileUrl} target="_blank" rel="noopener noreferrer">
+                            View Fullscreen <ExternalLink size={14} className="ml-2" />
+                          </a>
+                        </Button>
+                      </div>
+                    )}
                 </div>
               ) : (
                 <div className="w-full h-[600px] rounded-[32px] border border-zinc-900 bg-[#09090b] flex flex-col items-center justify-center gap-8 p-12 text-center shadow-3xl">

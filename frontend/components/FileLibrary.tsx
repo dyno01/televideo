@@ -56,7 +56,7 @@ export default function FileLibrary({ files, channelUsername }: FileLibraryProps
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
         {filteredFiles.map((file) => {
           const extension = (file.file_name?.split('.').pop() || '').toUpperCase()
-          const isViewable = ['PDF', 'JPG', 'PNG', 'JPEG', 'WEBP'].includes(extension)
+          const isViewable = ['PDF', 'JPG', 'PNG', 'JPEG', 'WEBP'].includes(extension) || file.mime_type === 'application/pdf'
           const sizeMB = file.file_size ? (file.file_size / (1024 * 1024)).toFixed(2) : '?'
 
           return (

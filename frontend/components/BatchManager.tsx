@@ -303,7 +303,7 @@ function BatchDetail({ batch, channelUsername }: { batch: Batch; channelUsername
             const file = item as TelegramFile
             const video = item as Video
             const ext = (file.file_name?.split('.').pop() || '').toUpperCase()
-            const isViewable = !isVideo && ['PDF', 'JPG', 'PNG', 'JPEG', 'WEBP'].includes(ext)
+            const isViewable = !isVideo && (['PDF', 'JPG', 'PNG', 'JPEG', 'WEBP'].includes(ext) || file.mime_type === 'application/pdf')
             const progress = isVideo ? Math.round(video.watched_percentage || 0) : 0
 
             return (
