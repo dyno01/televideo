@@ -9,6 +9,10 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
+import TelegramAuthModal from '@/components/TelegramAuthModal'
+import { getTelegramStatus, TelegramStatus } from '@/lib/api'
+import { ShieldCheck, ShieldAlert, Settings } from 'lucide-react'
+
 export default function HomePage() {
   const router = useRouter()
   const [channelInput, setChannelInput] = useState('')
@@ -17,8 +21,18 @@ export default function HomePage() {
   const [channels, setChannels] = useState<Channel[]>([])
   const [loadingChannels, setLoadingChannels] = useState(true)
   const [fetchError, setFetchError] = useState('')
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+  const [telegramStatus, setTelegramStatus] = useState<TelegramStatus | null>(null)
+
+  const checkTgStatus = async () => {
+    try {
+      const st = await getTelegramStatus()
+      setTelegramStatus(st)
+    } catch (_) {}
+  }
 
   useEffect(() => {
+    checkTgStatus()
     getChannels()
       .then(setChannels)
       .catch((err) => {
@@ -46,11 +60,16 @@ export default function HomePage() {
       const result = await scanChannel(username)
       router.push(`/channel/${result.channel.username}`)
     } catch (err: any) {
-      setScanError(err?.response?.data?.error || 'Scan failed. Make sure the channel is public and backend is running.')
+      const msg = err?.response?.data?.error || 'Scan failed. Make sure the channel is public and backend is running.'
+      setScanError(msg)
+      if (err?.response?.data?.authRequired || msg.includes('authorization') || msg.includes('not authorized') || msg.includes('Settings')) {
+        setIsAuthModalOpen(true)
+      }
     } finally {
       setIsScanning(false)
     }
   }
+
 
   return (
     <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-[#09090b] text-zinc-100 font-sans selection:bg-white selection:text-black">
@@ -65,16 +84,38 @@ export default function HomePage() {
             <a className="text-zinc-500 hover:text-white text-[13px] font-semibold tracking-tight transition-colors" href="#">How it Works</a>
             <a className="text-zinc-500 hover:text-white text-[13px] font-semibold tracking-tight transition-colors" href="#">Pricing</a>
           </nav>
-          <div className="flex items-center gap-6">
-            <Button variant="outline" className="hidden sm:flex border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-900">
-               Get Started
-            </Button>
-            <button className="flex items-center justify-center rounded-full h-9 w-9 bg-zinc-900/50 border border-zinc-800 text-zinc-500 hover:text-white transition-all hover:border-zinc-700">
-               <UserCircle size={20} />
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                telegramStatus?.authenticated
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                  : 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20'
+              }`}
+            >
+              {telegramStatus?.authenticated ? (
+                <>
+                  <ShieldCheck size={14} />
+                  <span>@{telegramStatus.user?.username || telegramStatus.user?.firstName || 'Connected'}</span>
+                </>
+              ) : (
+                <>
+                  <ShieldAlert size={14} />
+                  <span>Telegram Auth</span>
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className="flex items-center justify-center rounded-full h-9 w-9 bg-zinc-900/50 border border-zinc-800 text-zinc-400 hover:text-white transition-all hover:border-zinc-700"
+              title="Telegram Settings"
+            >
+               <Settings size={18} />
             </button>
           </div>
         </div>
       </header>
+
 
       <main className="flex flex-col items-center">
         <div className="max-w-[1200px] w-full px-6 md:px-12">
@@ -284,6 +325,14 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
+
+
+      <TelegramAuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onStatusChange={setTelegramStatus}
+      />
     </div>
   )
 }
+

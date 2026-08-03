@@ -68,6 +68,11 @@ db.exec(`
     created_at    TEXT,
     FOREIGN KEY (video_id) REFERENCES videos(id)
   );
+
+  CREATE TABLE IF NOT EXISTS settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT
+  );
 `);
 
 // Safe migration: add dc_id if it doesn't exist yet
@@ -91,6 +96,15 @@ try { db.exec('ALTER TABLE videos ADD COLUMN batch_id INTEGER REFERENCES batches
 try { db.exec('ALTER TABLE files  ADD COLUMN batch_id INTEGER REFERENCES batches(id)'); } catch (_) {}
 try { db.exec('ALTER TABLE files  ADD COLUMN parent_video_id INTEGER REFERENCES videos(id)'); } catch (_) {}
 
+// Seed initial settings from environment if not present
+const seedSetting = (key, val) => {
+  if (val && !db.prepare('SELECT value FROM settings WHERE key = ?').get(key)) {
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run(key, String(val));
+  }
+};
+seedSetting('TELEGRAM_API_ID', process.env.TELEGRAM_API_ID);
+seedSetting('TELEGRAM_API_HASH', process.env.TELEGRAM_API_HASH);
+seedSetting('SESSION_STRING', process.env.SESSION_STRING);
 
 console.log('[DB] SQLite database ready at', DB_PATH);
 
@@ -111,4 +125,20 @@ function run(sql, params = []) {
   return db.prepare(sql).run(params);
 }
 
-module.exports = { db, getAll, getOne, run };
+/** Get a setting by key */
+function getSetting(key, defaultValue = null) {
+  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
+  return row ? row.value : defaultValue;
+}
+
+/** Set a setting by key */
+function setSetting(key, value) {
+  if (value === null || value === undefined) {
+    db.prepare('DELETE FROM settings WHERE key = ?').run(key);
+  } else {
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(key, String(value));
+  }
+}
+
+module.exports = { db, getAll, getOne, run, getSetting, setSetting };
+

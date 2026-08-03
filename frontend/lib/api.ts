@@ -179,4 +179,51 @@ export const deleteBatch = (id: number): Promise<{ success: boolean }> =>
 export const getVideoFiles = (videoId: number): Promise<TelegramFile[]> =>
   api.get<TelegramFile[]>(`/api/video/${videoId}/files`).then(d)
 
+// ── Telegram Auth API ────────────────────────────────────────────────────────
+
+export interface TelegramUser {
+  id: string
+  username: string | null
+  firstName: string | null
+  phone: string | null
+}
+
+export interface TelegramStatus {
+  configured: boolean
+  authenticated: boolean
+  user: TelegramUser | null
+  apiId?: number
+  apiHashConfigured?: boolean
+  error?: string
+}
+
+export const getTelegramStatus = (): Promise<TelegramStatus> =>
+  api.get<TelegramStatus>('/api/telegram/status').then(d)
+
+export const sendTelegramCode = (
+  apiId: string | number,
+  apiHash: string,
+  phoneNumber: string
+): Promise<{ phoneCodeHash: string; isCodeViaApp: boolean }> =>
+  api.post('/api/telegram/send-code', { apiId, apiHash, phoneNumber }).then(d)
+
+export const loginTelegram = (data: {
+  phoneNumber: string
+  phoneCode: string
+  phoneCodeHash: string
+  password?: string
+}): Promise<{ success?: boolean; needs2FA?: boolean; hint?: string; user?: TelegramUser }> =>
+  api.post('/api/telegram/login', data).then(d)
+
+export const saveTelegramSession = (
+  apiId: string | number,
+  apiHash: string,
+  sessionString: string
+): Promise<{ success: boolean; user?: TelegramUser }> =>
+  api.post('/api/telegram/save-session', { apiId, apiHash, sessionString }).then(d)
+
+export const logoutTelegram = (): Promise<{ success: boolean }> =>
+  api.post('/api/telegram/logout').then(d)
+
 export default api
+

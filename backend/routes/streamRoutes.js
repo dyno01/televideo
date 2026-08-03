@@ -4,22 +4,18 @@
  * GET /api/stream/:videoId
  *
  * Streams a Telegram video to the browser with HTTP Range support.
- * Always re-fetches a fresh file reference from the original message.
- *
- * Key fix: GramJS uses the `big-integer` library (not native BigInt).
- * The offset passed to iterDownload must be a bigInt instance.
+ * Re-fetches fresh file references with database fallbacks.
  */
 
 const express  = require('express');
 const { Api }  = require('telegram');
-const bigInt   = require('big-integer');   // ← GramJS's own bigint library
-const { getOne } = require('../db/database');
+const bigInt   = require('big-integer');
+const { getOne, run } = require('../db/database');
 const { getClient } = require('../telegramClient');
 
 const router = express.Router();
 
-// Telegram requires offsets aligned to multiples of 4 096.
-const CHUNK_SIZE = 512 * 1024; // 524 288 bytes
+const CHUNK_SIZE = 512 * 1024; // 512KB chunks
 
 /** Re-fetch a fresh InputDocumentFileLocation from the original message */
 async function getFreshMediaLocation(client, media) {
@@ -31,17 +27,32 @@ async function getFreshMediaLocation(client, media) {
     const numericId = channel.username.replace('__private__', '');
     peer = new Api.PeerChannel({ channelId: bigInt(numericId) });
   } else {
-    peer = await client.getEntity(channel.username);
+    try {
+      peer = await client.getEntity(channel.username);
+    } catch (_) {
+      peer = channel.username;
+    }
   }
 
   const msgs = await client.getMessages(peer, { ids: [media.message_id] });
   const msg  = msgs && msgs[0];
 
   if (!msg || !msg.media || !msg.media.document) {
-    throw new Error('Message content not found — re-scan may be required');
+    throw new Error('Message content not found on Telegram — re-scan may be required');
   }
 
   const doc = msg.media.document;
+
+  // Persist fresh file reference in DB
+  try {
+    if (media.title !== undefined) {
+      run('UPDATE videos SET file_reference = ?, access_hash = ?, dc_id = ? WHERE id = ?',
+        [Buffer.from(doc.fileReference), String(doc.accessHash), doc.dcId || 0, media.id]);
+    } else {
+      run('UPDATE files SET file_reference = ?, access_hash = ?, dc_id = ? WHERE id = ?',
+        [Buffer.from(doc.fileReference), String(doc.accessHash), doc.dcId || 0, media.id]);
+    }
+  } catch (_) {}
 
   return {
     location: new Api.InputDocumentFileLocation({
@@ -64,22 +75,47 @@ router.get('/:videoId', async (req, res) => {
   if (!video) return res.status(404).json({ error: 'Video not found' });
 
   try {
-    const client = await getClient();
+    let client;
+    try {
+      client = await getClient();
+    } catch (authErr) {
+      return res.status(401).json({
+        error: authErr.message || 'Telegram authentication required. Please log in via Telegram Settings.',
+        authRequired: true,
+      });
+    }
 
-    // Get fresh file location (avoids expired-reference errors)
+    // Get fresh file location with database fallback
     let fileLocation;
     try {
       fileLocation = await getFreshMediaLocation(client, video);
     } catch (fetchErr) {
-      console.error('[Stream] Could not refresh file reference:', fetchErr.message);
-      return res.status(503).json({ error: fetchErr.message });
+      console.warn('[Stream] Could not refresh file reference online, checking database fallback:', fetchErr.message);
+
+      if (video.file_id && video.access_hash && video.file_reference) {
+        fileLocation = {
+          location: new Api.InputDocumentFileLocation({
+            id:            bigInt(video.file_id),
+            accessHash:    bigInt(video.access_hash),
+            fileReference: Buffer.isBuffer(video.file_reference)
+                             ? video.file_reference
+                             : Buffer.from(video.file_reference),
+            thumbSize:     '',
+          }),
+          dcId: video.dc_id || 0,
+          size: video.size || 0,
+          mimeType: video.mime_type || 'video/mp4',
+        };
+      } else {
+        return res.status(503).json({ error: `Stream unavailable: ${fetchErr.message}` });
+      }
     }
 
     const totalSize = fileLocation.size || video.size || 0;
     const mimeType  = video.mime_type || 'video/mp4';
     const dcId      = fileLocation.dcId || video.dc_id || 0;
 
-    // ── Parse Range header ─────────────────────────────────────────
+    // Parse Range header
     const rangeHeader = req.headers.range;
     let start = 0;
     let end   = totalSize > 0 ? totalSize - 1 : 0;
@@ -93,12 +129,9 @@ router.get('/:videoId', async (req, res) => {
     }
 
     const contentLength = end - start + 1;
-
-    // Align start to Telegram's chunk boundary
     const alignedStart = Math.floor(start / CHUNK_SIZE) * CHUNK_SIZE;
     const skipBytes    = start - alignedStart;
 
-    // ── Send headers ───────────────────────────────────────────────
     if (rangeHeader) {
       res.writeHead(206, {
         'Content-Range':  `bytes ${start}-${end}/${totalSize || '*'}`,
@@ -116,22 +149,19 @@ router.get('/:videoId', async (req, res) => {
       });
     }
 
-    // ── Stream via GramJS iterDownload ─────────────────────────────
-    // IMPORTANT: offset must use big-integer (GramJS internal type), not native BigInt
     let bytesWritten = 0;
     let firstChunk   = true;
 
     for await (const rawChunk of client.iterDownload({
-      file:        fileLocation.location,   // InputDocumentFileLocation
-      offset:      bigInt(alignedStart),    // big-integer instance (GramJS internal type)
+      file:        fileLocation.location,
+      offset:      bigInt(alignedStart),
       requestSize: CHUNK_SIZE,
-      ...(dcId ? { dcId } : {}),           // DC-aware routing for 2-3× faster speeds
+      ...(dcId ? { dcId } : {}),
     })) {
       if (res.destroyed || !res.writable) break;
 
       let chunk = Buffer.isBuffer(rawChunk) ? rawChunk : Buffer.from(rawChunk);
 
-      // Drop leading bytes caused by chunk alignment
       if (firstChunk && skipBytes > 0) {
         chunk = chunk.slice(skipBytes);
         firstChunk = false;
@@ -139,7 +169,6 @@ router.get('/:videoId', async (req, res) => {
         firstChunk = false;
       }
 
-      // Stop once we've sent the requested range
       if (rangeHeader && bytesWritten + chunk.length > contentLength) {
         chunk = chunk.slice(0, contentLength - bytesWritten);
       }
@@ -162,7 +191,7 @@ router.get('/:videoId', async (req, res) => {
   }
 });
 
-// ── GET /api/stream/file/:fileId ───────────────────────────────────────────
+// GET /api/stream/file/:fileId
 router.get('/file/:fileId', async (req, res) => {
   const fileId = parseInt(req.params.fileId, 10);
   if (isNaN(fileId)) return res.status(400).json({ error: 'Invalid file ID' });
@@ -171,8 +200,36 @@ router.get('/file/:fileId', async (req, res) => {
   if (!file) return res.status(404).json({ error: 'File not found' });
 
   try {
-    const client = await getClient();
-    const mediaLoc = await getFreshMediaLocation(client, file);
+    let client;
+    try {
+      client = await getClient();
+    } catch (authErr) {
+      return res.status(401).json({
+        error: authErr.message || 'Telegram authentication required. Please log in via Telegram Settings.',
+        authRequired: true,
+      });
+    }
+
+    let mediaLoc;
+    try {
+      mediaLoc = await getFreshMediaLocation(client, file);
+    } catch (fetchErr) {
+      if (file.file_id && file.access_hash && file.file_reference) {
+        mediaLoc = {
+          location: new Api.InputDocumentFileLocation({
+            id:            bigInt(file.file_id),
+            accessHash:    bigInt(file.access_hash),
+            fileReference: Buffer.isBuffer(file.file_reference) ? file.file_reference : Buffer.from(file.file_reference),
+            thumbSize:     '',
+          }),
+          dcId: file.dc_id || 0,
+          size: file.file_size || 0,
+          mimeType: file.mime_type || 'application/octet-stream',
+        };
+      } else {
+        return res.status(503).json({ error: fetchErr.message });
+      }
+    }
 
     const totalSize = mediaLoc.size;
     const mimeType  = mediaLoc.mimeType || 'application/octet-stream';
@@ -188,7 +245,7 @@ router.get('/file/:fileId', async (req, res) => {
     for await (const rawChunk of client.iterDownload({
       file:        mediaLoc.location,
       offset:      bigInt(0),
-      requestSize: 1024 * 1024, // 1MB chunks for files
+      requestSize: 1024 * 1024,
       ...(dcId ? { dcId } : {}),
     })) {
       if (res.destroyed || !res.writable) break;

@@ -361,11 +361,20 @@ router.put('/:id', async (req, res) => {
 
 /** Helper to re-scan a batch range (used when link change) */
 async function scanBatchRange(batchId, parsed) {
-  const { getClient } = require('../lib/telegram');
+  const { getClient } = require('../telegramClient');
   const client = await getClient();
-  const channelId = getOne('SELECT channel_id FROM batches WHERE id = ?', [batchId]).channel_id;
+  const channelId = getOne('SELECT channel_id FROM batches WHERE id = ?', [batchId])?.channel_id;
+  if (!channelId) return;
   const channel = getOne('SELECT * FROM channels WHERE id = ?', [channelId]);
-  const peer = await client.getEntity(channel.username);
+  if (!channel) return;
+
+  let peer;
+  if (channel.username && channel.username.startsWith('__private__')) {
+    const numId = channel.username.replace('__private__', '');
+    peer = new Api.PeerChannel({ channelId: bigInt(numId) });
+  } else {
+    peer = await client.getEntity(channel.username);
+  }
   
   const rangeSize = parsed.endId - parsed.startId + 1;
   let lastVideoId = null;
@@ -379,30 +388,30 @@ async function scanBatchRange(batchId, parsed) {
     const c = classifyMessage(message);
     if (!c) continue;
 
-    const ts = message.date;
+    const ts = message.date ? new Date(message.date * 1000).toISOString() : new Date().toISOString();
     if (c.type === 'video') {
       const vid = getOne('SELECT id FROM videos WHERE channel_id = ? AND message_id = ?', [channelId, message.id]);
       if (vid) {
         run('UPDATE videos SET batch_id = ? WHERE id = ?', [batchId, vid.id]);
         lastVideoId = vid.id;
       } else {
-        const { getVideoInfo } = require('../lib/telegram');
-        const info = await getVideoInfo(client, message);
+        const title = message.message?.trim()?.slice(0, 300) || c.fileName;
         const res = run(`INSERT INTO videos (channel_id, batch_id, message_id, title, duration, size, 
-                         mime_type, file_id, access_hash, file_ref, dc_id, created_at)
+                         mime_type, file_id, access_hash, file_reference, dc_id, created_at)
                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [channelId, batchId, message.id, info.title, info.duration, info.size, 
-           info.mimeType, info.fileId, info.accessHash, info.fileRef, info.dcId, ts]);
+          [channelId, batchId, message.id, title, c.duration, c.size, 
+           c.mimeType, c.fileId, c.accessHash, c.fileRef, c.dcId || 0, ts]);
         lastVideoId = res.lastInsertRowid;
       }
     } else {
       run(`INSERT INTO files (channel_id, batch_id, parent_video_id, message_id, file_name, 
-           mime_type, file_size, file_id, access_hash, file_ref, dc_id, created_at)
+           mime_type, file_size, file_id, access_hash, file_reference, dc_id, created_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [channelId, batchId, lastVideoId, message.id, c.fileName, c.mimeType, 
-         c.size, c.fileId, c.accessHash, c.fileRef, c.dcId, ts]);
+         c.size, c.fileId, c.accessHash, c.fileRef, c.dcId || 0, ts]);
     }
   }
 }
 
 module.exports = router;
+

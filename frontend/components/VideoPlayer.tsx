@@ -33,9 +33,10 @@ interface VideoPlayerProps {
   onEnded?: () => void
   onPrev?: () => void
   onNext?: () => void
+  onOpenTelegramAuth?: () => void
 }
 
-const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video, onProgress, initialPercentage = 0, onEnded, onPrev, onNext }, ref) => {
+const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video, onProgress, initialPercentage = 0, onEnded, onPrev, onNext, onOpenTelegramAuth }, ref) => {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [progress, setProgress] = useState(initialPercentage)
@@ -47,6 +48,9 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video, on
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [playbackSpeed, setPlaybackSpeed] = useState(1)
   const [isWaiting, setIsWaiting] = useState(false)
+  const [hasStreamError, setHasStreamError] = useState(false)
+  const [streamErrorDetails, setStreamErrorDetails] = useState('')
+
 
   const speeds = [1, 1.25, 1.5, 2]
 
@@ -253,7 +257,33 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video, on
     }
   }
 
+  const handleVideoError = async () => {
+    setHasStreamError(true)
+    try {
+      const res = await fetch(`${API_BASE}/api/stream/${video.id}`, { headers: { Range: 'bytes=0-1' } })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        if (json.error) {
+          setStreamErrorDetails(json.error)
+        } else {
+          setStreamErrorDetails(`HTTP ${res.status}: Failed to stream video`)
+        }
+      }
+    } catch (e: any) {
+      setStreamErrorDetails('Network error connecting to backend API.')
+    }
+  }
+
+  const handleRetryStream = () => {
+    setHasStreamError(false)
+    setStreamErrorDetails('')
+    if (videoRef.current) {
+      videoRef.current.load()
+    }
+  }
+
   return (
+
     <div 
       className="relative group bg-zinc-950 rounded-2xl overflow-hidden aspect-video border border-zinc-900 shadow-2xl"
       onMouseMove={handleMouseMove}
@@ -264,8 +294,43 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video, on
         src={`${API_BASE}/api/stream/${video.id}`}
         className="w-full h-full object-contain"
         onClick={handleVideoClick}
+        onError={handleVideoError}
         playsInline
       />
+
+      {/* --- Stream Error Overlay --- */}
+      {hasStreamError && (
+        <div className="absolute inset-0 z-30 bg-zinc-950/95 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center gap-4">
+          <div className="size-12 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive flex items-center justify-center">
+            <Tv size={24} />
+          </div>
+          <div className="space-y-1.5 max-w-md">
+            <h3 className="text-white font-bold text-lg">Unable to Stream Video</h3>
+            <p className="text-zinc-400 text-xs leading-relaxed">
+              {streamErrorDetails || 'Telegram session or video file reference may have expired.'}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-3 mt-2">
+            <button
+              onClick={handleRetryStream}
+              className="px-4 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-200 text-xs font-bold hover:bg-zinc-800 transition-colors flex items-center gap-2"
+            >
+              <RotateCw size={14} /> Retry Playback
+            </button>
+
+            {onOpenTelegramAuth && (
+              <button
+                onClick={onOpenTelegramAuth}
+                className="px-4 py-2 rounded-xl bg-white text-zinc-950 text-xs font-bold hover:bg-zinc-200 transition-colors flex items-center gap-2"
+              >
+                <Settings size={14} /> Telegram Login Settings
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
 
       {/* --- Immersive Controls Layer --- */}
       <div className={cn(

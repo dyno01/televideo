@@ -18,9 +18,11 @@ const notesRoutes    = require('./routes/notesRoutes');
 const filesRoutes    = require('./routes/filesRoutes');
 const streamRoutes   = require('./routes/streamRoutes');
 const batchRoutes    = require('./routes/batchRoutes');
+const authRoutes     = require('./routes/authRoutes');
 
 const app  = express();
 const PORT = process.env.PORT || 4000;
+
 
 // --- Middleware ---
 const allowedOrigins = process.env.CORS_ORIGINS 
@@ -69,6 +71,9 @@ app.use('/api/stream',   streamRoutes);       // GET /api/stream/:videoId  (HTTP
 
 // Batches
 app.use('/api/batches',  batchRoutes);        // POST/GET/DELETE /api/batches
+
+// Telegram Auth & Settings
+app.use('/api/telegram', authRoutes);         // GET /status, POST /send-code, /login, /logout
 
 // ─── 404 catch-all ─────────────────────────────────────────────────────────
 app.use((_req, res) => {

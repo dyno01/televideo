@@ -24,6 +24,9 @@ import { Card } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn, cleanTitle } from '@/lib/utils'
 
+import TelegramAuthModal from '@/components/TelegramAuthModal'
+import { Settings } from 'lucide-react'
+
 export default function VideoPage() {
   const params = useParams()
   const router = useRouter()
@@ -35,7 +38,9 @@ export default function VideoPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState<'playlist' | 'notes'>('playlist')
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   const playerRef = useRef<VideoPlayerHandle>(null)
+
 
   useEffect(() => {
     if (isNaN(videoId)) { 
@@ -126,6 +131,7 @@ export default function VideoPage() {
             video={video}
             ref={playerRef}
             initialPercentage={video.watched_percentage}
+            onOpenTelegramAuth={() => setIsAuthModalOpen(true)}
             onPrev={() => {
               const idx = channelVideos.findIndex(v => v.id === videoId)
               if (idx > 0) {
@@ -139,6 +145,7 @@ export default function VideoPage() {
               }
             }}
           />
+
 
           {/* Video Meta Section */}
           <div className="flex flex-col lg:flex-row items-start justify-between gap-6">
@@ -208,6 +215,12 @@ export default function VideoPage() {
           </div>
         </div>
       </div>
+
+      <TelegramAuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
     </main>
   )
 }
+

@@ -28,6 +28,8 @@ import { Card } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
 
+import TelegramAuthModal from '@/components/TelegramAuthModal'
+
 type Tab = 'videos' | 'pdfs' | 'files' | 'batches' | 'overview'
 
 export default function ChannelPage() {
@@ -40,6 +42,8 @@ export default function ChannelPage() {
   const [files, setFiles] = useState<TelegramFile[]>([])
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+
 
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search)
@@ -245,17 +249,26 @@ export default function ChannelPage() {
           </div>
           
           <div className="flex items-center gap-3">
-            <button className="size-10 flex items-center justify-center text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900/50 rounded-xl transition-all">
+            <button 
+              onClick={() => setIsAuthModalOpen(true)}
+              title="Telegram Connection Settings"
+              className="size-10 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-900/50 rounded-xl transition-all"
+            >
               <Settings size={20} />
             </button>
             <div className="hidden sm:block w-px h-4 bg-zinc-800 mx-1"></div>
-            <div className="size-10 flex items-center justify-center rounded-xl bg-white text-zinc-950 hover:bg-zinc-200 transition-all shadow-lg shadow-white/5 active:scale-95 cursor-pointer">
+            <div 
+              onClick={() => setIsAuthModalOpen(true)}
+              className="size-10 flex items-center justify-center rounded-xl bg-white text-zinc-950 hover:bg-zinc-200 transition-all shadow-lg shadow-white/5 active:scale-95 cursor-pointer"
+              title="Account Settings"
+            >
               <Avatar className="size-full rounded-xl">
                  <AvatarFallback className="bg-transparent text-inherit font-black">U</AvatarFallback>
               </Avatar>
             </div>
           </div>
         </header>
+
 
         {/* Scrollable Content Container */}
         <div className="flex-1 overflow-y-auto custom-scrollbar">
@@ -394,6 +407,12 @@ export default function ChannelPage() {
           </div>
         </div>
       </main>
+
+      <TelegramAuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
     </div>
   )
 }
+
