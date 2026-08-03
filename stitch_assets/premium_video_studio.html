@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Premium Video Studio Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#09090b",
+                        "zinc-800": "#27272a",
+                        "zinc-900": "#18181b",
+                        "zinc-950": "#09090b",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #3f3f46;
+            border-radius: 10px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display">
+<div class="relative flex h-screen w-full flex-col overflow-hidden">
+<!-- Top Navigation -->
+<header class="flex items-center justify-between px-6 py-4 border-b border-zinc-800 bg-zinc-950/50 backdrop-blur-md sticky top-0 z-50">
+<div class="flex items-center gap-4">
+<button class="flex items-center justify-center p-2 rounded-full hover:bg-zinc-800 transition-colors">
+<span class="material-symbols-outlined text-slate-100">arrow_back</span>
+</button>
+<div class="flex flex-col">
+<h1 class="text-sm font-medium text-slate-400 uppercase tracking-widest">Premium Studio</h1>
+<h2 class="text-lg font-bold text-white leading-tight">Advanced Cinematic Techniques</h2>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="flex items-center gap-2 px-4 py-2 bg-white text-zinc-950 rounded-lg text-sm font-bold hover:bg-zinc-200 transition-colors">
+<span class="material-symbols-outlined text-sm">share</span>
+                    Share
+                </button>
+</div>
+</header>
+<!-- Main Content (Scrollable Area) -->
+<main class="flex-1 overflow-y-auto custom-scrollbar">
+<div class="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-0 lg:gap-8 p-0 lg:p-8">
+<!-- Left Column: Video Player & Info -->
+<div class="lg:col-span-8 flex flex-col gap-6">
+<!-- Video Player Component -->
+<div class="relative aspect-video w-full bg-black rounded-none lg:rounded-xl overflow-hidden group shadow-2xl border border-zinc-800/50">
+<div class="absolute inset-0 flex items-center justify-center bg-cover bg-center" data-alt="Cinematic production scene with professional camera gear" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCIY5Y6RNFSdgy-PhXCdm6NV1ZuWLK1CQXbkuoXs771vJ-H4onxXKt9RPVUL9t3b3XGG1__hmm1HwSvl0IX_hR2AA-xmGVtAk8ZW07GB1roMS0f_Uqb0wqGUMWM9rugFQ31Z3VBTfVe87dSLT3VW4B606HHj4vv3H4AcDhLxTqwvsRbcW7euu1_l0rdh1pygPnv9oPwgsiGC44zcMRULJyL6KGHCG2ekk1Mg8bHJgIQkmfe7uykvm9ks5qjtq-_tl23CykxxX0zr6Q');">
+<div class="absolute inset-0 bg-black/40"></div>
+<button class="relative z-10 flex items-center justify-center rounded-full size-20 bg-white/10 backdrop-blur-md border border-white/20 text-white hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-5xl" style="font-variation-settings: 'FILL' 1">play_arrow</span>
+</button>
+</div>
+<!-- Video Controls Overlay -->
+<div class="absolute inset-x-0 bottom-0 p-4 lg:p-6 bg-gradient-to-t from-black/90 via-black/40 to-transparent">
+<!-- Progress Bar -->
+<div class="flex flex-col gap-2 mb-4">
+<div class="flex justify-between items-end">
+<span class="text-xs font-mono text-white">04:22</span>
+<span class="text-xs font-mono text-white/60">12:45</span>
+</div>
+<div class="relative h-1.5 w-full bg-white/20 rounded-full overflow-hidden cursor-pointer">
+<div class="absolute top-0 left-0 h-full w-1/3 bg-white rounded-full"></div>
+</div>
+</div>
+<!-- Control Buttons -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-4 lg:gap-6">
+<span class="material-symbols-outlined text-white cursor-pointer hover:text-primary transition-colors">replay_10</span>
+<span class="material-symbols-outlined text-white text-3xl cursor-pointer hover:scale-110 transition-transform" style="font-variation-settings: 'FILL' 1">pause</span>
+<span class="material-symbols-outlined text-white cursor-pointer hover:text-primary transition-colors">forward_10</span>
+<div class="flex items-center gap-2 group/vol">
+<span class="material-symbols-outlined text-white cursor-pointer">volume_up</span>
+<div class="w-20 h-1 bg-white/20 rounded-full hidden lg:block overflow-hidden">
+<div class="w-3/4 h-full bg-white"></div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-4 lg:gap-6">
+<span class="text-[10px] font-bold border border-white/40 px-1 rounded text-white">4K</span>
+<span class="material-symbols-outlined text-white cursor-pointer">closed_caption</span>
+<span class="material-symbols-outlined text-white cursor-pointer">settings</span>
+<span class="material-symbols-outlined text-white cursor-pointer">fullscreen</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Metadata Section -->
+<div class="px-6 lg:px-0 flex flex-col gap-4">
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+<div class="space-y-1">
+<h3 class="text-2xl lg:text-3xl font-bold tracking-tight text-white">4.2 Color Grading in DaVinci Resolve</h3>
+<div class="flex items-center gap-3 text-sm text-zinc-400">
+<span>Masterclass Series</span>
+<span class="size-1 bg-zinc-700 rounded-full"></span>
+<span>Advanced Level</span>
+<span class="size-1 bg-zinc-700 rounded-full"></span>
+<span>Updated 2 days ago</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="flex-1 lg:flex-none flex items-center justify-center gap-2 px-6 py-2.5 border border-zinc-700 rounded-lg text-sm font-semibold text-white hover:bg-zinc-800 transition-colors">
+<span class="material-symbols-outlined text-sm">inventory_2</span>
+                                    Assets
+                                </button>
+<button class="flex-1 lg:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-white text-zinc-950 rounded-lg text-sm font-bold hover:bg-zinc-200 transition-colors">
+<span class="material-symbols-outlined text-sm">bookmark</span>
+                                    Save
+                                </button>
+</div>
+</div>
+<p class="text-zinc-400 leading-relaxed text-base lg:text-lg max-w-4xl">
+                            In this module, we explore the depth of field and color grading processes used in high-end production. Learn how to manipulate shadows and midtones to create a cinematic look that mirrors professional studio outputs. We will dive into LUT applications and secondary color corrections.
+                        </p>
+</div>
+</div>
+<!-- Right Column: Sidebar -->
+<aside class="lg:col-span-4 flex flex-col gap-8 px-6 lg:px-0 py-8 lg:py-0">
+<!-- Playlist Section -->
+<section class="flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<h4 class="text-xs font-bold uppercase tracking-widest text-zinc-500">Course Playlist</h4>
+<span class="text-xs font-semibold text-white bg-zinc-800 px-2 py-1 rounded">65% Complete</span>
+</div>
+<div class="flex flex-col gap-3">
+<!-- Video Card Item (Active) -->
+<div class="group relative flex items-center gap-3 p-3 bg-zinc-900 border border-white/10 rounded-xl overflow-hidden shadow-[0_0_20px_rgba(255,255,255,0.05)]">
+<div class="relative size-16 shrink-0 rounded-lg overflow-hidden bg-zinc-800">
+<img class="size-full object-cover" data-alt="Close up of a camera lens" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCYmhRiXiTkqkrVyd8pI2FZVSEPoGNLecwW7cFem4V1DQaB7_1jjMKakSP7LnYd7w5yuW0h1eZaR2pbe6VMoQrA0eFy4QLJXMqM7roUEEKaq3RqpJCtUB2IHOA6w0TYQtLgACwIvRupOI0SO0RlI0vJQmxuOgbwV4hQZ2TSVApKBxFj6hp5s2FrspYKIwVaqeSwf_jRLf2t4MR9OEUB_fGL1WvSAdZIGeImNpxWNh_7nVnmzVCiRn8ePOU4lN3geMqlmLN_kD3s3Yo"/>
+<div class="absolute inset-0 bg-zinc-950/60 flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-xl" style="font-variation-settings: 'FILL' 1">play_arrow</span>
+</div>
+</div>
+<div class="flex flex-col">
+<span class="text-xs font-bold text-primary">CURRENTLY PLAYING</span>
+<h5 class="text-sm font-bold text-white line-clamp-1">Color Grading in DaVinci Resolve</h5>
+<span class="text-xs text-zinc-500">12:45</span>
+</div>
+<div class="absolute right-3 top-3">
+<span class="material-symbols-outlined text-white text-xs">equalizer</span>
+</div>
+</div>
+<!-- Video Card Item (Upcoming) -->
+<div class="group flex items-center gap-3 p-3 bg-transparent border border-zinc-800/50 hover:bg-zinc-900 hover:border-zinc-700 rounded-xl transition-all cursor-pointer">
+<div class="relative size-16 shrink-0 rounded-lg overflow-hidden bg-zinc-800">
+<img class="size-full object-cover opacity-60" data-alt="Studio lighting setup" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAX6ZzpYxMtGtG7GZwHA6KAjYU8tP1qmcvHpUpZgWpZKWhIxXF0Vxp_2RuMRkP8q-m8F3qKkQyyv2NFcE22hTChPqON4WiMXT3IS1J_RuFaWBzn7n6bvE2i3QznQCJma_U9NEFNjhpfGVEjY_98Rw8OYtpwfP7YUcIrpQBY0vRYKN_EM7HphAHsNn9rb3ACvxi6CO6fJrfk76YeqmyJldjTLIqhPp0KqGhH8dociW0zgtF_FsTpuJR7UzzlzhLHFQnXZux1nsEfzqM"/>
+</div>
+<div class="flex flex-col">
+<h5 class="text-sm font-bold text-zinc-300 group-hover:text-white transition-colors line-clamp-1">4.3 Lighting for Interviews</h5>
+<span class="text-xs text-zinc-500">08:20</span>
+</div>
+</div>
+<!-- Video Card Item (Upcoming) -->
+<div class="group flex items-center gap-3 p-3 bg-transparent border border-zinc-800/50 hover:bg-zinc-900 hover:border-zinc-700 rounded-xl transition-all cursor-pointer">
+<div class="relative size-16 shrink-0 rounded-lg overflow-hidden bg-zinc-800">
+<img class="size-full object-cover opacity-60" data-alt="Camera on a tripod" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAjo6R68wKamgq_ffkXziaJEVSLKefNur3FYsRo6aqAouFs9egclowBWjUu1lG_zFf8bCQB3KGeavm2nQK8iTa4eevWKj1m6rsItQtFyRJ0QIGhZ2fKfZyIFUHZYtjCyyV3XOcYx6sInh_uTKHYu23c0P414YToBdA4ZuI4xzP7BiuFRt2jLFZ6sCuy9KHQlWUgXc_iO041Y4pFxjLWLd8dwQDeRdbialpYNwdemjS9AtKR-yKrHVMUu4W8qNMF_BumPj5i5gBylrs"/>
+</div>
+<div class="flex flex-col">
+<h5 class="text-sm font-bold text-zinc-300 group-hover:text-white transition-colors line-clamp-1">4.4 Advanced Shot Composition</h5>
+<span class="text-xs text-zinc-500">15:10</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Context Notes Section -->
+<section class="flex flex-col gap-6">
+<div class="flex items-center justify-between">
+<h4 class="text-xs font-bold uppercase tracking-widest text-zinc-500">Context Notes</h4>
+<button class="flex items-center gap-1.5 text-[10px] font-bold text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-colors">
+<span class="material-symbols-outlined text-xs">add</span>
+                                NEW NOTE
+                            </button>
+</div>
+<div class="relative pl-6 space-y-8">
+<!-- Timeline Line -->
+<div class="absolute left-2 top-2 bottom-2 w-px bg-zinc-800"></div>
+<!-- Note Item 1 -->
+<div class="relative">
+<div class="absolute -left-[1.375rem] top-1.5 size-2.5 rounded-full bg-primary ring-4 ring-zinc-950"></div>
+<div class="flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="text-xs font-bold text-white px-2 py-0.5 bg-zinc-900 border border-zinc-800 rounded">02:14</span>
+<span class="text-[10px] text-zinc-600">JUST NOW</span>
+</div>
+<p class="text-sm text-zinc-400 leading-relaxed bg-zinc-900/50 p-3 rounded-lg border border-zinc-800/30">
+                                        Need to revisit the LUT application workflow. The shadow recovery seems a bit aggressive here.
+                                    </p>
+</div>
+</div>
+<!-- Note Item 2 -->
+<div class="relative">
+<div class="absolute -left-[1.375rem] top-1.5 size-2.5 rounded-full bg-zinc-700 ring-4 ring-zinc-950"></div>
+<div class="flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="text-xs font-bold text-white px-2 py-0.5 bg-zinc-900 border border-zinc-800 rounded">04:45</span>
+<span class="text-[10px] text-zinc-600">15 MIN AGO</span>
+</div>
+<p class="text-sm text-zinc-400 leading-relaxed bg-zinc-900/50 p-3 rounded-lg border border-zinc-800/30">
+                                        Check skin tones on the second node. Keep saturation below 60% for a natural look.
+                                    </p>
+</div>
+</div>
+</div>
+</section>
+</aside>
+</div>
+</main>
+<!-- Bottom Navigation Bar (Mobile) -->
+<nav class="lg:hidden flex border-t border-zinc-800 bg-zinc-950 px-4 pb-6 pt-3">
+<a class="flex flex-1 flex-col items-center justify-center gap-1 text-zinc-500" href="#">
+<span class="material-symbols-outlined">home</span>
+<p class="text-[10px] font-medium uppercase tracking-tighter">Home</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-center gap-1 text-white" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">play_circle</span>
+<p class="text-[10px] font-medium uppercase tracking-tighter">Courses</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-center gap-1 text-zinc-500" href="#">
+<span class="material-symbols-outlined">note_alt</span>
+<p class="text-[10px] font-medium uppercase tracking-tighter">My Notes</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-center gap-1 text-zinc-500" href="#">
+<span class="material-symbols-outlined">person</span>
+<p class="text-[10px] font-medium uppercase tracking-tighter">Profile</p>
+</a>
+</nav>
+</div>
+</body></html>

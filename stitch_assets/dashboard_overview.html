@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Premium Learning - Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ffffff",
+                        "background-light": "#f7f7f7",
+                        "background-dark": "#121212",
+                        "surface-dark": "#1e1e1e",
+                        "border-dark": "#2a2a2a"
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="flex min-h-screen">
+<!-- Sidebar -->
+<aside class="w-72 border-r border-slate-200 dark:border-border-dark flex flex-col justify-between p-6 sticky top-0 h-screen bg-background-light dark:bg-background-dark">
+<div class="flex flex-col gap-8">
+<!-- Profile Section -->
+<div class="flex items-center gap-3">
+<div class="size-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center overflow-hidden">
+<img class="object-cover w-full h-full" data-alt="Professional headshot of a male student" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCTFbfP-BnpfVZX-0bqTZpOEcD3i3OtqzhPTHw2SP6Ub_uqChW8Ged_GJdH-bu4a1IyV6iH2bFKRPSXl2Zh2o8WCooy8y1OjyooYrovoAmmi2s7dGEvF-u4xyotoF7uucc1XrDocsYlQucy4iJsRynwwO0Y84p7NHVouSfpnzTfS6UYzWpzSiH-sJpMz8CyN9XL9CI3fWF0w4XQ4SPGe1LFUZKywNjm53GTINA4CAPa6q5IY_3b8uzhk-5X3hDT3FfnzjL_pPG5uPI"/>
+</div>
+<div class="flex flex-col">
+<h1 class="text-slate-900 dark:text-slate-100 text-sm font-semibold leading-tight">Alex Sterling</h1>
+<p class="text-slate-500 dark:text-slate-400 text-xs font-medium">Elite Member</p>
+</div>
+</div>
+<!-- Navigation -->
+<nav class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary/10 text-primary group" href="#">
+<span class="material-symbols-outlined text-[22px] fill-1">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-surface-dark transition-colors" href="#">
+<span class="material-symbols-outlined text-[22px]">layers</span>
+<span class="text-sm font-medium">My Batches</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-surface-dark transition-colors" href="#">
+<span class="material-symbols-outlined text-[22px]">menu_book</span>
+<span class="text-sm font-medium">Resources</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-surface-dark transition-colors" href="#">
+<span class="material-symbols-outlined text-[22px]">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+</nav>
+</div>
+<!-- Bottom Action -->
+<div class="flex flex-col gap-4">
+<div class="p-4 rounded-xl bg-primary/5 border border-primary/10">
+<p class="text-xs text-slate-500 dark:text-slate-400 mb-2">Upgrade to</p>
+<p class="text-sm font-bold text-primary mb-3">Premium Pro Plan</p>
+<button class="w-full py-2 bg-primary text-background-dark text-xs font-bold rounded hover:opacity-90 transition-opacity">Upgrade Now</button>
+</div>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:text-red-500 transition-colors" href="#">
+<span class="material-symbols-outlined text-[22px]">logout</span>
+<span class="text-sm font-medium">Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col min-w-0 bg-background-light dark:bg-background-dark">
+<!-- Header/Welcome -->
+<header class="p-8 lg:p-12">
+<div class="max-w-6xl mx-auto flex justify-between items-end">
+<div class="flex flex-col gap-2">
+<p class="text-primary text-sm font-bold tracking-widest uppercase opacity-60">Overview</p>
+<h2 class="text-4xl lg:text-5xl font-black text-slate-900 dark:text-white tracking-tight">Welcome Back, Alex.</h2>
+<p class="text-slate-500 dark:text-slate-400 text-lg max-w-xl">You've completed 75% of your weekly goal. Keep pushing to finish your 'Advanced UI' module.</p>
+</div>
+<div class="hidden lg:flex items-center gap-4 text-slate-400">
+<div class="text-right">
+<p class="text-xs font-medium uppercase tracking-tighter">Learning Hours</p>
+<p class="text-xl font-bold text-primary">24.5 hrs</p>
+</div>
+<div class="h-10 w-px bg-slate-200 dark:bg-border-dark"></div>
+<div class="text-right">
+<p class="text-xs font-medium uppercase tracking-tighter">Completed</p>
+<p class="text-xl font-bold text-primary">12 Units</p>
+</div>
+</div>
+</div>
+</header>
+<div class="px-8 lg:px-12 pb-12 max-w-6xl mx-auto w-full grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Your Batches Grid -->
+<section class="lg:col-span-2 flex flex-col gap-6">
+<div class="flex items-center justify-between">
+<h3 class="text-xl font-bold text-slate-900 dark:text-white">Your Batches</h3>
+<button class="text-sm font-medium text-primary/60 hover:text-primary transition-colors">View All</button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Batch Card 1 -->
+<div class="group flex flex-col bg-slate-100 dark:bg-surface-dark rounded-xl overflow-hidden border border-slate-200 dark:border-border-dark hover:border-primary/30 transition-all">
+<div class="relative aspect-video overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Close up of a modern computer interface design" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAT6hvwWv1py6OSUtus-r02R5_y90NM4SPzElFeRW0L9WIDAy9945hNLyDsyQzL8OYDIhnYDo1lisz1VmNOSYT89dUsrZzjTOsqbaXnX65oK4eHNZo7EYTRKHmW07ml3pTFldWclCLp3_76Py_hMoz9MwAMUgolFgXVGowCQNZQ1TDapDch2wpCRJd7Jd3y94J-mT1d_TYKLTZ8fphXA722LFKVfx55bHCoaf3wCek4hyL9XnBgHcDyXeLqZITS8sqjXNcs80AupuE"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+<div class="absolute bottom-3 left-3 flex items-center gap-2">
+<span class="px-2 py-0.5 rounded bg-primary text-background-dark text-[10px] font-bold uppercase">Active</span>
+</div>
+</div>
+<div class="p-5 flex flex-col gap-4">
+<div>
+<h4 class="text-lg font-bold text-slate-900 dark:text-white group-hover:text-primary transition-colors">Advanced UI/UX Design</h4>
+<p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Mentor: Sarah Drasner</p>
+</div>
+<div class="flex flex-col gap-2">
+<div class="flex justify-between items-center text-xs font-medium">
+<span class="text-slate-500 dark:text-slate-400">85% Completed</span>
+<span class="text-primary">12/14 Units</span>
+</div>
+<div class="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 85%"></div>
+</div>
+</div>
+<div class="flex items-center gap-4 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">play_circle</span> 12 Videos
+                                    </div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">description</span> 4 PDFs
+                                    </div>
+</div>
+</div>
+</div>
+<!-- Batch Card 2 -->
+<div class="group flex flex-col bg-slate-100 dark:bg-surface-dark rounded-xl overflow-hidden border border-slate-200 dark:border-border-dark hover:border-primary/30 transition-all">
+<div class="relative aspect-video overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Software code on a dark laptop screen" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBFPVsr_GQXCCjMYBVN6KpiYvF428LVK9MqN9RozW5nxTTg06MkoVfeLeJpypKMqrXoYuciDwVlVcYseLTORzl6ZN9IClSogoLfS4d-pvP2SC8TSxOiSl6gXD9QhWhcaWKvqwXmTlCNrO0LwnCbUEGF2AVMUMEO3MeLB-cDNFy_Vk0dv8xOiCp2ShA_ot9m95QIgJc296-fak_c9e3LsFwswFGYYHG2cka_UA00kGRXPICky2Mj7XLg5iu1hMYChGba3cFPaq0R840"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+<div class="absolute bottom-3 left-3 flex items-center gap-2">
+<span class="px-2 py-0.5 rounded bg-primary text-background-dark text-[10px] font-bold uppercase">In Progress</span>
+</div>
+</div>
+<div class="p-5 flex flex-col gap-4">
+<div>
+<h4 class="text-lg font-bold text-slate-900 dark:text-white group-hover:text-primary transition-colors">Full-stack Development</h4>
+<p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Mentor: David Heinemeier</p>
+</div>
+<div class="flex flex-col gap-2">
+<div class="flex justify-between items-center text-xs font-medium">
+<span class="text-slate-500 dark:text-slate-400">40% Completed</span>
+<span class="text-primary">24/60 Units</span>
+</div>
+<div class="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-primary/40 rounded-full" style="width: 40%"></div>
+</div>
+</div>
+<div class="flex items-center gap-4 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">play_circle</span> 24 Videos
+                                    </div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">description</span> 8 PDFs
+                                    </div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Recent Activity Sidebar -->
+<section class="flex flex-col gap-6">
+<div class="flex items-center justify-between">
+<h3 class="text-xl font-bold text-slate-900 dark:text-white">Recent Activity</h3>
+</div>
+<div class="flex flex-col gap-4">
+<!-- Activity Item 1 -->
+<div class="flex items-start gap-4 p-4 rounded-xl bg-slate-50 dark:bg-surface-dark border border-slate-200 dark:border-border-dark">
+<div class="size-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary">play_circle</span>
+</div>
+<div class="flex flex-col gap-1 min-w-0">
+<p class="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">Typography Masterclass</p>
+<p class="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">Watched 18:42 / 24:00</p>
+<p class="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-bold mt-1">2 hours ago</p>
+</div>
+</div>
+<!-- Activity Item 2 -->
+<div class="flex items-start gap-4 p-4 rounded-xl bg-slate-50 dark:bg-surface-dark border border-slate-200 dark:border-border-dark">
+<div class="size-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary">description</span>
+</div>
+<div class="flex flex-col gap-1 min-w-0">
+<p class="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">Design System Checklist.pdf</p>
+<p class="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">Read 12 pages</p>
+<p class="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-bold mt-1">Yesterday</p>
+</div>
+</div>
+<!-- Activity Item 3 -->
+<div class="flex items-start gap-4 p-4 rounded-xl bg-slate-50 dark:bg-surface-dark border border-slate-200 dark:border-border-dark">
+<div class="size-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary">play_circle</span>
+</div>
+<div class="flex flex-col gap-1 min-w-0">
+<p class="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">React Hooks Deep Dive</p>
+<p class="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">Completed module</p>
+<p class="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-bold mt-1">Oct 24, 2023</p>
+</div>
+</div>
+<div class="mt-4 p-6 rounded-2xl bg-gradient-to-br from-slate-800 to-black dark:from-surface-dark dark:to-background-dark border border-white/5 flex flex-col items-center text-center gap-4">
+<div class="size-12 rounded-full bg-primary/20 flex items-center justify-center border border-primary/40">
+<span class="material-symbols-outlined text-primary text-2xl">event_available</span>
+</div>
+<div>
+<h4 class="text-sm font-bold text-white">Next Mentor Session</h4>
+<p class="text-xs text-slate-400 mt-1">Tomorrow, 10:00 AM</p>
+</div>
+<button class="w-full py-2 bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold uppercase tracking-wider rounded border border-white/10 transition-all">Set Reminder</button>
+</div>
+</div>
+</section>
+</div>
+</main>
+</div>
+</body></html>

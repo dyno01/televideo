@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TaskTrack</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 flex">
+<aside class="w-64 bg-gray-900 text-white p-6 flex flex-col justify-between h-screen sticky top-0">
+<div>
+<div class="flex items-center space-x-2 mb-10">
+<span class="material-icons text-purple-400 text-3xl">task_alt</span>
+<span class="text-2xl font-bold">TaskTrack</span>
+</div>
+<nav class="space-y-4">
+<h3 class="text-gray-400 text-sm font-semibold uppercase">Pages</h3>
+<a class="flex items-center justify-between p-2 rounded-lg text-gray-300 hover:bg-gray-800" href="#">
+<div class="flex items-center">
+<span class="material-icons mr-3">dashboard</span>
+<span>Dashboard</span>
+</div>
+<span class="bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">5</span>
+</a>
+<a class="flex items-center justify-between p-2 rounded-lg bg-gray-800 text-white" href="#">
+<div class="flex items-center">
+<span class="material-icons mr-3">calendar_today</span>
+<span>Calendar</span>
+</div>
+<span class="material-icons">chevron_right</span>
+</a>
+<a class="flex items-center p-2 rounded-lg text-gray-300 hover:bg-gray-800" href="#">
+<span class="material-icons mr-3">settings</span>
+<span>Settings</span>
+</a>
+<a class="flex items-center justify-between p-2 rounded-lg text-gray-300 hover:bg-gray-800" href="#">
+<div class="flex items-center">
+<span class="material-icons mr-3">help_outline</span>
+<span>Help</span>
+</div>
+<span class="bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-lg">New</span>
+</a>
+</nav>
+<div class="mt-10">
+<h3 class="text-gray-400 text-sm font-semibold uppercase mb-4">Events</h3>
+<div class="space-y-3">
+<div class="flex items-center justify-between text-sm">
+<div class="flex items-center">
+<span class="material-icons text-purple-400 mr-2">check_box_outline_blank</span>
+<span>Project meeting</span>
+</div>
+<span class="text-gray-400">7:00 - 8:20</span>
+</div>
+<div class="flex items-center justify-between text-sm">
+<div class="flex items-center">
+<span class="material-icons text-purple-400 mr-2">check_box_outline_blank</span>
+<span>English practice</span>
+</div>
+<span class="text-gray-400">10:00 - 11:20</span>
+</div>
+<div class="flex items-center justify-between text-sm">
+<div class="flex items-center">
+<span class="material-icons text-purple-400 mr-2">check_box_outline_blank</span>
+<span>Send request</span>
+</div>
+<span class="text-gray-400">11:30 - 12:10</span>
+</div>
+</div>
+</div>
+<div class="mt-10">
+<h3 class="text-gray-400 text-sm font-semibold uppercase mb-4">Progress</h3>
+<div class="flex items-center justify-between mb-2">
+<span class="text-3xl font-bold">50%</span>
+<span class="text-sm text-gray-400">3/6 tasks done</span>
+</div>
+<div class="w-full bg-gray-700 rounded-full h-2">
+<div class="bg-purple-500 h-2 rounded-full" style="width: 50%"></div>
+</div>
+</div>
+<div class="mt-10">
+<h3 class="text-gray-400 text-sm font-semibold uppercase mb-4">August, 2024</h3>
+<div class="grid grid-cols-7 text-center text-sm text-gray-400">
+<span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span>
+</div>
+<div class="grid grid-cols-7 text-center text-sm mt-2">
+<span class="text-gray-500">31</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span>
+<span>7</span><span>8</span><span>9</span><span>10</span><span>11</span><span>12</span><span>13</span>
+<span class="bg-gray-800 rounded-lg p-1">14</span><span class="bg-gray-800 rounded-lg p-1">15</span><span class="bg-purple-600 text-white rounded-lg p-1 relative">16<span class="absolute h-1 w-1 bg-white rounded-full bottom-1 left-1/2 -translate-x-1/2"></span></span><span class="bg-gray-800 rounded-lg p-1">17</span><span class="bg-gray-800 rounded-lg p-1">18</span><span class="bg-gray-800 rounded-lg p-1">19</span><span class="text-green-400">20</span>
+<span class="">21</span><span class="">22</span><span class="">23</span><span class="">24</span><span class="">25</span><span class="">26</span><span class="">27</span>
+<span class="text-gray-500">28</span><span class="text-gray-500">29</span><span class="text-gray-500">30</span><span class="text-gray-500">31</span><span class="text-gray-500">1</span><span class="text-gray-500">2</span><span class="text-gray-500">3</span>
+</div>
+</div>
+</div>
+<div class="mt-auto pt-6 border-t border-gray-800 flex items-center justify-between">
+<div class="flex items-center">
+<img alt="Amy Carter's avatar" class="w-10 h-10 rounded-full mr-3" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB1-Su5ED7f-scw9-FNXTi6Hc3hGtx5ePYQ9n_eyzpMzIcl73aqJY6eeKU7_PMw8dzE3tvd96stW5Q4RBuh0aXh-RSy_UjEhDPdf9cEmSdyTfB-icEL7D3YrPKdm6Mlv1iLUOBccJS8gqM3THObb8b5N7cnn-dqyXzmN4XuG9RbYU6kyhFiZfHR8I5OxloIYEgPL72NDtVdTWX7A10phZTNyQ-5gPYWG4W0tLgXdxHXEI2PjsWFJG2cIfs0XCxGcpRFEmtOjD3altI"/>
+<div>
+<p class="font-semibold">Amy Carter</p>
+<p class="text-sm text-gray-400">Product designer</p>
+</div>
+</div>
+<button class="text-gray-400 hover:text-white">
+<span class="material-icons">logout</span>
+</button>
+</div>
+</aside>
+<main class="flex-1 p-8">
+<header class="flex justify-between items-center mb-8">
+<div>
+<h1 class="text-3xl font-bold text-gray-900">Hi, Amy</h1>
+<p class="text-gray-500">Keep moving forward!</p>
+</div>
+<div class="flex items-center space-x-4">
+<div class="flex items-center bg-white border border-gray-200 rounded-lg p-1">
+<button class="p-1 rounded-md hover:bg-gray-100">
+<span class="material-icons">chevron_left</span>
+</button>
+<span class="px-3 text-sm font-medium">Today</span>
+<button class="p-1 rounded-md hover:bg-gray-100">
+<span class="material-icons">chevron_right</span>
+</button>
+</div>
+<div class="flex items-center bg-white border border-gray-200 rounded-lg text-sm">
+<button class="px-4 py-2 rounded-l-lg hover:bg-gray-100">Day</button>
+<button class="px-4 py-2 hover:bg-gray-100 border-l border-r">Week</button>
+<button class="px-4 py-2 rounded-r-lg hover:bg-gray-100">Month</button>
+</div>
+<button class="bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-purple-700">
+<span class="material-icons mr-2">add</span>
+                    Add task
+                </button>
+</div>
+</header>
+<div class="grid grid-cols-7 gap-4 text-center">
+<div class="font-semibold text-gray-500">GMT +2</div>
+<div class="font-semibold">Mon <span class="text-2xl font-bold block text-gray-900">14</span></div>
+<div class="font-semibold">Tue <span class="text-2xl font-bold block text-gray-900">15</span></div>
+<div class="font-semibold bg-white rounded-xl p-4 shadow-md">Wed <span class="text-2xl font-bold block text-purple-600">16</span> <span class="text-xs text-gray-400">3/6 tasks done</span></div>
+<div class="font-semibold">Thu <span class="text-2xl font-bold block text-gray-900">17</span></div>
+<div class="font-semibold">Fri <span class="text-2xl font-bold block text-gray-900">18</span></div>
+<div class="font-semibold">Sat <span class="text-2xl font-bold block text-gray-900">19</span></div>
+<div class="font-semibold">Sun <span class="text-2xl font-bold block text-gray-900">20</span></div>
+</div>
+<div class="grid grid-cols-8 -ml-8">
+<div class="col-span-1 text-right pr-4 text-sm text-gray-400 space-y-16 mt-8">
+<div class="h-16">6:00 AM</div>
+<div class="h-16">7:00 AM</div>
+<div class="h-16">8:00 AM</div>
+<div class="h-16">9:00 AM</div>
+<div class="h-16">10:00 AM</div>
+<div class="h-16">11:00 AM</div>
+<div class="h-16">12:00 PM</div>
+<div class="h-16">1:00 PM</div>
+</div>
+<div class="col-span-7 grid grid-cols-7 border-t border-gray-200">
+<div class="border-r border-gray-200 pt-16">
+<div class="bg-purple-100 p-2 rounded-lg mx-2" style="margin-top: 6rem; height: 5rem;">
+<p class="font-semibold text-sm">Client meeting preparation</p>
+<p class="text-xs text-gray-500">10:30 - 11:50</p>
+</div>
+</div>
+<div class="border-r border-gray-200 pt-16">
+<div class="bg-cyan-100 p-2 rounded-lg mx-2" style="height: 4rem; margin-top: 0.5rem;">
+<p class="font-semibold text-sm">Clean kitchen</p>
+<p class="text-xs text-gray-500">7:45 - 8:20</p>
+</div>
+<div class="bg-purple-100 p-2 rounded-lg mx-2 mt-2" style="height: 5rem;">
+<p class="font-semibold text-sm">Speaking club</p>
+<p class="text-xs text-gray-500">8:30 - 10:20</p>
+</div>
+<div class="bg-gray-200 p-2 rounded-lg mx-2 mt-2 flex items-center justify-between" style="height: 3rem;">
+<span class="material-icons text-gray-500">link</span>
+<p class="text-sm text-gray-500">https://...</p>
+<div class="flex items-center -space-x-2">
+<span class="bg-blue-200 text-blue-800 text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center border-2 border-white">+3</span>
+</div>
+</div>
+<div class="bg-cyan-100 p-2 rounded-lg mx-2" style="margin-top: 11.5rem; height: 3.5rem;">
+<p class="font-semibold text-sm">Water plants</p>
+<p class="text-xs text-gray-500">1:20 - 1:40</p>
+</div>
+</div>
+<div class="border-r border-gray-200 pt-8 bg-white shadow-inner">
+<div class="bg-cyan-100 p-2 rounded-lg mx-2" style="height: 4rem; margin-top: 1.5rem;">
+<p class="font-semibold text-sm">Morning stretching</p>
+<p class="text-xs text-gray-500">7:00 - 8:20</p>
+<div class="flex items-center mt-1">
+<span class="material-icons text-xs text-cyan-600">videocam</span>
+<p class="text-xs text-cyan-600 ml-1">Instruct...</p>
+</div>
+</div>
+<div class="bg-purple-200 p-2 rounded-lg mx-2" style="height: 7rem; margin-top: -0.5rem;">
+<p class="font-semibold text-sm">Project meeting</p>
+<p class="text-xs text-gray-500">7:00 - 9:00</p>
+<div class="flex items-center mt-2">
+<span class="material-icons text-purple-600">link</span>
+<p class="text-sm text-purple-600 ml-1">https://...</p>
+</div>
+<div class="flex items-center mt-2 -space-x-2">
+<img alt="avatar" class="w-6 h-6 rounded-full border-2 border-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAMinFtU8lynBf3hJE1E4DUby9yGbskkmr2cuapRcmktxrZMJm2Z53p6061u8GbDt4KYy2AKQ3FlDiJglUjcJOSVvoySEA_DrVtmkiLhDJehiWLtitwW63nQmrl1m_0QKK8BkMLVpmE8gsVnwnYK5IXWOKPoXmmWfQSApbyQbNVIPxSdhgLa_QJU6OFxUt5uXH7HNb5-jifbYjIqlhnUWgiGv7otpA6gQPFeVlIymdZk3kvZyoyF7Wa1UoshYewoYYxeyRnYKk8dAo"/>
+<img alt="avatar" class="w-6 h-6 rounded-full border-2 border-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAqxWGYZQ3mIDvUqmMgplO1TWL8YcRzYeOOrRdP5s6ux53ICX0zsAvtxxveZRZV5CYX2WRaWvEVgcv4yKBz29KWHVKI91U1Vza9xkO0PTsLspceKQgEUIJsq_S7MNZntSbVqL_Ohaj-JLYW-4pCBAkVPkRdlPufSLag58mjQbP04mqTcEJEdgMb0GaZ1QHchve2MbphOFQlMKIFoo6m2fGhYdOKbaIve_jw-Yxsk5C2uTKJ-3I2VmBgX6vDzI0cHomVAIWRZ0sAZBU"/>
+</div>
+</div>
+<div class="bg-blue-100 p-2 rounded-lg mx-2" style="margin-top: 3rem; height: 4rem;">
+<p class="font-semibold text-sm">English practice</p>
+<p class="text-xs text-gray-500">10:00 - 11:20</p>
+</div>
+<div class="bg-cyan-100 p-2 rounded-lg mx-2 mt-2" style="height: 4rem;">
+<p class="font-semibold text-sm">Send request</p>
+<p class="text-xs text-gray-500">11:30 - 12:10</p>
+</div>
+<div class="bg-pink-100 p-2 rounded-lg mx-2 mt-2" style="height: 3.5rem;">
+<p class="font-semibold text-sm">Homework</p>
+<p class="text-xs text-gray-500">12:15 - 12:50</p>
+</div>
+</div>
+<div class="border-r border-gray-200 pt-16">
+<div class="bg-green-100 p-2 rounded-lg mx-2" style="height: 7.5rem; margin-top: 5.5rem;">
+<p class="font-semibold text-sm">Renew house ensurance</p>
+<p class="text-xs text-gray-500">11:00 - 12:20</p>
+<div class="flex items-center mt-2">
+<span class="material-icons text-green-600">shield</span>
+<p class="text-sm text-green-600 ml-1">Ensuran...</p>
+</div>
+</div>
+</div>
+<div class="border-r border-gray-200 pt-8">
+<div class="bg-green-100 p-2 rounded-lg mx-2" style="margin-top: -1rem; height: 3.5rem;">
+<p class="font-semibold text-sm">Annual tax return</p>
+<p class="text-xs text-gray-500">6:40 - 7:20</p>
+</div>
+<div class="bg-yellow-100 p-2 rounded-lg mx-2 mt-2" style="height: 2.5rem;">
+<div class="flex items-center">
+<span class="material-icons text-yellow-600">description</span>
+<p class="font-semibold text-sm ml-1">Taxes d...</p>
+</div>
+</div>
+<div class="bg-cyan-100 p-2 rounded-lg mx-2" style="margin-top: 3.5rem; height: 5rem;">
+<p class="font-semibold text-sm">Festive brunch</p>
+<p class="text-xs text-gray-500">8:00 - 9:15</p>
+<div class="flex items-center mt-2 -space-x-2">
+<img alt="avatar" class="w-6 h-6 rounded-full border-2 border-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAu5k_tmLgrkGvdUxYvfPBOhp58SVfLm4IvohmgebVCCr3BssfnTntiUsUbaNnk4fHGV7ZDcI7rS6o-xiYo0exwWOwjPN_Ni4lY7_W1FsGmd-lFaQIxgt_l2SlAdzMVeRQCpuO8rUm5KwvmQ5OoC4zVrRzfQouzvT005aGvBBorRRK1H1CPpA7TFm9X8qS-ajL-Hh91gZpeMzXzfpzj1YrZO_p1HxkX2VnGW0NkJQSGNGmUsr2kaBiIZc5C1KPyntwAO7TZprSPJyM"/>
+<img alt="avatar" class="w-6 h-6 rounded-full border-2 border-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA1UakY6hKJm2MqrJurzNE4VgyeEt1TlBubco9Z6ML9zaXxNcCLl-fiGOzQa9AiSW91adae3n6St2mRWjW-Cd86QU59rEudRpZM4A9QGAzWbphuJhi0scCFQWKm2XTHYXpn0LL4u2V-kKTpdBF60A8j_B5UYrTXyD49qcAsHcEaplvSiQ8-2lg9lcO4IAJsX1unuSzxY0ymSo21pj-suz_nEFuJvBgX2e8gjnpmDjUgcv4tNz7UtcwsWcwi3sijEExtQckJ2FMUpUg"/>
+</div>
+</div>
+<div class="bg-purple-100 p-2 rounded-lg mx-2" style="margin-top: 1rem; height: 4rem;">
+<p class="font-semibold text-sm">Working on task</p>
+<p class="text-xs text-gray-500">9:20 - 10:45</p>
+</div>
+</div>
+<div class="border-r border-gray-200 pt-16">
+<div class="bg-blue-100 p-2 rounded-lg mx-2" style="height: 9rem; margin-top: 1.5rem;">
+<p class="font-semibold text-sm">Meeting with client</p>
+<p class="text-xs text-gray-500">8:00 - 10:00</p>
+<div class="bg-gray-200 p-2 rounded-lg mt-2 flex items-center justify-between">
+<span class="material-icons text-gray-500">link</span>
+<p class="text-sm text-gray-500">https://...</p>
+</div>
+<div class="flex items-center mt-2 -space-x-2">
+<img alt="avatar" class="w-6 h-6 rounded-full border-2 border-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAKPfDXQ5yKuW90Ek2clvLvQQUrzgdDE_GVDL9vTkRtBuYj6VpQ7rvqwQL3GS4BkiVCoqkrdvWhfibCyNCLrKqQLeVfscfpVUt9N7IJkfmr5jyUnBJjCiihLr7k76OVvaYTdKU4mNgnfoCNKJXqHyQ2T2bIZdpAKaEhZHU1L-_DhNsMSan9No3qnjZPuDUhyhk9A8HGglteQf-43mirW5wG_0RG4B8gW_s2_hxX8IOmF0kEvRjefjzLfemsn1fxh_FjY4BGu0pAZWI"/>
+<img alt="avatar" class="w-6 h-6 rounded-full border-2 border-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCDv0dUYMDz7EMRdn29iYESfci6GvG1JZLgqcbQq0oFQWsUCSKA2FmKGezl3VtF_3mF1VYUgfYWREB5v_qpKsZIkT_wIpkWxgnBUlY1F-tw6jbmh5_uoPvXVU6XXpSc9Zc9D5BH8dW2TRB3w83--YNfLyO-jT6PLACgI0oIy36eCdsbWaHTynGwzpChzT0GUXxQok2kx4MSRGUQtSVw0lTCpAphjYJXaUOG8I40rVZZr2kqxl6ZONgYtnP9IVPnriWq9WBHrXHuetM"/>
+<span class="bg-blue-200 text-blue-800 text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center border-2 border-white">+5</span>
+</div>
+</div>
+<div class="bg-orange-100 p-2 rounded-lg mx-2" style="height: 3.5rem; margin-top: 1rem;">
+<p class="font-semibold text-sm">Book tickets</p>
+<p class="text-xs text-gray-500">10:10 - 10:45</p>
+</div>
+<div class="bg-pink-100 p-2 rounded-lg mx-2 mt-2" style="height: 3.5rem;">
+<p class="font-semibold text-sm">Budget estimate</p>
+<p class="text-xs text-gray-500">10:50 - 11:50</p>
+</div>
+</div>
+<div class="pt-16">
+<div class="bg-teal-100 p-2 rounded-lg mx-2" style="height: 6.5rem; margin-top: 8rem;">
+<p class="font-semibold text-sm">Coffee with classmates</p>
+<p class="text-xs text-gray-500">12:00 - 1:15</p>
+<div class="flex items-center mt-2 -space-x-2">
+<img alt="avatar" class="w-6 h-6 rounded-full border-2 border-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD292s4Veqrd1tcvZGWWjKOENHhvwWs7RdIpASGpdkID2hAn29YDy1gpbSFg4-XBaNL8CP_5tsPmvR1f3j9L2Rb_L5oDN-AkYHUzyjDGfXyXUPnaiVfI67rcFnK5hZU497hLTpdaKzozxTfZ4ltJgpxwKtwTIBwqoTxLjboDxGh7O_d4NXNP9vHud0meBiz-NpfIoKL9ptMNHmtBqFkJ7LX5vd1J5rMrSPprR1IhwR38mLhiR_s1IQ7XQL9M6J1OszgQEvgwZTGfzk"/>
+<img alt="avatar" class="w-6 h-6 rounded-full border-2 border-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAYmyOSCZ9FGIjHOycaORb6oWddfK-tLV_KP63NLpaS0GpFgMe3ntQzu0_zBIP1NIHPNPeUoF6k9NS66DiJQ2nneCwalMNDJL90v52vy8_p8iOdSMhnRgF_P2dO-vDTILgadNBCZme-7uKtcSpv7JNI6T_CiwqRW5hwAKT-Sh-KvDT8AiKGr3Ub8YI_VlDpRd6r-JbQKoFI2n4obTfwV2O1hAHTASYpG_r4W_Mfn8QGc-uCHxTiFEAIBE9vvGGXRMqv0UwshhSwnbI"/>
+<img alt="avatar" class="w-6 h-6 rounded-full border-2 border-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC4yp3nzSZxX90LFB7VYkacYZ2fG85XkArfsXegv4Zovl3BviwRzIWrwAf3VbF_fP0Aa4u2IvLQfBCquSOIhC5hZdH8MbJiUEKp_PQB_fHOpmDgatKrBlhFTDA4tzBsuETmDKl0g-OlY93IQ6I1qMo6nSxwxf5p5UScR6LxewxdJiFWlTvQyC4b0bpg3s-3M8hjr40HfOQljUisUlgpzQNaE2_sWnW9QMjB2NMzfeZl-as8h2D3h4pIbWTZwDksYlBKvCuSX7FzFWw"/>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+
+</body></html>

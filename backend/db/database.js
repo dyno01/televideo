@@ -100,6 +100,17 @@ try { db.exec('ALTER TABLE files  ADD COLUMN parent_video_id INTEGER REFERENCES 
 try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_videos_channel_message ON videos(channel_id, message_id)'); } catch (_) {}
 try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_files_channel_message ON files(channel_id, message_id)'); } catch (_) {}
 
+// Video tags feature
+db.exec(`
+  CREATE TABLE IF NOT EXISTS video_tags (
+    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    video_id INTEGER NOT NULL,
+    tag      TEXT    NOT NULL,
+    FOREIGN KEY (video_id) REFERENCES videos(id),
+    UNIQUE(video_id, tag)
+  );
+`);
+
 
 // Seed initial settings from environment if not present
 const seedSetting = (key, val) => {

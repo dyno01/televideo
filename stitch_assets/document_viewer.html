@@ -1,0 +1,218 @@
+<html class="dark"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Documents - Library</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#135bec",
+            "background-dark": "#09090b",
+            "surface-dark": "#18181b",
+            "border-dark": "#27272a",
+          },
+          fontFamily: {
+            "sans": ["Inter", "sans-serif"]
+          },
+          borderRadius: {
+            "DEFAULT": "0.5rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+        },
+      },
+    }
+  </script>
+<style>
+  body {
+    font-family: 'Inter', sans-serif;
+    background-color: #09090b;
+    color: #fafafa;
+  }
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+</style>
+</head>
+<body class="bg-background-dark text-zinc-100 min-h-screen selection:bg-primary selection:text-white antialiased">
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden">
+<div class="layout-container flex h-full grow flex-col">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-border-dark px-8 py-4 bg-background-dark/80 backdrop-blur-md sticky top-0 z-50">
+<div class="flex items-center gap-4">
+<div class="flex items-center justify-center p-2.5 bg-zinc-100 rounded-lg text-zinc-950">
+<span class="material-symbols-outlined block text-xl">description</span>
+</div>
+<h2 class="text-zinc-100 text-lg font-bold tracking-tight">Documents</h2>
+</div>
+<div class="flex flex-1 justify-end gap-6 items-center">
+<label class="hidden md:flex flex-col min-w-80 h-10 max-w-sm">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full overflow-hidden">
+<div class="text-zinc-500 flex bg-zinc-900 items-center justify-center pl-4">
+<span class="material-symbols-outlined text-xl">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 border-none bg-zinc-900 text-zinc-100 focus:ring-0 h-full placeholder:text-zinc-600 px-4 pl-2 text-sm" placeholder="Search files..."/>
+</div>
+</label>
+<div class="flex gap-2">
+<button class="flex items-center justify-center rounded-lg h-10 w-10 text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100 transition-all">
+<span class="material-symbols-outlined">grid_view</span>
+</button>
+<button class="flex items-center justify-center rounded-lg h-10 w-10 text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100 transition-all">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+<button class="flex items-center justify-center rounded-lg h-10 w-10 bg-zinc-100 text-zinc-950 hover:bg-white transition-colors">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<div class="flex flex-1 flex-col md:flex-row max-w-[1440px] mx-auto w-full">
+<!-- Sidebar Navigation -->
+<aside class="w-full md:w-72 border-r border-border-dark p-6 flex flex-col gap-8 bg-background-dark">
+<div class="flex flex-col gap-1.5 px-3">
+<h3 class="text-zinc-400 text-xs font-bold uppercase tracking-[0.15em]">Anand</h3>
+<p class="text-zinc-600 text-[11px] font-medium uppercase tracking-wider">Premium Plan</p>
+</div>
+<nav class="flex flex-col gap-1.5">
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-all group" href="#">
+<span class="material-symbols-outlined text-[22px]">home</span>
+<span class="text-sm font-medium">Home</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-zinc-100 text-zinc-950" href="#">
+<span class="material-symbols-outlined text-[22px]" style="font-variation-settings: 'FILL' 1">folder_open</span>
+<span class="text-sm font-semibold">My Files</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-all group" href="#">
+<span class="material-symbols-outlined text-[22px]">schedule</span>
+<span class="text-sm font-medium">Recent</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-all group" href="#">
+<span class="material-symbols-outlined text-[22px]">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+</nav>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col min-w-0 bg-background-dark">
+<!-- Tabs Navigation -->
+<div class="border-b border-border-dark px-8">
+<div class="flex gap-10 overflow-x-auto no-scrollbar">
+<button class="flex flex-col items-center justify-center border-b-2 border-zinc-100 text-zinc-100 pb-4 pt-5 whitespace-nowrap">
+<span class="text-[13px] font-bold tracking-tight">All Files</span>
+</button>
+<button class="flex flex-col items-center justify-center border-b-2 border-transparent text-zinc-500 pb-4 pt-5 hover:text-zinc-300 transition-colors whitespace-nowrap">
+<span class="text-[13px] font-bold tracking-tight">Recent</span>
+</button>
+<button class="flex flex-col items-center justify-center border-b-2 border-transparent text-zinc-500 pb-4 pt-5 hover:text-zinc-300 transition-colors whitespace-nowrap">
+<span class="text-[13px] font-bold tracking-tight">Shared</span>
+</button>
+</div>
+</div>
+<!-- Document Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6 p-8 overflow-y-auto">
+<!-- Document Card 1 -->
+<div class="group flex flex-col bg-surface-dark border border-border-dark rounded-xl overflow-hidden hover:border-zinc-500 transition-all duration-300">
+<div class="aspect-[16/10] relative bg-zinc-900 flex items-center justify-center overflow-hidden">
+<div class="absolute inset-0 bg-zinc-900" data-alt="Abstract PDF document preview" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuA5rRkw_0fLPv6uEJ89nxkcBS4F6J-_QywYP8RfJ_SWx0TV6hD1TUIqX6bk3P6zyd7nngSzlOFT1NawFUvapnZY9iFebnCPldKBQDbabIcW4md_878T2z3JW2vJSCh_1NntctKZjtJJQ1fiUee6sfO67hEe07_E2lrm6_7BJxLvH5NkQRtXNNKNgnOUivLs_LyD2YUiyK2mUZSNMPhErjuO3Sg0oD-UD5yJsU1bCHMiLkaqGd5BiWh-w9k0PaD5ATg5bbajhT44bk8"); background-size: cover; background-position: center;'>
+<div class="absolute inset-0 bg-zinc-950/40 group-hover:bg-zinc-950/20 transition-colors"></div>
+</div>
+</div>
+<div class="p-5 flex flex-col gap-4">
+<div class="flex flex-col gap-1.5">
+<h3 class="text-zinc-100 text-[15px] font-semibold truncate leading-snug">@itzAnandXD Lecture Planner...</h3>
+<div class="flex justify-between items-center">
+<span class="text-zinc-500 text-[11px] font-medium uppercase tracking-wider">2.4 MB</span>
+<span class="text-zinc-400 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-zinc-900 border border-border-dark">PDF</span>
+</div>
+</div>
+<button class="w-full py-2.5 rounded-lg bg-zinc-900 border border-border-dark text-zinc-100 text-[11px] font-bold uppercase tracking-widest hover:bg-zinc-100 hover:text-zinc-950 transition-all">
+Preview
+</button>
+</div>
+</div>
+<!-- Document Card 2 -->
+<div class="group flex flex-col bg-surface-dark border border-border-dark rounded-xl overflow-hidden hover:border-zinc-500 transition-all duration-300">
+<div class="aspect-[16/10] relative bg-zinc-900 flex items-center justify-center overflow-hidden">
+<div class="absolute inset-0 bg-zinc-900" data-alt="Chemistry notes" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuD2UgeWwJjOnRkBaXBhgnqelM7bScncLAbdVjzcbq3WQ21ouBWEBxm-CbgmFw8xqajC9_PFWLf2d_k6OvXBvgTS-ZgTdL5Z2o2kUYRo9OrDmomT0tEgpA3s0Dneam-PY14Iow1RMecJ5yRlEGKyfdjAEKDoLuMmSXm7kYp50TWuMW5bHd8vGA-r34L2XJunwpc_zdqrNxf4gXlVGUpn4ruwuTIhh7o-Ih82ptvWi1NXDjvB0nw5q44TySbLWMr4tgKLf1Ei6tAepVk"); background-size: cover; background-position: center;'>
+<div class="absolute inset-0 bg-zinc-950/40 group-hover:bg-zinc-950/20 transition-colors"></div>
+</div>
+</div>
+<div class="p-5 flex flex-col gap-4">
+<div class="flex flex-col gap-1.5">
+<h3 class="text-zinc-100 text-[15px] font-semibold truncate leading-snug">Chemistry Notes Unit 2</h3>
+<div class="flex justify-between items-center">
+<span class="text-zinc-500 text-[11px] font-medium uppercase tracking-wider">1.8 MB</span>
+<span class="text-zinc-400 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-zinc-900 border border-border-dark">DOCX</span>
+</div>
+</div>
+<button class="w-full py-2.5 rounded-lg bg-zinc-900 border border-border-dark text-zinc-100 text-[11px] font-bold uppercase tracking-widest hover:bg-zinc-100 hover:text-zinc-950 transition-all">
+Preview
+</button>
+</div>
+</div>
+<!-- Document Card 3 -->
+<div class="group flex flex-col bg-surface-dark border border-border-dark rounded-xl overflow-hidden hover:border-zinc-500 transition-all duration-300">
+<div class="aspect-[16/10] relative bg-zinc-900 flex items-center justify-center overflow-hidden">
+<div class="absolute inset-0 bg-zinc-900" data-alt="Project draft" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuD9TrZGfo6bLiMsZjyqW3OvrWN-h1WGw2vNUZAGpU9Hdw3mFHrjok-_Nfh8gZmvpGokxdr3yT_HjnEUXYpWA0IU6wtimSyZnaw1sOsUvXoVKXVoqOZ4xL1fcqnDUDP1igrnQssmp11NqU1V5vuEc5UJ27EZpHCEK02ZhhlczDl_QwONNGEn2U79F1d7yqY44xVW7GK2I12w5jQUMuQor6pkf9oHUeltk2gcbxvN4T7IhfA93LNLIaiB3hhC_oeezpGsPKxQUY6W7Dk"); background-size: cover; background-position: center;'>
+<div class="absolute inset-0 bg-zinc-950/40 group-hover:bg-zinc-950/20 transition-colors"></div>
+</div>
+</div>
+<div class="p-5 flex flex-col gap-4">
+<div class="flex flex-col gap-1.5">
+<h3 class="text-zinc-100 text-[15px] font-semibold truncate leading-snug">Semester Project Draft</h3>
+<div class="flex justify-between items-center">
+<span class="text-zinc-500 text-[11px] font-medium uppercase tracking-wider">4.5 MB</span>
+<span class="text-zinc-400 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-zinc-900 border border-border-dark">PDF</span>
+</div>
+</div>
+<button class="w-full py-2.5 rounded-lg bg-zinc-900 border border-border-dark text-zinc-100 text-[11px] font-bold uppercase tracking-widest hover:bg-zinc-100 hover:text-zinc-950 transition-all">
+Preview
+</button>
+</div>
+</div>
+<!-- Document Card 4 -->
+<div class="group flex flex-col bg-surface-dark border border-border-dark rounded-xl overflow-hidden hover:border-zinc-500 transition-all duration-300">
+<div class="aspect-[16/10] relative bg-zinc-900 flex items-center justify-center overflow-hidden">
+<div class="absolute inset-0 bg-zinc-900" data-alt="Mathematics syllabus" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCIGn22ZdTWWgPEk2uY4_OKJuyhBtk2krc18AexsW04E4tIElQcVyZUbYjFigO0aCGi8ytkkrPgczdqy7ufsXRg_2JRXg-ngpqJDZ456s5uSDK9KagEvYAkwhkx6zUOkjFXXDyNofQ1Vo9nwEYD5PvB_e2XUvHBqxTdeDIWyqi8JuLU3jrjVdrTKXuAQ25cn5q4phzUa01yov17X9QV4i27nLKH1S7qxr2LJ3AxBbsR_ywitBqExhbfjXf7_bPuYceAJmPYQgfCgA8"); background-size: cover; background-position: center;'>
+<div class="absolute inset-0 bg-zinc-950/40 group-hover:bg-zinc-950/20 transition-colors"></div>
+</div>
+</div>
+<div class="p-5 flex flex-col gap-4">
+<div class="flex flex-col gap-1.5">
+<h3 class="text-zinc-100 text-[15px] font-semibold truncate leading-snug">Mathematics Syllabus 2024</h3>
+<div class="flex justify-between items-center">
+<span class="text-zinc-500 text-[11px] font-medium uppercase tracking-wider">1.2 MB</span>
+<span class="text-zinc-400 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-zinc-900 border border-border-dark">PDF</span>
+</div>
+</div>
+<button class="w-full py-2.5 rounded-lg bg-zinc-900 border border-border-dark text-zinc-100 text-[11px] font-bold uppercase tracking-widest hover:bg-zinc-100 hover:text-zinc-950 transition-all">
+Preview
+</button>
+</div>
+</div>
+</div>
+<!-- Floating Action Button -->
+<div class="fixed bottom-10 right-10 z-40">
+<button class="flex items-center justify-center rounded-full size-14 bg-zinc-100 text-zinc-950 shadow-2xl shadow-zinc-950/40 hover:bg-white hover:scale-110 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-3xl">add</span>
+</button>
+</div>
+</main>
+</div>
+</div>
+</div>
+</body></html>

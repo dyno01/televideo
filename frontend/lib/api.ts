@@ -229,5 +229,21 @@ export const saveTelegramSession = (
 export const logoutTelegram = (): Promise<{ success: boolean }> =>
   api.post('/api/telegram/logout').then(d)
 
-export default api
+// ── Video Tags API ──────────────────────────────────────────────────────────
 
+export interface VideoTag {
+  id: number
+  video_id: number
+  tag: string
+}
+
+export const getVideoTags = (videoId: number): Promise<VideoTag[]> =>
+  api.get<VideoTag[]>(`/api/tags/${videoId}`).then(d)
+
+export const addVideoTag = (videoId: number, tag: string): Promise<VideoTag> =>
+  api.post<VideoTag>('/api/tags', { videoId, tag }).then(d)
+
+export const removeVideoTag = (id: number): Promise<{ success: boolean }> =>
+  api.delete<{ success: boolean }>(`/api/tags/${id}`).then(d)
+
+export default api

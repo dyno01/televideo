@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ffffff",
+                        "background-light": "#f7f7f7",
+                        "background-dark": "#121212",
+                        "surface-dark": "#1e1e1e",
+                        "accent-dark": "#2a2a2a",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #121212;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #444;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display min-h-screen flex flex-col">
+<!-- Top Navigation Bar -->
+<header class="h-16 border-b border-slate-200 dark:border-white/10 flex items-center justify-between px-6 bg-background-light dark:bg-surface-dark z-20">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-3">
+<div class="size-8 bg-primary rounded-lg flex items-center justify-center text-background-dark">
+<span class="material-symbols-outlined text-xl">picture_as_pdf</span>
+</div>
+<div class="flex flex-col">
+<h1 class="text-sm font-semibold leading-none">Fluid Mechanics</h1>
+<span class="text-[10px] text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-wider">Lecture Notes.pdf</span>
+</div>
+</div>
+<div class="h-6 w-px bg-slate-200 dark:bg-white/10 hidden md:block"></div>
+<nav class="hidden md:flex items-center gap-4">
+<button class="px-3 py-1.5 text-xs font-medium rounded hover:bg-slate-200 dark:hover:bg-white/10 transition-colors">File</button>
+<button class="px-3 py-1.5 text-xs font-medium rounded hover:bg-slate-200 dark:hover:bg-white/10 transition-colors">Edit</button>
+<button class="px-3 py-1.5 text-xs font-medium rounded hover:bg-slate-200 dark:hover:bg-white/10 transition-colors">Annotate</button>
+</nav>
+</div>
+<div class="flex-1 max-w-md px-8 hidden lg:block">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg group-focus-within:text-primary transition-colors">search</span>
+<input class="w-full h-10 bg-slate-100 dark:bg-accent-dark border-none rounded-lg pl-10 pr-4 text-sm focus:ring-1 focus:ring-primary/50 text-slate-900 dark:text-slate-100 transition-all placeholder:text-slate-500" placeholder="Search in document..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="flex items-center gap-1 bg-slate-100 dark:bg-accent-dark p-1 rounded-lg">
+<button class="p-1.5 rounded hover:bg-white dark:hover:bg-white/10 transition-colors" title="Share">
+<span class="material-symbols-outlined text-lg">share</span>
+</button>
+<button class="p-1.5 rounded hover:bg-white dark:hover:bg-white/10 transition-colors" title="Print">
+<span class="material-symbols-outlined text-lg">print</span>
+</button>
+<button class="p-1.5 rounded hover:bg-white dark:hover:bg-white/10 transition-colors" title="Download">
+<span class="material-symbols-outlined text-lg">download</span>
+</button>
+</div>
+<div class="h-8 w-px bg-slate-200 dark:bg-white/10 mx-1"></div>
+<div class="size-9 rounded-full bg-slate-200 dark:bg-accent-dark overflow-hidden border border-slate-300 dark:border-white/10">
+<img class="w-full h-full object-cover" data-alt="User avatar placeholder" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBD1mmESSsglYvHa5cDcT9fOyxrPh3Lb7MiE6rzm9WEGaG2-r4vN38HSTolwHJPsKBa6tyURXW3OP9G0faNgR2_apADWgF1G9paISUUJWlxOwJK4XzClVCCtwnTIdKBU-wQIX57-OOvWintwrZu7vTrmUsCuwDHkEbFJOIW2jht7yPLWe4IOZyFZKQEYfI247UXBWtZCvn80lX9QBbfrsLp5E1EsxaoIIjqnWUsX8DRsuMbzX7mt6-kn8vkUrRYm_Th21WQBLsHoVo"/>
+</div>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden">
+<!-- Sidebar Navigation -->
+<aside class="w-64 hidden md:flex flex-col border-r border-slate-200 dark:border-white/10 bg-background-light dark:bg-background-dark overflow-y-auto">
+<div class="p-4 space-y-6">
+<div>
+<h3 class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-4">Navigation</h3>
+<ul class="space-y-1">
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-slate-200 dark:bg-white/10 text-slate-900 dark:text-white font-medium text-sm" href="#">
+<span class="material-symbols-outlined text-xl">grid_view</span>
+                                Thumbnails
+                            </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-white/5 font-medium text-sm transition-colors" href="#">
+<span class="material-symbols-outlined text-xl">toc</span>
+                                Outline
+                            </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-white/5 font-medium text-sm transition-colors" href="#">
+<span class="material-symbols-outlined text-xl">bookmark</span>
+                                Bookmarks
+                            </a>
+</li>
+</ul>
+</div>
+<div>
+<h3 class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-4">Annotate</h3>
+<div class="grid grid-cols-2 gap-2">
+<button class="flex flex-col items-center justify-center gap-2 p-3 rounded-xl border border-slate-200 dark:border-white/5 hover:border-primary/30 dark:hover:bg-white/5 transition-all">
+<span class="material-symbols-outlined text-xl">edit</span>
+<span class="text-[10px]">Highlight</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-2 p-3 rounded-xl border border-slate-200 dark:border-white/5 hover:border-primary/30 dark:hover:bg-white/5 transition-all">
+<span class="material-symbols-outlined text-xl">sticky_note_2</span>
+<span class="text-[10px]">Note</span>
+</button>
+</div>
+</div>
+<div class="pt-4 border-t border-slate-200 dark:border-white/10">
+<h3 class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-4">Recent Pages</h3>
+<div class="space-y-3">
+<div class="group relative rounded-lg overflow-hidden border border-slate-200 dark:border-white/10 cursor-pointer">
+<div class="aspect-[3/4] bg-white dark:bg-white/5 flex items-center justify-center">
+<span class="text-[8px] text-slate-400 uppercase italic">Preview 1</span>
+</div>
+<div class="absolute bottom-0 inset-x-0 p-2 bg-black/60 backdrop-blur-sm text-[10px] text-white flex justify-between">
+<span>Page 12</span>
+<span class="opacity-0 group-hover:opacity-100 transition-opacity">Go</span>
+</div>
+</div>
+<div class="group relative rounded-lg overflow-hidden border border-slate-200 dark:border-white/10 cursor-pointer">
+<div class="aspect-[3/4] bg-white dark:bg-white/5 flex items-center justify-center">
+<span class="text-[8px] text-slate-400 uppercase italic">Preview 2</span>
+</div>
+<div class="absolute bottom-0 inset-x-0 p-2 bg-black/60 backdrop-blur-sm text-[10px] text-white flex justify-between">
+<span>Page 45</span>
+<span class="opacity-0 group-hover:opacity-100 transition-opacity">Go</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main PDF Viewport -->
+<main class="flex-1 flex flex-col bg-slate-100 dark:bg-background-dark relative overflow-hidden">
+<!-- Controls Bar -->
+<div class="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 p-1.5 bg-white/90 dark:bg-surface-dark/90 backdrop-blur-md rounded-xl border border-slate-200 dark:border-white/10 shadow-2xl">
+<div class="flex items-center gap-1 px-2 border-r border-slate-200 dark:border-white/10">
+<button class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+<span class="material-symbols-outlined text-lg">chevron_left</span>
+</button>
+<div class="flex items-center gap-1 text-sm font-medium px-2">
+<input class="w-8 h-8 text-center bg-slate-100 dark:bg-accent-dark border-none rounded-md p-0 text-sm focus:ring-0" type="text" value="12"/>
+<span class="text-slate-400">/</span>
+<span class="text-slate-400">142</span>
+</div>
+<button class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+<span class="material-symbols-outlined text-lg">chevron_right</span>
+</button>
+</div>
+<div class="flex items-center gap-1 px-2 border-r border-slate-200 dark:border-white/10">
+<button class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+<span class="material-symbols-outlined text-lg">remove</span>
+</button>
+<span class="text-xs font-semibold px-2 min-w-[3rem] text-center">125%</span>
+<button class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+<span class="material-symbols-outlined text-lg">add</span>
+</button>
+</div>
+<div class="flex items-center gap-1 pl-2 pr-1">
+<button class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+<span class="material-symbols-outlined text-lg">fullscreen</span>
+</button>
+<button class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+<span class="material-symbols-outlined text-lg">rotate_right</span>
+</button>
+</div>
+</div>
+<!-- Scrollable Reading Area -->
+<div class="flex-1 overflow-y-auto pt-24 pb-12 px-8 flex justify-center">
+<div class="max-w-4xl w-full flex flex-col gap-10">
+<!-- PDF Page Representation -->
+<div class="bg-white dark:bg-white/5 shadow-2xl rounded-sm aspect-[1/1.414] w-full relative overflow-hidden ring-1 ring-slate-200 dark:ring-white/5 flex items-center justify-center group">
+<!-- Simulated Document Content -->
+<div class="absolute inset-0 p-16 flex flex-col pointer-events-none opacity-80 dark:opacity-90">
+<div class="w-24 h-2 bg-slate-300 dark:bg-white/20 mb-8 rounded"></div>
+<div class="w-3/4 h-8 bg-slate-900 dark:bg-white/80 mb-6 rounded-sm"></div>
+<div class="w-full h-4 bg-slate-400 dark:bg-white/40 mb-4 rounded-sm"></div>
+<div class="w-5/6 h-4 bg-slate-400 dark:bg-white/40 mb-12 rounded-sm"></div>
+<div class="w-full aspect-video bg-slate-100 dark:bg-white/5 mb-12 rounded-lg flex items-center justify-center border border-slate-200 dark:border-white/5">
+<span class="material-symbols-outlined text-4xl text-slate-300 dark:text-white/10">image</span>
+</div>
+<div class="space-y-4">
+<div class="w-full h-3 bg-slate-200 dark:bg-white/10 rounded"></div>
+<div class="w-full h-3 bg-slate-200 dark:bg-white/10 rounded"></div>
+<div class="w-2/3 h-3 bg-slate-200 dark:bg-white/10 rounded"></div>
+</div>
+</div>
+<!-- Interaction Overlay -->
+<div class="absolute inset-0 bg-transparent group-hover:cursor-text"></div>
+</div>
+<!-- Next Page Preview -->
+<div class="bg-white/50 dark:bg-white/5 shadow-xl rounded-sm aspect-[1/1.414] w-full opacity-40 blur-[1px] transform scale-95 transition-all hover:scale-100 hover:opacity-100 hover:blur-0 flex items-center justify-center cursor-pointer">
+<span class="text-slate-400 dark:text-slate-500 font-medium">Page 13</span>
+</div>
+</div>
+</div>
+<!-- Secondary Bottom Actions (Floating Right) -->
+<div class="absolute bottom-6 right-6 flex flex-col gap-3">
+<button class="size-12 bg-primary text-background-dark rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform" title="Quick AI Summary">
+<span class="material-symbols-outlined">auto_awesome</span>
+</button>
+<button class="size-12 bg-white dark:bg-surface-dark text-slate-600 dark:text-slate-300 rounded-full shadow-lg flex items-center justify-center border border-slate-200 dark:border-white/10 hover:scale-110 transition-transform" title="Ask Questions">
+<span class="material-symbols-outlined">question_answer</span>
+</button>
+</div>
+<!-- Breadcrumbs / Status Bar -->
+<footer class="h-8 border-t border-slate-200 dark:border-white/5 bg-background-light dark:bg-background-dark flex items-center justify-between px-4 text-[10px] text-slate-500 font-medium tracking-wide">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-xs">folder</span>
+<a class="hover:text-primary transition-colors" href="#">Documents</a>
+<span class="material-symbols-outlined text-[8px]">chevron_right</span>
+<a class="hover:text-primary transition-colors" href="#">University</a>
+<span class="material-symbols-outlined text-[8px]">chevron_right</span>
+<span class="text-slate-800 dark:text-slate-300">Fluid Mechanics</span>
+</div>
+<div class="flex items-center gap-4">
+<span>PDF Version: 1.7</span>
+<span>Last edited: 2 days ago</span>
+</div>
+</footer>
+</main>
+</div>
+</body></html>

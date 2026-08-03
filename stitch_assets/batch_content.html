@@ -1,0 +1,320 @@
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ffffff",
+                        "background-dark": "#09090b",
+                        "surface-dark": "#18181b",
+                        "border-dark": "#27272a",
+                    },
+                    fontFamily: {
+                        "sans": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<title>Learning Portal - Fluid Mechanics</title>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #09090b;
+            color: #fafafa;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #27272a;
+            border-radius: 10px;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .nav-active {
+            background: #ffffff;
+            color: #09090b !important;
+        }
+        .content-card-hover:hover {
+            background-color: rgba(39, 39, 42, 0.3);
+            border-color: #3f3f46;
+        }
+        .glass-panel {
+            background: rgba(24, 24, 27, 0.8);
+            backdrop-filter: blur(12px);
+        }
+        /* Mobile Sidebar Toggle */
+        #sidebar-toggle:checked ~ aside {
+            transform: translateX(0);
+        }
+        @media (max-width: 1024px) {
+            aside {
+                position: fixed;
+                z-index: 50;
+                height: 100vh;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease-in-out;
+            }
+            .sidebar-overlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.5);
+                z-index: 40;
+            }
+            #sidebar-toggle:checked ~ .sidebar-overlay {
+                display: block;
+            }
+        }
+    </style>
+</head>
+<body class="bg-background-dark font-sans text-zinc-100 antialiased overflow-hidden">
+<input class="hidden" id="sidebar-toggle" type="checkbox"/>
+<label class="sidebar-overlay" for="sidebar-toggle"></label>
+<div class="flex h-screen">
+<!-- Sidebar -->
+<aside class="w-72 flex-shrink-0 border-r border-zinc-900 flex flex-col bg-background-dark shadow-2xl lg:shadow-none">
+<div class="p-6">
+<div class="flex items-center justify-between mb-10 px-3">
+<div class="flex items-center gap-4">
+<div class="size-9 bg-white rounded-lg flex items-center justify-center text-zinc-950 shadow-lg shadow-white/5">
+<span class="material-symbols-outlined text-xl">water_drop</span>
+</div>
+<h1 class="text-lg font-bold tracking-tight text-white">Course Viewer</h1>
+</div>
+<label class="lg:hidden text-zinc-500 cursor-pointer" for="sidebar-toggle">
+<span class="material-symbols-outlined">close</span>
+</label>
+</div>
+<div class="flex flex-col gap-1.5 px-3 mb-6">
+<h3 class="text-zinc-600 text-[10px] font-bold uppercase tracking-[0.2em]">Video Academy</h3>
+<p class="text-zinc-700 text-[11px] font-medium italic">Advanced Learning Portal v2.4</p>
+</div>
+<nav class="space-y-1">
+<div class="flex items-center gap-3 px-4 py-2.5 text-zinc-500 hover:bg-zinc-900/50 hover:text-zinc-200 rounded-xl transition-all cursor-pointer group">
+<span class="material-symbols-outlined text-[20px]">home</span>
+<span class="text-sm font-semibold">Dashboard</span>
+</div>
+<div class="flex items-center gap-3 px-4 py-2.5 nav-active rounded-xl cursor-pointer transition-all duration-300">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1">video_library</span>
+<span class="text-sm font-bold">My Batches</span>
+</div>
+<div class="flex items-center gap-3 px-4 py-2.5 text-zinc-500 hover:bg-zinc-900/50 hover:text-zinc-200 rounded-xl transition-all cursor-pointer group">
+<span class="material-symbols-outlined text-[20px]">assignment</span>
+<span class="text-sm font-semibold">Resources</span>
+</div>
+<div class="flex items-center gap-3 px-4 py-2.5 text-zinc-500 hover:bg-zinc-900/50 hover:text-zinc-200 rounded-xl transition-all cursor-pointer group">
+<span class="material-symbols-outlined text-[20px]">calendar_today</span>
+<span class="text-sm font-semibold">Schedule</span>
+</div>
+<div class="flex items-center gap-3 px-4 py-2.5 text-zinc-500 hover:bg-zinc-900/50 hover:text-zinc-200 rounded-xl transition-all cursor-pointer group">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+<span class="text-sm font-semibold">Settings</span>
+</div>
+</nav>
+</div>
+<div class="mt-auto p-6 border-t border-zinc-900">
+<div class="flex items-center gap-3 px-2">
+<div class="size-10 rounded-xl border border-zinc-800 overflow-hidden bg-zinc-900 shadow-inner">
+<img alt="Profile" class="w-full h-full object-cover grayscale opacity-80" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBa33MH2Tcf9xDBX1NpRwrB_bqM8oAklHzHmykj9x3NRUWdLm40TkdrOIYMdm7XDqofki6nqSsCExZe6XyxYH9F5jk-kRHyztGC-OBVmINSINp1mwYqBY307WGA51Dz8JUmgQIX-rlNFUgVIJZpEw2w-80BYeBWxB1ViPBtTJL9yYY3lflNpBtwAvG9vFRew0jE-HYv1Br7TO6cjEui5GGnAcEgpwll2GgqMNheJHTHLQOuF8NMA5DxjGY-dRlPUi6jBHHmCcgG6bs"/>
+</div>
+<div>
+<p class="text-[13px] font-bold text-zinc-200">Alex Johnson</p>
+<p class="text-[10px] text-zinc-600 uppercase tracking-[0.15em] font-bold">ID: #4429</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col overflow-hidden bg-background-dark relative">
+<!-- Header -->
+<header class="h-16 border-b border-zinc-900 flex items-center justify-between px-4 sm:px-8 glass-panel z-10 sticky top-0">
+<div class="flex items-center gap-4 flex-1">
+<label class="lg:hidden size-10 flex items-center justify-center text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900/50 rounded-xl transition-all cursor-pointer" for="sidebar-toggle">
+<span class="material-symbols-outlined">menu</span>
+</label>
+<div class="flex-1 max-w-2xl hidden sm:block">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 text-lg group-focus-within:text-zinc-200 transition-colors">search</span>
+<input class="w-full bg-zinc-900/40 border border-zinc-800 rounded-xl py-2 pl-10 pr-4 text-sm text-zinc-200 placeholder:text-zinc-700 focus:border-zinc-600 focus:ring-0 transition-all outline-none" placeholder="Search resources..." type="text"/>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-1 sm:gap-2">
+<button class="size-10 flex items-center justify-center text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900/50 rounded-xl transition-all">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="hidden sm:block w-[1px] h-4 bg-zinc-800 mx-1"></div>
+<button class="size-10 flex items-center justify-center rounded-xl bg-white text-zinc-950 hover:bg-zinc-200 transition-colors shadow-lg shadow-white/5">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Scrollable Content -->
+<div class="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 lg:p-10">
+<!-- Hero Section -->
+<div class="flex flex-col lg:flex-row justify-between items-start gap-8 mb-8 lg:mb-12">
+<div class="space-y-4 sm:space-y-6 w-full lg:w-auto">
+<nav class="flex items-center gap-2 text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em]">
+<span>Courses</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-zinc-400">Fluid Mechanics</span>
+</nav>
+<div class="space-y-2">
+<h2 class="text-3xl sm:text-5xl font-black tracking-tighter text-white">Fluid Mechanics</h2>
+<p class="text-zinc-500 font-medium text-xs sm:text-sm">Spring Batch Range: <span class="text-zinc-400 font-bold">Jan 2024 — Jun 2024</span></p>
+</div>
+<button class="w-full sm:w-max px-8 h-12 bg-white hover:bg-zinc-200 text-zinc-950 text-xs font-black uppercase tracking-[0.2em] rounded-xl transition-all shadow-xl shadow-white/5 flex items-center justify-center gap-2 active:scale-95">
+<span>Get Started</span>
+<span class="material-symbols-outlined text-base">rocket_launch</span>
+</button>
+</div>
+<div class="bg-zinc-950 border border-zinc-800 rounded-2xl p-6 w-full lg:min-w-[320px] lg:max-w-xs shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)]">
+<div class="flex items-center justify-between mb-5">
+<p class="text-[10px] uppercase tracking-[0.2em] font-black text-zinc-500">Course Progress</p>
+<span class="text-sm font-black text-white">12/20 Units</span>
+</div>
+<div class="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden mb-5">
+<div class="h-full bg-white shadow-[0_0_15px_rgba(255,255,255,0.2)] transition-all duration-1000" style="width: 60%"></div>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-[11px] text-zinc-600 font-bold uppercase tracking-wider">8 units remaining</span>
+<span class="text-[12px] text-white font-black">60%</span>
+</div>
+</div>
+</div>
+<!-- Tabs -->
+<div class="flex border-b border-zinc-900 mb-8 lg:mb-10 gap-4 sm:gap-10 overflow-x-auto custom-scrollbar no-scrollbar">
+<button class="pb-4 border-b-2 border-white text-white text-[11px] sm:text-[12px] font-black uppercase tracking-[0.15em] transition-all whitespace-nowrap">All Content</button>
+<button class="pb-4 border-b-2 border-transparent text-zinc-600 hover:text-zinc-400 text-[11px] sm:text-[12px] font-black uppercase tracking-[0.15em] transition-all whitespace-nowrap">PDFs</button>
+<button class="pb-4 border-b-2 border-transparent text-zinc-600 hover:text-zinc-400 text-[11px] sm:text-[12px] font-black uppercase tracking-[0.15em] transition-all whitespace-nowrap">Videos</button>
+<button class="pb-4 border-b-2 border-transparent text-zinc-600 hover:text-zinc-400 text-[11px] sm:text-[12px] font-black uppercase tracking-[0.15em] transition-all whitespace-nowrap">Quizzes</button>
+</div>
+<!-- Content Units -->
+<div class="space-y-10 lg:space-y-12 pb-10">
+<section>
+<h3 class="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.3em] text-zinc-600 mb-6 sm:mb-8 flex items-center gap-4 sm:gap-5">
+                            Unit 1: Introduction to Fluid Properties
+                            <span class="h-[1px] flex-1 bg-zinc-900"></span>
+</h3>
+<div class="space-y-4">
+<!-- Item 1 -->
+<div class="group flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 p-4 sm:px-6 sm:py-6 rounded-2xl bg-zinc-950/40 border border-zinc-800/40 content-card-hover transition-all cursor-pointer">
+<div class="flex items-center justify-center rounded-xl bg-zinc-900/50 border border-zinc-800 text-zinc-400 shrink-0 size-12 sm:size-14 group-hover:bg-white group-hover:text-zinc-950 group-hover:border-white transition-all duration-300 shadow-inner">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1">play_arrow</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between mb-2 sm:mb-3 gap-2">
+<h4 class="text-zinc-200 text-sm sm:text-[15px] font-bold truncate tracking-tight group-hover:text-white transition-colors">Lec 01: Properties of Fluids &amp; Viscosity</h4>
+<span class="text-zinc-600 text-[8px] sm:text-[9px] font-black uppercase tracking-[0.15em] bg-zinc-900 px-2 py-0.5 rounded-lg border border-zinc-800 w-fit">VID-0492</span>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex-1 h-1 bg-zinc-900 rounded-full overflow-hidden">
+<div class="h-full bg-zinc-100 shadow-[0_0_10px_rgba(255,255,255,0.15)]" style="width: 100%"></div>
+</div>
+<span class="text-[8px] sm:text-[9px] font-black text-zinc-500 uppercase tracking-widest shrink-0">Completed</span>
+</div>
+</div>
+<div class="flex items-center justify-end gap-5 shrink-0">
+<button class="p-2 text-zinc-600 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-[20px]">download</span>
+</button>
+<span class="material-symbols-outlined text-zinc-800 group-hover:text-zinc-400 transition-colors hidden sm:block">chevron_right</span>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="group flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 p-4 sm:px-6 sm:py-6 rounded-2xl bg-zinc-950/40 border border-zinc-800/40 content-card-hover transition-all cursor-pointer">
+<div class="flex items-center justify-center rounded-xl bg-zinc-900/50 border border-zinc-800 text-zinc-500 shrink-0 size-12 sm:size-14 group-hover:bg-white group-hover:text-zinc-950 group-hover:border-white transition-all duration-300 shadow-inner">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1">description</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between mb-2 sm:mb-3 gap-2">
+<h4 class="text-zinc-200 text-sm sm:text-[15px] font-bold truncate tracking-tight group-hover:text-white transition-colors">Study Notes: Fluid Statics &amp; Manometry</h4>
+<span class="text-zinc-600 text-[8px] sm:text-[9px] font-black uppercase tracking-[0.15em] bg-zinc-900 px-2 py-0.5 rounded-lg border border-zinc-800 w-fit">DOC-1120</span>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex-1 h-1 bg-zinc-900 rounded-full overflow-hidden">
+<div class="h-full bg-zinc-700" style="width: 45%"></div>
+</div>
+<span class="text-[8px] sm:text-[9px] font-black text-zinc-600 uppercase tracking-widest shrink-0">45% Read</span>
+</div>
+</div>
+<div class="flex items-center justify-end gap-5 shrink-0">
+<button class="p-2 text-zinc-600 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-[20px]">download</span>
+</button>
+<span class="material-symbols-outlined text-zinc-800 group-hover:text-zinc-400 transition-colors hidden sm:block">chevron_right</span>
+</div>
+</div>
+</div>
+</section>
+<section>
+<h3 class="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.3em] text-zinc-600 mb-6 sm:mb-8 flex items-center gap-4 sm:gap-5">
+                            Unit 2: Kinematics of Fluid Flow
+                            <span class="h-[1px] flex-1 bg-zinc-900"></span>
+</h3>
+<div class="space-y-4">
+<!-- Item 3 -->
+<div class="group flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 p-4 sm:px-6 sm:py-6 rounded-2xl bg-zinc-950/40 border border-zinc-800/40 content-card-hover transition-all cursor-pointer">
+<div class="flex items-center justify-center rounded-xl bg-zinc-900/50 border border-zinc-800 text-zinc-500 shrink-0 size-12 sm:size-14 group-hover:bg-white group-hover:text-zinc-950 group-hover:border-white transition-all duration-300 shadow-inner">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1">description</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between mb-2 sm:mb-3 gap-2">
+<h4 class="text-zinc-200 text-sm sm:text-[15px] font-bold truncate tracking-tight group-hover:text-white transition-colors">Worksheet: Lagrangian vs Eulerian Approach</h4>
+<span class="text-zinc-600 text-[8px] sm:text-[9px] font-black uppercase tracking-[0.15em] bg-zinc-900 px-2 py-0.5 rounded-lg border border-zinc-800 w-fit">DOC-1121</span>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex-1 h-1 bg-zinc-900 rounded-full overflow-hidden">
+<div class="h-full bg-zinc-900" style="width: 0%"></div>
+</div>
+<span class="text-[8px] sm:text-[9px] font-black text-zinc-700 uppercase tracking-widest shrink-0">Unread</span>
+</div>
+</div>
+<div class="flex items-center justify-end gap-5 shrink-0">
+<button class="p-2 text-zinc-600 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-[20px]">download</span>
+</button>
+<span class="material-symbols-outlined text-zinc-800 group-hover:text-zinc-400 transition-colors hidden sm:block">chevron_right</span>
+</div>
+</div>
+<!-- Item 4 (Locked) -->
+<div class="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 p-4 sm:px-6 sm:py-6 rounded-2xl bg-zinc-950/20 border border-dashed border-zinc-800/50 opacity-40 grayscale pointer-events-none">
+<div class="flex items-center justify-center rounded-xl bg-zinc-900/30 border border-zinc-800 text-zinc-700 shrink-0 size-12 sm:size-14">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1">lock</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between mb-2 sm:mb-2 gap-2">
+<h4 class="text-zinc-500 text-sm sm:text-[15px] font-bold truncate tracking-tight">Lec 03: Velocity Potential &amp; Stream Functions</h4>
+<span class="text-zinc-800 text-[8px] sm:text-[9px] font-black uppercase tracking-[0.15em] bg-zinc-950 px-2 py-0.5 rounded-lg border border-zinc-900 w-fit">VID-0494</span>
+</div>
+<p class="text-[8px] sm:text-[9px] font-black text-zinc-700 uppercase tracking-[0.2em] italic">Unlocks Feb 12th, 2024</p>
+</div>
+<div class="flex items-center justify-end px-4 shrink-0">
+<span class="material-symbols-outlined text-zinc-800">lock</span>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+</main>
+</div>
+</body></html>

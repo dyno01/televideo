@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lecture Library - Video Academy</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "background-dark": "#09090b",
+                        "surface-dark": "#18181b",
+                        "border-dark": "#27272a",
+                    },
+                    fontFamily: {
+                        "sans": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #09090b;
+            color: #fafafa;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-background-dark text-zinc-100 min-h-screen selection:bg-primary selection:text-white">
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden">
+<div class="layout-container flex h-full grow flex-col">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-border-dark px-8 py-4 bg-background-dark/80 backdrop-blur-md sticky top-0 z-50">
+<div class="flex items-center gap-4">
+<div class="flex items-center justify-center p-2.5 bg-zinc-100 rounded-lg text-zinc-950">
+<span class="material-symbols-outlined block text-xl">auto_stories</span>
+</div>
+<h2 class="text-zinc-100 text-lg font-bold tracking-tight">Lecture Library</h2>
+</div>
+<div class="flex flex-1 justify-end gap-6 items-center">
+<label class="hidden md:flex flex-col min-w-80 h-10 max-w-sm">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full overflow-hidden">
+<div class="text-zinc-500 flex bg-zinc-900 items-center justify-center pl-4">
+<span class="material-symbols-outlined text-xl">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 border-none bg-zinc-900 text-zinc-100 focus:ring-0 h-full placeholder:text-zinc-600 px-4 pl-2 text-sm" placeholder="Search lectures, topics, or IDs..."/>
+</div>
+</label>
+<div class="flex gap-2">
+<button class="flex items-center justify-center rounded-lg h-10 w-10 text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100 transition-all">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="flex items-center justify-center rounded-lg h-10 w-10 bg-zinc-100 text-zinc-950 hover:bg-white transition-colors">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<main class="flex-1 flex flex-col md:flex-row max-w-[1440px] mx-auto w-full">
+<!-- Sidebar -->
+<aside class="w-full md:w-72 border-r border-border-dark p-6 flex flex-col gap-8 bg-background-dark">
+<div class="flex flex-col gap-1.5 px-3">
+<h3 class="text-zinc-400 text-xs font-bold uppercase tracking-[0.15em]">Video Academy</h3>
+<p class="text-zinc-600 text-[11px] font-medium">Advanced Learning Portal v2.4</p>
+</div>
+<nav class="flex flex-col gap-1.5">
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-all group" href="#">
+<span class="material-symbols-outlined text-[22px]">home</span>
+<span class="text-sm font-medium">Home</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-zinc-100 text-zinc-950" href="#">
+<span class="material-symbols-outlined text-[22px]" style="font-variation-settings: 'FILL' 1">video_library</span>
+<span class="text-sm font-semibold">Library</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-all group" href="#">
+<span class="material-symbols-outlined text-[22px]">assignment</span>
+<span class="text-sm font-medium">Assignments</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-all group" href="#">
+<span class="material-symbols-outlined text-[22px]">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+</nav>
+</aside>
+<!-- Content Area -->
+<div class="flex-1 flex flex-col min-w-0 bg-background-dark">
+<!-- Secondary Navigation & Filter Bar -->
+<div class="border-b border-border-dark px-8">
+<div class="flex gap-10 overflow-x-auto no-scrollbar">
+<a class="flex flex-col items-center justify-center border-b-2 border-zinc-100 text-zinc-100 pb-4 pt-5 whitespace-nowrap" href="#">
+<span class="text-[13px] font-bold tracking-tight">All Lectures</span>
+</a>
+<a class="flex flex-col items-center justify-center border-b-2 border-transparent text-zinc-500 pb-4 pt-5 hover:text-zinc-300 transition-colors whitespace-nowrap" href="#">
+<span class="text-[13px] font-bold tracking-tight">Recent</span>
+</a>
+<a class="flex flex-col items-center justify-center border-b-2 border-transparent text-zinc-500 pb-4 pt-5 hover:text-zinc-300 transition-colors whitespace-nowrap" href="#">
+<span class="text-[13px] font-bold tracking-tight">Bookmarked</span>
+</a>
+<a class="flex flex-col items-center justify-center border-b-2 border-transparent text-zinc-500 pb-4 pt-5 hover:text-zinc-300 transition-colors whitespace-nowrap" href="#">
+<span class="text-[13px] font-bold tracking-tight">Downloads</span>
+</a>
+</div>
+</div>
+<!-- Action Bar -->
+<div class="flex items-center justify-between px-8 py-5 border-b border-border-dark/50">
+<div class="flex gap-2">
+<button class="flex h-9 items-center justify-center gap-2 rounded-lg border border-border-dark bg-zinc-900/50 px-4 hover:bg-zinc-900 transition-all group">
+<span class="text-zinc-400 group-hover:text-zinc-100 text-[10px] font-bold uppercase tracking-widest">Sort by</span>
+<span class="material-symbols-outlined text-lg text-zinc-500 group-hover:text-zinc-300">expand_more</span>
+</button>
+<button class="flex h-9 items-center justify-center gap-2 rounded-lg border border-border-dark bg-zinc-900/50 px-4 hover:bg-zinc-900 transition-all group">
+<span class="text-zinc-400 group-hover:text-zinc-100 text-[10px] font-bold uppercase tracking-widest">Group by</span>
+<span class="material-symbols-outlined text-lg text-zinc-500 group-hover:text-zinc-300">expand_more</span>
+</button>
+</div>
+<p class="text-zinc-500 text-[11px] font-semibold uppercase tracking-widest">12 Results Found</p>
+</div>
+<!-- Lecture List -->
+<div class="flex flex-col px-4 py-2">
+<!-- Lecture Item 1 -->
+<div class="group flex items-center gap-6 px-4 py-5 rounded-xl hover:bg-zinc-900/50 transition-all cursor-pointer border border-transparent hover:border-border-dark">
+<div class="flex items-center justify-center rounded-lg bg-zinc-900 border border-border-dark text-zinc-100 shrink-0 size-14 group-hover:bg-zinc-100 group-hover:text-zinc-950 transition-all duration-300">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1">play_arrow</span>
+</div>
+<div class="flex flex-col justify-center flex-1 min-w-0">
+<h4 class="text-zinc-100 text-[15px] font-semibold truncate leading-snug">New Feature Update: UI Components 2024</h4>
+<div class="flex items-center gap-2 mt-1">
+<span class="text-zinc-600 text-[11px] font-bold uppercase tracking-wider bg-zinc-900/80 px-1.5 py-0.5 rounded border border-border-dark">LEC-001</span>
+<span class="text-zinc-500 text-xs">•</span>
+<span class="text-zinc-500 text-xs font-medium">Design Principles</span>
+</div>
+</div>
+<div class="shrink-0 flex items-center gap-6">
+<span class="text-zinc-400 text-xs font-mono bg-zinc-900/80 px-2.5 py-1.5 rounded-lg border border-border-dark">12:45</span>
+<button class="p-2 text-zinc-600 hover:text-zinc-100 transition-colors">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+</div>
+<!-- Lecture Item 2 -->
+<div class="group flex items-center gap-6 px-4 py-5 rounded-xl hover:bg-zinc-900/50 transition-all cursor-pointer border border-transparent hover:border-border-dark">
+<div class="flex items-center justify-center rounded-lg bg-zinc-900 border border-border-dark text-zinc-100 shrink-0 size-14 group-hover:bg-zinc-100 group-hover:text-zinc-950 transition-all duration-300">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1">play_arrow</span>
+</div>
+<div class="flex flex-col justify-center flex-1 min-w-0">
+<h4 class="text-zinc-100 text-[15px] font-semibold truncate leading-snug">Advanced Tailwind CSS Architecture</h4>
+<div class="flex items-center gap-2 mt-1">
+<span class="text-zinc-600 text-[11px] font-bold uppercase tracking-wider bg-zinc-900/80 px-1.5 py-0.5 rounded border border-border-dark">LEC-002</span>
+<span class="text-zinc-500 text-xs">•</span>
+<span class="text-zinc-500 text-xs font-medium">Frontend Engineering</span>
+</div>
+</div>
+<div class="shrink-0 flex items-center gap-6">
+<span class="text-zinc-400 text-xs font-mono bg-zinc-900/80 px-2.5 py-1.5 rounded-lg border border-border-dark">24:12</span>
+<button class="p-2 text-zinc-600 hover:text-zinc-100 transition-colors">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+</div>
+<!-- Lecture Item 3 -->
+<div class="group flex items-center gap-6 px-4 py-5 rounded-xl hover:bg-zinc-900/50 transition-all cursor-pointer border border-transparent hover:border-border-dark">
+<div class="flex items-center justify-center rounded-lg bg-zinc-900 border border-border-dark text-zinc-100 shrink-0 size-14 group-hover:bg-zinc-100 group-hover:text-zinc-950 transition-all duration-300">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1">play_arrow</span>
+</div>
+<div class="flex flex-col justify-center flex-1 min-w-0">
+<h4 class="text-zinc-100 text-[15px] font-semibold truncate leading-snug">Mastering Micro-Interactions in Prototyping</h4>
+<div class="flex items-center gap-2 mt-1">
+<span class="text-zinc-600 text-[11px] font-bold uppercase tracking-wider bg-zinc-900/80 px-1.5 py-0.5 rounded border border-border-dark">LEC-003</span>
+<span class="text-zinc-500 text-xs">•</span>
+<span class="text-zinc-500 text-xs font-medium">UX Design</span>
+</div>
+</div>
+<div class="shrink-0 flex items-center gap-6">
+<span class="text-zinc-400 text-xs font-mono bg-zinc-900/80 px-2.5 py-1.5 rounded-lg border border-border-dark">18:55</span>
+<button class="p-2 text-zinc-600 hover:text-zinc-100 transition-colors">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+</div>
+<!-- Lecture Item 4 -->
+<div class="group flex items-center gap-6 px-4 py-5 rounded-xl hover:bg-zinc-900/50 transition-all cursor-pointer border border-transparent hover:border-border-dark">
+<div class="flex items-center justify-center rounded-lg bg-zinc-900 border border-border-dark text-zinc-100 shrink-0 size-14 group-hover:bg-zinc-100 group-hover:text-zinc-950 transition-all duration-300">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1">play_arrow</span>
+</div>
+<div class="flex flex-col justify-center flex-1 min-w-0">
+<h4 class="text-zinc-100 text-[15px] font-semibold truncate leading-snug">Dark Mode Theming Best Practices</h4>
+<div class="flex items-center gap-2 mt-1">
+<span class="text-zinc-600 text-[11px] font-bold uppercase tracking-wider bg-zinc-900/80 px-1.5 py-0.5 rounded border border-border-dark">LEC-004</span>
+<span class="text-zinc-500 text-xs">•</span>
+<span class="text-zinc-500 text-xs font-medium">Accessibility</span>
+</div>
+</div>
+<div class="shrink-0 flex items-center gap-6">
+<span class="text-zinc-400 text-xs font-mono bg-zinc-900/80 px-2.5 py-1.5 rounded-lg border border-border-dark">09:30</span>
+<button class="p-2 text-zinc-600 hover:text-zinc-100 transition-colors">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+</div>
+<!-- Lecture Item 5 -->
+<div class="group flex items-center gap-6 px-4 py-5 rounded-xl hover:bg-zinc-900/50 transition-all cursor-pointer border border-transparent hover:border-border-dark">
+<div class="flex items-center justify-center rounded-lg bg-zinc-900 border border-border-dark text-zinc-100 shrink-0 size-14 group-hover:bg-zinc-100 group-hover:text-zinc-950 transition-all duration-300">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1">play_arrow</span>
+</div>
+<div class="flex flex-col justify-center flex-1 min-w-0">
+<h4 class="text-zinc-100 text-[15px] font-semibold truncate leading-snug">Responsive Data Visualization with D3</h4>
+<div class="flex items-center gap-2 mt-1">
+<span class="text-zinc-600 text-[11px] font-bold uppercase tracking-wider bg-zinc-900/80 px-1.5 py-0.5 rounded border border-border-dark">LEC-005</span>
+<span class="text-zinc-500 text-xs">•</span>
+<span class="text-zinc-500 text-xs font-medium">Data Science</span>
+</div>
+</div>
+<div class="shrink-0 flex items-center gap-6">
+<span class="text-zinc-400 text-xs font-mono bg-zinc-900/80 px-2.5 py-1.5 rounded-lg border border-border-dark">42:10</span>
+<button class="p-2 text-zinc-600 hover:text-zinc-100 transition-colors">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Pagination -->
+<div class="p-10 flex justify-center mt-auto">
+<nav class="flex gap-2">
+<button class="size-9 flex items-center justify-center rounded-lg border border-border-dark text-zinc-500 hover:bg-zinc-900 hover:text-zinc-100 transition-colors">
+<span class="material-symbols-outlined text-[20px]">chevron_left</span>
+</button>
+<button class="size-9 flex items-center justify-center rounded-lg bg-zinc-100 text-zinc-950 text-sm font-bold">1</button>
+<button class="size-9 flex items-center justify-center rounded-lg border border-border-dark text-zinc-500 hover:bg-zinc-900 hover:text-zinc-100 transition-colors text-sm font-medium">2</button>
+<button class="size-9 flex items-center justify-center rounded-lg border border-border-dark text-zinc-500 hover:bg-zinc-900 hover:text-zinc-100 transition-colors text-sm font-medium">3</button>
+<button class="size-9 flex items-center justify-center rounded-lg border border-border-dark text-zinc-500 hover:bg-zinc-900 hover:text-zinc-100 transition-colors">
+<span class="material-symbols-outlined text-[20px]">chevron_right</span>
+</button>
+</nav>
+</div>
+</div>
+</main>
+</div>
+</div>
+</body></html>

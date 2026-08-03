@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Premium Course Viewer</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ffffff",
+                        "background-light": "#f8f9fa",
+                        "background-dark": "#09090b",
+                        "surface-dark": "#09090b",
+                        "surface-accent": "#18181b",
+                        "border-dark": "#27272a",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #27272a;
+        }
+        .video-gradient {
+            background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 30%, transparent 100%);
+        }
+        /* Mobile menu toggle hack for pure HTML demo */
+        #mobile-menu-toggle:checked ~ #mobile-menu {
+            display: flex;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-zinc-100 font-display">
+<div class="flex flex-col h-screen overflow-hidden">
+<!-- Top Navigation Bar -->
+<header class="flex h-16 items-center justify-between border-b border-slate-200 dark:border-border-dark bg-background-light dark:bg-background-dark px-4 md:px-8 shrink-0 z-50">
+<div class="flex items-center gap-4 md:gap-12">
+<!-- Hamburger for Mobile -->
+<label class="lg:hidden flex items-center justify-center text-zinc-500 cursor-pointer" for="mobile-menu-toggle">
+<span class="material-symbols-outlined text-2xl">menu</span>
+</label>
+<input class="hidden" id="mobile-menu-toggle" type="checkbox"/>
+<div class="flex items-center gap-3">
+<div class="bg-zinc-100 p-1.5 rounded flex items-center justify-center text-zinc-950">
+<span class="material-symbols-outlined text-xl">school</span>
+</div>
+<h2 class="text-slate-900 dark:text-white text-xs md:text-base font-extrabold tracking-tight uppercase truncate">Premium Learning</h2>
+</div>
+<div class="hidden md:flex items-center">
+<label class="relative flex items-center w-48 lg:w-80">
+<span class="material-symbols-outlined absolute left-0 text-zinc-600 text-lg">search</span>
+<input class="w-full bg-transparent border-none py-2 pl-8 pr-4 text-sm placeholder:text-zinc-700 focus:ring-0 transition-all text-zinc-100" placeholder="Search..." type="text"/>
+</label>
+</div>
+</div>
+<!-- Mobile Navigation Menu (Hidden by default) -->
+<div class="hidden fixed inset-0 bg-background-dark z-50 flex-col p-8 lg:hidden" id="mobile-menu">
+<div class="flex justify-end mb-8">
+<label class="text-white cursor-pointer" for="mobile-menu-toggle">
+<span class="material-symbols-outlined text-3xl">close</span>
+</label>
+</div>
+<nav class="flex flex-col gap-8">
+<a class="text-lg font-bold uppercase tracking-[0.2em] text-white" href="#">Dashboard</a>
+<a class="text-lg font-bold uppercase tracking-[0.2em] text-zinc-500" href="#">Curriculum</a>
+<a class="text-lg font-bold uppercase tracking-[0.2em] text-zinc-500" href="#">Library</a>
+<a class="text-lg font-bold uppercase tracking-[0.2em] text-zinc-500" href="#">Calendar</a>
+<a class="text-lg font-bold uppercase tracking-[0.2em] text-zinc-500" href="#">Settings</a>
+</nav>
+</div>
+<div class="flex items-center gap-4 md:gap-8">
+<nav class="hidden lg:flex items-center gap-8">
+<a class="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors" href="#">Curriculum</a>
+<a class="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors" href="#">Library</a>
+</nav>
+<div class="flex items-center gap-3 md:gap-4 md:border-l md:border-slate-200 md:dark:border-border-dark md:pl-8">
+<button class="flex items-center justify-center text-zinc-500 hover:text-white transition-all">
+<span class="material-symbols-outlined text-xl">notifications</span>
+</button>
+<div class="h-8 w-8 rounded-full bg-zinc-900 overflow-hidden border border-zinc-800">
+<img alt="User profile avatar" class="w-full h-full object-cover grayscale" src="https://lh3.googleusercontent.com/aida-public/AB6AXuByEzAfRoePmMaBlwGf3A-x-7as1xYg8r-dY4An1jpXBa-gFb9A2YHihzEZiYXoBEod83u5E1RB_LlBpwXyZ34e-m9Nn5dAo1n1EKFgpayecA9U_Us5-nN5BegA0EP-ODC2gSaDCmsKZezM4oguRKDgRtWsjkMsxrW7rbtMJaPPt3KxRrgW_mephtMGVDQ81ExHatFBLWyJjvqQSDh1PuCR9yoAXusYJv1krcvGKCfPY5UYnHoz6_Izm05f6LDPgzJUn32WbWRfVGE"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex flex-1 overflow-hidden flex-col lg:flex-row">
+<!-- Left: Side Rail (Desktop Only) -->
+<aside class="hidden xl:flex w-20 flex-col items-center py-10 gap-10 border-r border-slate-200 dark:border-border-dark bg-background-light dark:bg-background-dark">
+<button class="text-white">
+<span class="material-symbols-outlined text-2xl">dashboard</span>
+</button>
+<button class="text-zinc-600 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-2xl">play_circle</span>
+</button>
+<button class="text-zinc-600 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-2xl">calendar_today</span>
+</button>
+<button class="text-zinc-600 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-2xl">description</span>
+</button>
+<div class="mt-auto">
+<button class="text-zinc-600 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-2xl">settings</span>
+</button>
+</div>
+</aside>
+<!-- Center: Video Player & Content -->
+<div class="flex-1 flex flex-col overflow-y-auto custom-scrollbar bg-surface-dark">
+<div class="px-4 md:px-10 pt-6 md:pt-8 pb-4 max-w-6xl mx-auto w-full">
+<div class="flex flex-wrap items-center gap-2 md:gap-3 mb-6 text-[9px] md:text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">
+<span class="hover:text-zinc-300 cursor-pointer">Advanced Neural Networks</span>
+<span class="text-zinc-800">/</span>
+<span class="text-white">Module 3: Backpropagation</span>
+</div>
+<!-- Video Stage -->
+<div class="relative group aspect-video w-full rounded-xl md:rounded-2xl overflow-hidden bg-zinc-950 shadow-2xl ring-1 ring-white/5">
+<img alt="Technical visualization" class="w-full h-full object-cover opacity-40 grayscale" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAt_978BxjiyNoOd9hocU_WZakpRSsCoX8bEnTiFL9t1D341SRofI8XZSZ7MzUd3w5KF0P44crn-faZlpfMb-1D5eAYcsqkdk-aD_vp1XVz0KEbqhm8x_rIoPmrYDjFS5pa1dIcOVkpZPlk2l-rzBaAmcfeEdaNinX3d8uh8tpQUk10wbPGdI9e7daQewObJX_VkpK5FQie5QXFmuzqYkarJ-m8ix5XET0FUIBdND_sbeMfgPa_CjRSNBhrtDGSIWe_FuVMVPq68bY"/>
+<!-- Video Controls Overlay -->
+<div class="absolute inset-0 video-gradient flex flex-col justify-end p-4 md:p-8">
+<div class="flex items-center justify-center absolute inset-0">
+<button class="h-12 w-12 md:h-20 md:w-20 flex items-center justify-center rounded-full bg-white/5 backdrop-blur-md text-white border border-white/10 hover:bg-white/10 hover:scale-105 transition-all duration-500">
+<span class="material-symbols-outlined text-2xl md:text-4xl fill-1">play_arrow</span>
+</button>
+</div>
+<!-- Progress Section -->
+<div class="w-full mb-4 md:mb-6">
+<div class="flex justify-between mb-2 md:mb-3">
+<span class="text-[9px] md:text-[11px] font-bold text-zinc-500 tracking-widest uppercase">14:22</span>
+<span class="text-[9px] md:text-[11px] font-bold text-zinc-500 tracking-widest uppercase">45:00</span>
+</div>
+<div class="h-1 md:h-1.5 w-full bg-zinc-900 rounded-full cursor-pointer group/progress relative">
+<div class="h-full bg-white rounded-full relative shadow-[0_0_15px_rgba(255,255,255,0.3)]" style="width: 38%">
+<div class="absolute right-0 top-1/2 -translate-y-1/2 h-3 w-3 md:h-3.5 md:w-3.5 bg-white rounded-full shadow-2xl opacity-0 group-hover/progress:opacity-100 transition-opacity"></div>
+</div>
+</div>
+</div>
+<!-- Refined Control Buttons -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-4 md:gap-8">
+<button class="text-zinc-400 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-xl md:text-2xl">skip_previous</span>
+</button>
+<button class="text-zinc-400 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-xl md:text-2xl">play_arrow</span>
+</button>
+<button class="text-zinc-400 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-xl md:text-2xl">skip_next</span>
+</button>
+<div class="hidden sm:flex items-center gap-3">
+<span class="material-symbols-outlined text-lg text-zinc-500">volume_up</span>
+<div class="w-16 h-1 bg-zinc-900 rounded-full">
+<div class="h-full bg-zinc-400 rounded-full w-[70%]"></div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-3 md:gap-6">
+<span class="hidden sm:inline text-[9px] border border-zinc-800 px-1.5 py-0.5 rounded text-zinc-500 font-black uppercase tracking-widest">4K</span>
+<button class="text-zinc-500 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-lg md:text-xl">closed_caption</span>
+</button>
+<button class="text-zinc-500 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-lg md:text-xl">settings</span>
+</button>
+<button class="text-zinc-500 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-lg md:text-xl">fullscreen</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Video Meta -->
+<div class="mt-6 md:mt-10 flex flex-col md:flex-row md:items-start justify-between gap-6 md:gap-10 pb-10 lg:pb-20 md:border-b md:border-border-dark">
+<div class="flex-1">
+<h1 class="text-xl md:text-3xl font-black text-slate-900 dark:text-white mb-3 md:mb-4 tracking-tight">3.4 Understanding Backpropagation through Multi-layer Perceptrons</h1>
+<p class="text-slate-600 dark:text-zinc-500 max-w-3xl text-xs md:text-sm leading-relaxed font-medium">
+                            In this lecture, we dive deep into the calculus behind backpropagation. We'll explore how gradients flow backwards through the network to update weights and minimize loss. We will derive the partial derivatives manually for a basic 3-layer architecture.
+                        </p>
+</div>
+<div class="flex items-center gap-3 md:gap-4 shrink-0 overflow-x-auto pb-2 md:pb-0">
+<button class="flex items-center gap-2 px-4 md:px-6 py-2.5 md:py-3 bg-zinc-900/50 border border-zinc-800 hover:bg-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-white rounded-lg md:rounded-xl text-[9px] md:text-[10px] font-bold uppercase tracking-[0.2em] transition-all whitespace-nowrap">
+<span class="material-symbols-outlined text-base md:text-lg">download</span>
+<span>Assets</span>
+</button>
+<button class="flex items-center gap-2 px-4 md:px-6 py-2.5 md:py-3 bg-white text-zinc-950 hover:bg-zinc-200 rounded-lg md:rounded-xl text-[9px] md:text-[10px] font-bold uppercase tracking-[0.2em] transition-all shadow-lg shadow-white/5 whitespace-nowrap">
+<span class="material-symbols-outlined text-base md:text-lg">share</span>
+<span>Share</span>
+</button>
+</div>
+</div>
+<!-- On mobile, move sidebar content here if desired, or let the main scroll container handle it -->
+<div class="lg:hidden mt-8 space-y-12">
+<!-- Mobile Playlist Content -->
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<h3 class="font-bold text-[10px] tracking-[0.2em] uppercase text-zinc-500">Course Playlist</h3>
+<span class="text-[10px] font-bold text-zinc-300">12 / 48 COMPLETED</span>
+</div>
+<div class="space-y-3">
+<div class="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 flex gap-4 cursor-pointer">
+<div class="relative h-12 w-20 shrink-0 rounded-lg overflow-hidden bg-black">
+<img alt="Active lecture" class="w-full h-full object-cover opacity-40 grayscale" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA9e9aHHr5QP0PUVJiEonT1--O_30Jn4krAaWBrj8yeSiotlIpkHv528aYiI24FtYNjdPTYl6FtqJYuBPe2uuQ5QdEZPlrzs4ZjJj10wc5TxsrcPuyhg9feQiDrVb03myy4eR5N8GaDzgUyEhnbKoobr8Mo2J6DWUJhUAHAlU1de30RZlLqckvOso70pUOTo77vww3BAm21oTcfItHBehzyxLVNxP1vBabGiyzH7kue8HafhBuUgnk-UVQ9xoSKyj4fD7tc3lB7t7E"/>
+</div>
+<div class="flex flex-col justify-center min-w-0">
+<h4 class="text-xs font-bold text-white truncate">3.4 Understanding Backpropagation</h4>
+<span class="text-[9px] font-black text-white uppercase tracking-widest mt-1">Current</span>
+</div>
+</div>
+<!-- More items could be added here for mobile view -->
+</div>
+</div>
+<!-- Mobile Notes Content -->
+<div class="space-y-6">
+<div class="flex items-center justify-between">
+<h3 class="font-bold text-[10px] tracking-[0.2em] uppercase text-zinc-500">Context Notes</h3>
+<button class="text-[10px] font-bold text-zinc-300 hover:text-white transition-colors flex items-center gap-1 uppercase tracking-widest">
+<span class="material-symbols-outlined text-base">add</span>
+                                New Note
+                            </button>
+</div>
+<div class="group border-l border-zinc-800 pl-6 relative">
+<div class="absolute -left-[5px] top-1 h-2.5 w-2.5 rounded-full bg-white ring-4 ring-black"></div>
+<div class="flex items-center justify-between mb-2">
+<span class="text-[9px] font-black text-white uppercase tracking-widest">12:45 Marker</span>
+<span class="text-[10px] text-zinc-600">Jan 12</span>
+</div>
+<p class="text-xs text-zinc-400 leading-relaxed font-light italic opacity-90">
+                                "The derivative of the activation function must be bounded to prevent exploding gradients."
+                            </p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Sidebar: Playlist & Notes (Desktop Only) -->
+<aside class="hidden lg:flex w-[350px] xl:w-[440px] flex-col border-l border-slate-200 dark:border-border-dark bg-background-light dark:bg-background-dark">
+<!-- Playlist Section -->
+<div class="flex flex-col h-[45%] border-b border-slate-200 dark:border-border-dark">
+<div class="px-8 py-6 flex items-center justify-between">
+<h3 class="font-bold text-[10px] tracking-[0.2em] uppercase text-zinc-500">Course Playlist</h3>
+<span class="text-[10px] font-bold text-zinc-300">12 / 48 COMPLETED</span>
+</div>
+<div class="flex-1 overflow-y-auto custom-scrollbar px-6 space-y-1 pb-4">
+<!-- Active Item -->
+<div class="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 flex gap-4 cursor-pointer">
+<div class="relative h-12 w-20 shrink-0 rounded-lg overflow-hidden bg-black">
+<img alt="Active lecture" class="w-full h-full object-cover opacity-40 grayscale" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA9e9aHHr5QP0PUVJiEonT1--O_30Jn4krAaWBrj8yeSiotlIpkHv528aYiI24FtYNjdPTYl6FtqJYuBPe2uuQ5QdEZPlrzs4ZjJj10wc5TxsrcPuyhg9feQiDrVb03myy4eR5N8GaDzgUyEhnbKoobr8Mo2J6DWUJhUAHAlU1de30RZlLqckvOso70pUOTo77vww3BAm21oTcfItHBehzyxLVNxP1vBabGiyzH7kue8HafhBuUgnk-UVQ9xoSKyj4fD7tc3lB7t7E"/>
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-lg fill-1">play_arrow</span>
+</div>
+</div>
+<div class="flex flex-col justify-center min-w-0">
+<h4 class="text-xs font-bold text-white truncate">3.4 Understanding Backpropagation</h4>
+<div class="flex items-center gap-2 mt-1">
+<span class="text-[9px] font-black text-white uppercase tracking-widest">Current</span>
+</div>
+</div>
+</div>
+<!-- Completed Item -->
+<div class="p-4 rounded-xl hover:bg-zinc-900/30 flex gap-4 cursor-pointer group transition-colors">
+<div class="relative h-12 w-20 shrink-0 rounded-lg overflow-hidden bg-black">
+<img alt="Completed lecture" class="w-full h-full object-cover opacity-20 grayscale" src="https://lh3.googleusercontent.com/aida-public/AB6AXuARJBPd0cN4wDYIpOYKhfv24CKzRNC_lmNpMer38eKtqLO1HjiRYZdL3_2pzoH1LzISED5pqlPRQznC8qqpZjzyfIpBTDubjWdM0hsMq-3HPw--lF0IVnhZctqywPyn-x0Bax01x0VS82VNCnOsJfh2R5m0EwRDfTAP-cJ97xSWFDjDjRM1kDi-ftmaEuSukoRd1COgMcaCAbqQy9DBOjKJ8CZNy-j2jkFT_qgKmduplHwPQt8LRIq6ChVWR9UgpZ4kYCELGEruyT0"/>
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-zinc-600 text-lg">check</span>
+</div>
+</div>
+<div class="flex flex-col justify-center min-w-0">
+<h4 class="text-xs font-semibold text-zinc-500 group-hover:text-zinc-300 transition-colors truncate">3.3 Gradient Descent Basics</h4>
+<div class="flex items-center gap-2 mt-1">
+<span class="text-[9px] font-bold text-zinc-700 uppercase">32:15</span>
+</div>
+</div>
+</div>
+<!-- Next Item -->
+<div class="p-4 rounded-xl hover:bg-zinc-900/30 flex gap-4 cursor-pointer group transition-colors">
+<div class="relative h-12 w-20 shrink-0 rounded-lg overflow-hidden bg-black">
+<img alt="Locked lecture" class="w-full h-full object-cover opacity-10 grayscale" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBN1ulS_kQgfqE7HoD0o7XSoPb2Mb33qtT5_FzfXl8puPhcCpNrglmOLhiYE9C7OJZmZTC3HYhROpsHaT9QHE2xNsvFb7bIZq9dXVAD0lh1IT_Bcxc1sJeqkJsPj_1yrGSM9kdVIKO_fiVwAbXvC35Zs-oifMTXhy6_t9IHlq0uSXk6vxtEqm1TJKSQMGx58NOybKDOD1nlGEFhZhK7feX0Qgd_QXNSbiuwx3IdiXJgYnwb936u9Xhn6yPEJp2_jb5f1TnsALs0RdE"/>
+<div class="absolute inset-0 flex items-center justify-center opacity-40">
+<span class="material-symbols-outlined text-zinc-600 text-lg">lock</span>
+</div>
+</div>
+<div class="flex flex-col justify-center min-w-0">
+<h4 class="text-xs font-semibold text-zinc-600 group-hover:text-zinc-300 transition-colors truncate">3.5 Convolutional Neural Nets</h4>
+<div class="flex items-center gap-2 mt-1">
+<span class="text-[9px] font-bold text-zinc-800 uppercase">Next</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Context Notes Section -->
+<div class="flex flex-col flex-1 overflow-hidden">
+<div class="px-8 py-6 flex items-center justify-between shrink-0">
+<h3 class="font-bold text-[10px] tracking-[0.2em] uppercase text-zinc-500">Context Notes</h3>
+<button class="text-[10px] font-bold text-zinc-300 hover:text-white transition-colors flex items-center gap-1 uppercase tracking-widest">
+<span class="material-symbols-outlined text-base">add</span>
+                        New Note
+                    </button>
+</div>
+<div class="flex-1 overflow-y-auto custom-scrollbar px-8 pb-8 space-y-6">
+<!-- Note Item -->
+<div class="group border-l border-zinc-800 pl-6 relative">
+<div class="absolute -left-[5px] top-1 h-2.5 w-2.5 rounded-full bg-white ring-4 ring-black"></div>
+<div class="flex items-center justify-between mb-2">
+<span class="text-[9px] font-black text-white uppercase tracking-widest">12:45 Marker</span>
+<span class="text-[10px] text-zinc-600">Jan 12</span>
+</div>
+<p class="text-xs text-zinc-400 leading-relaxed font-light italic opacity-90">
+                            "The derivative of the activation function must be bounded to prevent exploding gradients."
+                        </p>
+</div>
+<!-- Note Item -->
+<div class="group border-l border-zinc-800 pl-6 relative">
+<div class="absolute -left-[5px] top-1 h-2.5 w-2.5 rounded-full bg-zinc-800 ring-4 ring-black"></div>
+<div class="flex items-center justify-between mb-2">
+<span class="text-[9px] font-bold text-zinc-600 uppercase tracking-widest">Research Note</span>
+<span class="text-[10px] text-zinc-700">Jan 10</span>
+</div>
+<p class="text-xs text-zinc-500 leading-relaxed font-light opacity-90">
+                            Check documentation for PyTorch's Autograd implementation to compare with manual derivation shown at 20:00.
+                        </p>
+</div>
+</div>
+</div>
+</aside>
+</main>
+<!-- Progress Footer -->
+<footer class="h-14 bg-background-light dark:bg-background-dark border-t border-slate-200 dark:border-border-dark px-4 md:px-8 flex items-center justify-between shrink-0">
+<div class="flex items-center gap-3 md:gap-6 flex-1">
+<span class="text-[8px] md:text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em] whitespace-nowrap">Progress</span>
+<div class="max-w-md w-full h-1 bg-zinc-900 rounded-full overflow-hidden">
+<div class="h-full bg-white" style="width: 25%"></div>
+</div>
+<span class="text-[8px] md:text-[10px] font-bold text-white">25%</span>
+</div>
+<div class="flex items-center gap-4 md:gap-8 ml-4">
+<div class="flex -space-x-3">
+<div class="h-6 w-6 md:h-7 md:w-7 rounded-full border border-black bg-zinc-900 flex items-center justify-center overflow-hidden">
+<img alt="Student" class="w-full h-full object-cover grayscale" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAdM2d0PeE0eG9FtwLzvlw1fJ01vV8gZfF6MGEMZY4BYCkyaOh__sAGXLy63mBURpW_z8KjJIeAX-UqclIat1LfQT0N_ucGAVZaiqqyqHtG3rnPC19VFMyTHJvVlogVvVO7fAcPHzSlW0MZvveHOeHs6_Ksryt0Swea9nvZa7BOtIXqEvPYk3x2dee_RH8k9gMet9gRfsXGJ06y6yhKDUDlwUhFNDnBAb91YliR3sevbSPEapToAIWbNFVhSejNVHN1ttcx0X0AEh4"/>
+</div>
+<div class="h-6 w-6 md:h-7 md:w-7 rounded-full border border-black bg-zinc-900 flex items-center justify-center overflow-hidden">
+<img alt="Student" class="w-full h-full object-cover grayscale" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBlv_6UHIYbQnjyd3xgHAyGECkqYJb55x-0wFudCZitT62_AwXG6N-vmHJnk34ckmiMTgIPvKxOufTJSCgNjM3SbwjsS4juVGxtTvoL1J0IP-yQn-GZ8M9mQj88svQCwc697R6qrKRvew9ELy2iVhEN3lOrQcsW3M8nwGe1jrR1EmGFYRSuSRHTpV3NdsmWRRXmsR91ovnEYo7NomkJTkf6L7_zeHjxxsb2upjtmMRFPoeeMZJ_SB-dZTw_2TKZuiaalJeI-LbPYfQ"/>
+</div>
+<div class="h-6 w-6 md:h-7 md:w-7 rounded-full border border-black bg-zinc-800 flex items-center justify-center text-[8px] font-black text-zinc-500">
+                    +12
+                </div>
+</div>
+<span class="hidden sm:inline text-[9px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-600">Active Learners</span>
+</div>
+</footer>
+</div>
+</body></html>

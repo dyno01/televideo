@@ -19,6 +19,7 @@ const filesRoutes    = require('./routes/filesRoutes');
 const streamRoutes   = require('./routes/streamRoutes');
 const batchRoutes    = require('./routes/batchRoutes');
 const authRoutes     = require('./routes/authRoutes');
+const tagsRoutes     = require('./routes/tagsRoutes');
 
 const app  = express();
 const PORT = process.env.PORT || 4000;
@@ -74,6 +75,9 @@ app.use('/api/batches',  batchRoutes);        // POST/GET/DELETE /api/batches
 
 // Telegram Auth & Settings
 app.use('/api/telegram', authRoutes);         // GET /status, POST /send-code, /login, /logout
+
+// Video Tags
+app.use('/api/tags',     tagsRoutes);         // GET /api/tags/:videoId, POST, DELETE
 
 // ─── 404 catch-all ─────────────────────────────────────────────────────────
 app.use((_req, res) => {
