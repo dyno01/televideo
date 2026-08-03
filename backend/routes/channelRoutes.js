@@ -270,6 +270,8 @@ router.get('/:username', (req, res) => {
                        ? `Private Channel (${channel.username.replace('__private__', '')})`
                        : channel.username,
   });
+});
+
 // ─── DELETE /api/channel/:id (Delete channel/vault) ──────────────────────
 router.delete('/:id', (req, res) => {
   const channelId = parseInt(req.params.id, 10);
