@@ -216,7 +216,7 @@ export default function ChannelPage() {
         {SidebarContent}
       </aside>
 
-      <main className="flex-1 flex flex-col min-w-0 bg-[#0a0a0b]">
+      <main className="flex-1 flex flex-col min-w-0 bg-[#0a0a0b] overflow-y-auto">
         {/* Mobile Header */}
         <header className="lg:hidden h-14 border-b border-[#27272a] flex items-center px-4 bg-[#0a0a0b] z-30 sticky top-0 shrink-0">
           <button 
@@ -228,89 +228,111 @@ export default function ChannelPage() {
           <h1 className="text-sm font-bold text-[#fafafa] truncate">{channel?.title}</h1>
         </header>
 
-        <ScrollArea className="flex-1">
-          <div className="p-6 md:p-8 max-w-6xl mx-auto w-full">
-            {activeTab === 'overview' && (
-              <div className="space-y-8 animate-in fade-in duration-500">
-                {/* Stats */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <Card className="p-6 bg-[#111113] border-[#27272a] rounded-xl shadow-none">
-                    <h3 className="text-xs font-semibold text-[#a1a1aa] uppercase tracking-wider mb-2">Total Videos</h3>
-                    <p className="text-3xl font-bold text-[#fafafa]">{videos.length}</p>
-                  </Card>
-                  <Card className="p-6 bg-[#111113] border-[#27272a] rounded-xl shadow-none">
-                    <h3 className="text-xs font-semibold text-[#a1a1aa] uppercase tracking-wider mb-2">Total Files</h3>
-                    <p className="text-3xl font-bold text-[#fafafa]">{files.length}</p>
-                  </Card>
-                  <Card className="p-6 bg-[#111113] border-[#27272a] rounded-xl shadow-none">
-                    <h3 className="text-xs font-semibold text-[#a1a1aa] uppercase tracking-wider mb-2">Completion</h3>
-                    <div className="flex items-center justify-between mb-3">
-                      <p className="text-3xl font-bold text-[#fafafa]">{completionRate}%</p>
-                    </div>
-                    <Progress value={completionRate} className="h-1.5 bg-[#18181b] [&>div]:bg-[#6366f1]" />
-                  </Card>
-                </div>
+        <div className="p-6 md:p-8 max-w-6xl mx-auto w-full pb-20">
+          {activeTab === 'overview' && (
+            <div className="space-y-8 animate-in fade-in duration-500">
+              {/* Stats */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <Card className="p-6 bg-[#111113] border-[#27272a] rounded-xl shadow-none">
+                  <h3 className="text-xs font-semibold text-[#a1a1aa] uppercase tracking-wider mb-2">Total Videos</h3>
+                  <p className="text-3xl font-bold text-[#fafafa]">{videos.length}</p>
+                </Card>
+                <Card className="p-6 bg-[#111113] border-[#27272a] rounded-xl shadow-none">
+                  <h3 className="text-xs font-semibold text-[#a1a1aa] uppercase tracking-wider mb-2">Total Files</h3>
+                  <p className="text-3xl font-bold text-[#fafafa]">{files.length}</p>
+                </Card>
+                <Card className="p-6 bg-[#111113] border-[#27272a] rounded-xl shadow-none">
+                  <h3 className="text-xs font-semibold text-[#a1a1aa] uppercase tracking-wider mb-2">Completion</h3>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-3xl font-bold text-[#fafafa]">{completionRate}%</p>
+                  </div>
+                  <Progress value={completionRate} className="h-1.5 bg-[#18181b] [&>div]:bg-[#6366f1]" />
+                </Card>
+              </div>
+
+              {/* Channel & Batch Continue Watching */}
+              <div>
+                <h2 className="text-lg font-bold text-[#fafafa] mb-4 flex items-center gap-2">
+                  <BookOpen size={20} className="text-[#6366f1]" />
+                  Continue Watching
+                </h2>
                 
-                {/* Continue Watching Per Batch */}
-                <div>
-                  <h2 className="text-lg font-bold text-[#fafafa] mb-4 flex items-center gap-2">
-                    <BookOpen size={20} className="text-[#6366f1]" />
-                    Continue Watching
-                  </h2>
-                  
-                  {batches.length === 0 ? (
-                    <Card className="p-10 text-center bg-[#111113] border-[#27272a] border-dashed rounded-xl shadow-none">
-                      <p className="text-[#a1a1aa] mb-4">No batches found for this channel.</p>
-                      <Button onClick={() => setActiveTab('batches')} className="bg-[#fafafa] text-[#0a0a0b] hover:bg-[#a1a1aa] rounded-lg">
-                        Create your first batch
-                      </Button>
-                    </Card>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {batches.map(batch => {
-                        const vids = batchVideos[batch.id] || []
-                        const inProgress = vids.filter(v => v.watched_percentage > 0 && !v.completed)
-                        const lastVideo = inProgress.length > 0 ? inProgress[inProgress.length - 1] : null
-                        
-                        if (!lastVideo) return null
-                        
-                        return (
-                          <Card key={batch.id} className="p-5 bg-[#111113] border-[#27272a] rounded-xl flex flex-col gap-4 shadow-none hover:border-[#52525b] transition-colors">
+                {/* 1. All Channel Videos in-progress fallback */}
+                {videos.filter(v => (v.watched_percentage || 0) > 0 && !v.completed).length > 0 && (
+                  <div className="mb-6">
+                    <p className="text-xs font-semibold text-[#a1a1aa] uppercase tracking-wider mb-3">Recent Channel Progress</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {videos.filter(v => (v.watched_percentage || 0) > 0 && !v.completed).slice(0, 3).map(vid => (
+                        <Card key={vid.id} className="p-4 bg-[#111113] border-[#27272a] rounded-xl flex flex-col justify-between gap-3 shadow-none hover:border-[#52525b] transition-colors">
+                          <div>
+                            <h3 className="font-semibold text-sm text-[#fafafa] line-clamp-2 leading-tight" title={vid.title}>{cleanTitle(vid.title)}</h3>
+                          </div>
+                          <div className="space-y-3">
                             <div>
-                              <Badge variant="outline" className="mb-3 border-[#52525b] text-[#a1a1aa] bg-[#18181b]">{batch.name}</Badge>
-                              <h3 className="font-semibold text-[#fafafa] line-clamp-2 leading-tight" title={lastVideo.title}>{cleanTitle(lastVideo.title)}</h3>
-                            </div>
-                            <div className="mt-auto space-y-4">
-                              <div>
-                                <div className="flex justify-between text-xs text-[#a1a1aa] mb-1.5">
-                                  <span>Progress</span>
-                                  <span>{Math.round(lastVideo.watched_percentage)}%</span>
-                                </div>
-                                <Progress value={lastVideo.watched_percentage} className="h-1.5 bg-[#18181b] [&>div]:bg-[#22c55e]" />
+                              <div className="flex justify-between text-xs text-[#a1a1aa] mb-1">
+                                <span>Progress</span>
+                                <span>{Math.round(vid.watched_percentage || 0)}%</span>
                               </div>
-                              <div className="flex gap-2">
-                                <Button className="flex-1 gap-2 bg-[#6366f1] hover:bg-[#6366f1]/90 text-[#fafafa] rounded-lg" onClick={() => router.push(`/video/${lastVideo.id}`)}>
-                                  <Play size={16} fill="currentColor" /> Resume
-                                </Button>
-                                <Button variant="outline" className="flex-1 border-[#27272a] bg-transparent text-[#a1a1aa] hover:bg-[#18181b] hover:text-[#fafafa] rounded-lg" onClick={() => setActiveTab('batches')}>
-                                  View Batch
-                                </Button>
-                              </div>
+                              <Progress value={vid.watched_percentage || 0} className="h-1.5 bg-[#18181b] [&>div]:bg-[#6366f1]" />
                             </div>
-                          </Card>
-                        )
-                      })}
-                      {batches.some(b => {
-                        const vids = batchVideos[b.id] || []
-                        return vids.filter(v => v.watched_percentage > 0 && !v.completed).length > 0
-                      }) === false && (
-                        <div className="col-span-full text-[#a1a1aa] text-sm p-6 bg-[#111113] border border-[#27272a] rounded-xl text-center">
-                          No in-progress videos found in your batches.
-                        </div>
-                      )}
+                            <Button size="sm" className="w-full gap-2 bg-[#6366f1] hover:bg-[#6366f1]/90 text-[#fafafa] rounded-lg" onClick={() => router.push(`/video/${vid.id}`)}>
+                              <Play size={14} fill="currentColor" /> Resume
+                            </Button>
+                          </div>
+                        </Card>
+                      ))}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
+
+                {/* 2. Batch Continue Watching */}
+                {batches.length > 0 && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {batches.map(batch => {
+                      const vids = batchVideos[batch.id] || []
+                      const inProgress = vids.filter(v => (v.watched_percentage || 0) > 0 && !v.completed)
+                      const lastVideo = inProgress.length > 0 ? inProgress[inProgress.length - 1] : null
+                      
+                      if (!lastVideo) return null
+                      
+                      return (
+                        <Card key={batch.id} className="p-5 bg-[#111113] border-[#27272a] rounded-xl flex flex-col gap-4 shadow-none hover:border-[#52525b] transition-colors">
+                          <div>
+                            <Badge variant="outline" className="mb-3 border-[#52525b] text-[#a1a1aa] bg-[#18181b]">{batch.name}</Badge>
+                            <h3 className="font-semibold text-[#fafafa] line-clamp-2 leading-tight" title={lastVideo.title}>{cleanTitle(lastVideo.title)}</h3>
+                          </div>
+                          <div className="mt-auto space-y-4">
+                            <div>
+                              <div className="flex justify-between text-xs text-[#a1a1aa] mb-1.5">
+                                <span>Progress</span>
+                                <span>{Math.round(lastVideo.watched_percentage)}%</span>
+                              </div>
+                              <Progress value={lastVideo.watched_percentage} className="h-1.5 bg-[#18181b] [&>div]:bg-[#22c55e]" />
+                            </div>
+                            <div className="flex gap-2">
+                              <Button className="flex-1 gap-2 bg-[#6366f1] hover:bg-[#6366f1]/90 text-[#fafafa] rounded-lg" onClick={() => router.push(`/video/${lastVideo.id}`)}>
+                                <Play size={16} fill="currentColor" /> Resume
+                              </Button>
+                              <Button variant="outline" className="flex-1 border-[#27272a] bg-transparent text-[#a1a1aa] hover:bg-[#18181b] hover:text-[#fafafa] rounded-lg" onClick={() => setActiveTab('batches')}>
+                                View Batch
+                              </Button>
+                            </div>
+                          </div>
+                        </Card>
+                      )
+                    })}
+                  </div>
+                )}
+                
+                {videos.filter(v => (v.watched_percentage || 0) > 0 && !v.completed).length === 0 && batches.every(b => {
+                  const vids = batchVideos[b.id] || []
+                  return vids.filter(v => (v.watched_percentage || 0) > 0 && !v.completed).length === 0
+                }) && (
+                  <div className="text-[#a1a1aa] text-sm p-6 bg-[#111113] border border-[#27272a] rounded-xl text-center">
+                    No in-progress videos found. Play a video to start tracking progress!
+                  </div>
+                )}
+              </div>
 
                 {/* Recent Videos Quick Access */}
                 <div>
@@ -361,7 +383,6 @@ export default function ChannelPage() {
               </div>
             )}
           </div>
-        </ScrollArea>
       </main>
 
       <TelegramAuthModal

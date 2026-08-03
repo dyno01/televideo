@@ -72,7 +72,7 @@ export default function BatchManager({ channelId, channelUsername }: BatchManage
           </Button>
         </div>
 
-        <ScrollArea className="h-[calc(100vh-25rem)] min-h-[450px]">
+        <ScrollArea className="max-h-[calc(100vh-12rem)]">
           <div className="flex flex-col gap-3 pr-4">
             {batches.map((b) => (
               <div 
@@ -214,9 +214,9 @@ function BatchDetail({ batch, channelUsername }: { batch: Batch; channelUsername
   )
 
   return (
-    <div className="max-w-5xl mx-auto w-full animate-in fade-in slide-in-from-bottom-8 duration-700 space-y-12 lg:space-y-16">
+    <div className="w-full max-w-full animate-in fade-in slide-in-from-bottom-8 duration-700 space-y-8 lg:space-y-12">
       {/* Cinematic Hero */}
-      <div className="relative p-8 lg:p-16 rounded-[40px] lg:rounded-[48px] overflow-hidden bg-gradient-to-br from-[#121212] to-[#09090b] border border-zinc-800/50 shadow-3xl group">
+      <div className="relative p-6 lg:p-10 rounded-[28px] lg:rounded-[36px] overflow-hidden bg-gradient-to-br from-[#121212] to-[#09090b] border border-zinc-800/50 shadow-3xl group">
         <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-white/5 to-transparent pointer-events-none" />
         <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-white/5 blur-[100px] rounded-full pointer-events-none" />
         

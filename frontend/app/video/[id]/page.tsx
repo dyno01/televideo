@@ -297,8 +297,8 @@ export default function VideoPage() {
                   <p className="text-sm font-bold text-zinc-50 truncate">{video.batch_name}</p>
                 </div>
               )}
-              <ScrollArea className="flex-1">
-                <div className="p-4">
+              <ScrollArea className="h-full flex-1">
+                <div className="p-4 pb-12">
                   <LectureList
                     videos={channelVideos}
                     currentVideoId={videoId}
