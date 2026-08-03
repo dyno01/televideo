@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, Loader2, AlertCircle, UserCircle, Link as LinkIcon, Video as VideoIcon, FileText, Folder, ChevronRight } from 'lucide-react'
-import { scanChannel, getChannels, Channel } from '@/lib/api'
+import { Search, Loader2, AlertCircle, UserCircle, Link as LinkIcon, Video as VideoIcon, FileText, Folder, ChevronRight, Trash2 } from 'lucide-react'
+import { scanChannel, getChannels, deleteChannel, Channel } from '@/lib/api'
+
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -71,6 +72,18 @@ export default function HomePage() {
   }
 
 
+  async function handleRemoveChannel(e: React.MouseEvent, channelId: number, title: string) {
+    e.stopPropagation()
+    if (!confirm(`Are you sure you want to remove "${title}" from your library?`)) return
+
+    try {
+      await deleteChannel(channelId)
+      setChannels(prev => prev.filter(c => c.id !== channelId))
+    } catch (err: any) {
+      alert(err?.response?.data?.error || 'Failed to remove channel.')
+    }
+  }
+
   return (
     <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-[#09090b] text-zinc-100 font-sans selection:bg-white selection:text-black">
       {/* --- Top Navigation --- */}
@@ -115,7 +128,6 @@ export default function HomePage() {
           </div>
         </div>
       </header>
-
 
       <main className="flex flex-col items-center">
         <div className="max-w-[1200px] w-full px-6 md:px-12">
@@ -245,7 +257,7 @@ export default function HomePage() {
                 {channels.map(ch => (
                   <div 
                     key={ch.id} 
-                    className="group flex flex-col bg-zinc-950 rounded-2xl overflow-hidden border border-zinc-800 hover:border-zinc-700 transition-all cursor-pointer card-hover"
+                    className="group flex flex-col bg-zinc-950 rounded-2xl overflow-hidden border border-zinc-800 hover:border-zinc-700 transition-all cursor-pointer card-hover relative"
                     onClick={() => router.push(`/channel/${ch.username}`)}
                   >
                     <div className="aspect-video w-full bg-zinc-900 relative">
@@ -257,8 +269,18 @@ export default function HomePage() {
                             </AvatarFallback>
                           </Avatar>
                        </div>
-                       <div className="absolute top-4 right-4 bg-white text-zinc-950 text-[9px] font-black px-2 py-1 rounded uppercase tracking-wider">
-                         {ch.videoCount} Videos
+
+                       <div className="absolute top-4 right-4 flex items-center gap-2">
+                         <button
+                           onClick={(e) => handleRemoveChannel(e, ch.id, ch.title || ch.username)}
+                           className="p-1.5 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 text-zinc-400 hover:text-rose-400 hover:bg-rose-500/20 transition-all"
+                           title="Remove Vault"
+                         >
+                           <Trash2 size={14} />
+                         </button>
+                         <span className="bg-white text-zinc-950 text-[9px] font-black px-2 py-1 rounded uppercase tracking-wider">
+                           {ch.videoCount} Videos
+                         </span>
                        </div>
                     </div>
                     <div className="p-6">
@@ -288,6 +310,7 @@ export default function HomePage() {
           </section>
         </div>
       </main>
+
 
       {/* --- Footer --- */}
       <footer className="mt-auto py-20 px-6 md:px-12 border-t border-zinc-900 bg-[#09090b] flex flex-col items-center">

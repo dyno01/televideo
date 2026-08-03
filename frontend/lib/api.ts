@@ -90,8 +90,12 @@ export const scanChannel = (channelUsername: string): Promise<ScanResult> =>
 export const getChannels = (): Promise<Channel[]> =>
   api.get<Channel[]>('/api/channels').then(d)
 
+export const deleteChannel = (id: number): Promise<{ success: boolean }> =>
+  api.delete<{ success: boolean }>(`/api/channel/${id}`).then(d)
+
 export const getChannel = (username: string): Promise<Channel> =>
   api.get<Channel>(`/api/channel/${username}`).then(d)
+
 
 export const getVideos = (username: string): Promise<Video[]> =>
   api.get<Video[]>(`/api/channel/${username}/videos`).then(d)

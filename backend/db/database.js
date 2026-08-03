@@ -96,6 +96,11 @@ try { db.exec('ALTER TABLE videos ADD COLUMN batch_id INTEGER REFERENCES batches
 try { db.exec('ALTER TABLE files  ADD COLUMN batch_id INTEGER REFERENCES batches(id)'); } catch (_) {}
 try { db.exec('ALTER TABLE files  ADD COLUMN parent_video_id INTEGER REFERENCES videos(id)'); } catch (_) {}
 
+// Unique indexes to enable non-destructive re-scans (preserves video IDs, progress & notes)
+try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_videos_channel_message ON videos(channel_id, message_id)'); } catch (_) {}
+try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_files_channel_message ON files(channel_id, message_id)'); } catch (_) {}
+
+
 // Seed initial settings from environment if not present
 const seedSetting = (key, val) => {
   if (val && !db.prepare('SELECT value FROM settings WHERE key = ?').get(key)) {

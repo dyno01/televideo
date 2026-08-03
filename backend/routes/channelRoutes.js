@@ -138,32 +138,33 @@ router.post('/scan', async (req, res) => {
   const channel   = getOne('SELECT * FROM channels WHERE username = ?', [dbUsername]);
   const channelId = channel.id;
 
-  // Clear old data — delete children first to satisfy FK constraints
-  // 1. Progress & Notes (depend on videos)
-  run(`DELETE FROM progress WHERE video_id IN (SELECT id FROM videos WHERE channel_id = ?)`, [channelId]);
-  run(`DELETE FROM notes    WHERE video_id IN (SELECT id FROM videos WHERE channel_id = ?)`, [channelId]);
-  
-  // 2. Break parent_video_id links in files (depends on videos)
-  run('UPDATE files SET parent_video_id = NULL WHERE channel_id = ?', [channelId]);
-  
-  // 3. Videos & Files (depend on batches and channels)
-  run('DELETE FROM videos WHERE channel_id = ?', [channelId]);
-  run('DELETE FROM files   WHERE channel_id = ?', [channelId]);
-
-  // 4. Batches (depend on channels)
-  run('DELETE FROM batches WHERE channel_id = ?', [channelId]);
-
-
-  // Prepare batch inserts
+  // Prepare non-destructive upsert queries (preserves video IDs, progress & notes)
   const insertVideo = db.prepare(
-    `INSERT OR IGNORE INTO videos
+    `INSERT INTO videos
        (channel_id, message_id, title, duration, file_id, access_hash, file_reference, mime_type, size, dc_id, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(channel_id, message_id) DO UPDATE SET
+       title          = excluded.title,
+       duration       = excluded.duration,
+       file_id        = excluded.file_id,
+       access_hash    = excluded.access_hash,
+       file_reference = excluded.file_reference,
+       mime_type      = excluded.mime_type,
+       size           = excluded.size,
+       dc_id          = excluded.dc_id`
   );
   const insertFile = db.prepare(
-    `INSERT OR IGNORE INTO files
+    `INSERT INTO files
        (channel_id, message_id, file_name, mime_type, file_size, file_id, access_hash, file_reference, dc_id, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(channel_id, message_id) DO UPDATE SET
+       file_name      = excluded.file_name,
+       mime_type      = excluded.mime_type,
+       file_size      = excluded.file_size,
+       file_id        = excluded.file_id,
+       access_hash    = excluded.access_hash,
+       file_reference = excluded.file_reference,
+       dc_id          = excluded.dc_id`
   );
 
   const batchInsert = db.transaction((messages) => {
@@ -186,6 +187,7 @@ router.post('/scan', async (req, res) => {
       }
     }
   });
+
 
   let videoCount = 0, fileCount = 0, scannedCount = 0;
   const batch = [];
@@ -268,6 +270,29 @@ router.get('/:username', (req, res) => {
                        ? `Private Channel (${channel.username.replace('__private__', '')})`
                        : channel.username,
   });
+// ─── DELETE /api/channel/:id (Delete channel/vault) ──────────────────────
+router.delete('/:id', (req, res) => {
+  const channelId = parseInt(req.params.id, 10);
+  if (isNaN(channelId)) return res.status(400).json({ error: 'Invalid channel ID' });
+
+  const channel = getOne('SELECT * FROM channels WHERE id = ?', [channelId]);
+  if (!channel) return res.status(404).json({ error: 'Channel not found' });
+
+  try {
+    run(`DELETE FROM progress WHERE video_id IN (SELECT id FROM videos WHERE channel_id = ?)`, [channelId]);
+    run(`DELETE FROM notes WHERE video_id IN (SELECT id FROM videos WHERE channel_id = ?)`, [channelId]);
+    run('UPDATE files SET parent_video_id = NULL WHERE channel_id = ?', [channelId]);
+    run('DELETE FROM videos WHERE channel_id = ?', [channelId]);
+    run('DELETE FROM files WHERE channel_id = ?', [channelId]);
+    run('DELETE FROM batches WHERE channel_id = ?', [channelId]);
+    run('DELETE FROM channels WHERE id = ?', [channelId]);
+
+    return res.json({ success: true, message: 'Vault removed successfully' });
+  } catch (err) {
+    console.error('[Delete Channel Error]', err);
+    return res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;
+
