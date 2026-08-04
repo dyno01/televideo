@@ -100,6 +100,13 @@ try { db.exec('ALTER TABLE files  ADD COLUMN parent_video_id INTEGER REFERENCES 
 try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_videos_channel_message ON videos(channel_id, message_id)'); } catch (_) {}
 try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_files_channel_message ON files(channel_id, message_id)'); } catch (_) {}
 
+// High-Performance Query Indexes
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_videos_channel_id ON videos(channel_id)'); } catch (_) {}
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_videos_batch_id ON videos(batch_id)'); } catch (_) {}
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_files_channel_id ON files(channel_id)'); } catch (_) {}
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_files_batch_id ON files(batch_id)'); } catch (_) {}
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_progress_video_id ON progress(video_id)'); } catch (_) {}
+
 // Video tags feature
 db.exec(`
   CREATE TABLE IF NOT EXISTS video_tags (

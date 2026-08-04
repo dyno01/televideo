@@ -207,12 +207,17 @@ router.post('/scan', async (req, res) => {
     if (batch.length >= 100) {
       const snap = [...batch];
       batchInsert(snap);
-      const vids = snap.filter(m => classifyMessage(m)?.type === 'video').length;
-      const fils = snap.filter(m => { const c = classifyMessage(m); return c && c.type !== 'video'; }).length;
+      let vids = 0, fils = 0;
+      snap.forEach(m => {
+        const c = classifyMessage(m);
+        if (c) {
+          if (c.type === 'video') vids++; else fils++;
+        }
+      });
       videoCount += vids;
       fileCount  += fils;
       batch.length = 0;
-      await new Promise(r => setTimeout(r, 200)); // gentle rate limit
+      await new Promise(r => setImmediate(r));
     }
   }
   if (batch.length > 0) {

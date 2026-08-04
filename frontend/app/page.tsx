@@ -71,27 +71,27 @@ export default function HomePage() {
       const fetchedChannels = await getChannels()
       setChannels(fetchedChannels)
       
-      // Fetch videos for first 3 channels for "continue learning"
+      // Fetch videos for first 3 channels for "continue learning" concurrently
       const videosToFetch = fetchedChannels.slice(0, 3)
-      let allFetchedVideos: Video[] = []
+      const allResults = await Promise.all(
+        videosToFetch.map(async (ch) => {
+          try {
+            const vids = await getVideos(ch.username)
+            return vids.map(v => ({
+              ...v,
+              channel_username: ch.username,
+              channel_title: ch.title || ch.username
+            }))
+          } catch (e) {
+            console.error(`Failed to fetch videos for ${ch.username}`, e)
+            return []
+          }
+        })
+      )
+      const allFetchedVideos = allResults.flat()
       
-      for (const ch of videosToFetch) {
-        try {
-          const vids = await getVideos(ch.username)
-          // Tag them with channel info
-          const tagged = vids.map(v => ({
-            ...v,
-            channel_username: ch.username,
-            channel_title: ch.title || ch.username
-          }))
-          allFetchedVideos = [...allFetchedVideos, ...tagged]
-        } catch (e) {
-          console.error(`Failed to fetch videos for ${ch.username}`, e)
-        }
-      }
-      
-      // Continue Learning: watched_percentage > 0 && completed === 0
-      const inProgress = allFetchedVideos.filter(v => v.watched_percentage > 0 && v.completed === 0)
+      // Continue Learning: (watched_percentage > 0 || last_timestamp > 0) && completed === 0
+      const inProgress = allFetchedVideos.filter(v => ((v.watched_percentage || 0) > 0 || (v.last_timestamp || 0) > 0) && v.completed === 0)
       setInProgressVideos(inProgress)
       
       // Calculate overall completion % (only from fetched videos that have progress)

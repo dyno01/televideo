@@ -175,7 +175,7 @@ router.post('/', async (req, res) => {
         batchInsert([...buf]);
         buf.forEach(m => { const c = classifyMessage(m); if (c) c.type === 'video' ? videoCount++ : fileCount++; });
         buf.length = 0;
-        await new Promise(r => setTimeout(r, RATE_LIMIT_MS));
+        await new Promise(r => setImmediate(r));
       }
     }
     if (buf.length) {
