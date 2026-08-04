@@ -18,7 +18,7 @@ import {
   Type,
   Loader2
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, getMediaTokenQuery } from '@/lib/utils'
 import { Video, API_BASE } from '@/lib/api'
 
 export interface VideoPlayerHandle {
@@ -352,7 +352,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     >
       <video
         ref={videoRef}
-        src={`${API_BASE}/api/stream/${video.id}`}
+        src={`${API_BASE}/api/stream/${video.id}${getMediaTokenQuery()}`}
         className="w-full h-full object-contain"
         onClick={handleVideoClick}
         onError={handleVideoError}

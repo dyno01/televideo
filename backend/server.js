@@ -66,7 +66,7 @@ app.use((req, res, next) => {
   }
 
   const authHeader = req.headers['authorization'] || '';
-  const token = authHeader.replace(/^Bearer\s+/, '') || req.headers['x-app-passcode'] || req.query.passcode;
+  const token = authHeader.replace(/^Bearer\s+/, '') || req.headers['x-app-passcode'] || req.query.token || req.query.passcode;
 
   if (token && verifyPasscodeToken(token, storedHash)) {
     return next();

@@ -23,7 +23,8 @@ import {
   AlertCircle,
   Sparkles,
   Lock,
-  Shield
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 import {
   getTelegramStatus,
@@ -48,7 +49,9 @@ export default function TelegramAuthModal({
   onClose,
   onStatusChange,
 }: TelegramAuthModalProps) {
-  const [activeTab, setActiveTab] = useState<'phone' | 'session' | 'passcode'>('phone')
+  const [activeTab, setActiveTab] = useState<'telegram' | 'passcode'>('telegram')
+  const [showManualSession, setShowManualSession] = useState(false)
+  
   const [status, setStatus] = useState<TelegramStatus | null>(null)
   const [passcodeSet, setPasscodeSet] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -154,7 +157,7 @@ export default function TelegramAuthModal({
         return
       }
 
-      setSuccessMsg('Successfully connected to Telegram!')
+      setSuccessMsg('Successfully connected to Telegram! Session auto-saved.')
       await fetchStatus()
     } catch (err: any) {
       setErrorMsg(
@@ -258,7 +261,7 @@ export default function TelegramAuthModal({
                   Settings & Security
                 </DialogTitle>
                 <DialogDescription className="text-xs text-zinc-400 mt-0.5">
-                  Manage Telegram credentials and App Passcode Lock
+                  Telegram session management & Passcode lock
                 </DialogDescription>
               </div>
             </div>
@@ -298,35 +301,21 @@ export default function TelegramAuthModal({
               <div className="flex p-1 bg-zinc-900 rounded-xl border border-zinc-800 text-xs">
                 <button
                   type="button"
-                  className={`flex-1 py-2 rounded-lg font-bold transition-all ${
-                    activeTab === 'phone'
+                  className={`flex-1 py-2.5 rounded-lg font-bold transition-all ${
+                    activeTab === 'telegram'
                       ? 'bg-zinc-800 text-white shadow-sm'
                       : 'text-zinc-500 hover:text-zinc-300'
                   }`}
                   onClick={() => {
-                    setActiveTab('phone')
+                    setActiveTab('telegram')
                     setErrorMsg('')
                   }}
                 >
-                  Telegram Login
+                  Telegram Account
                 </button>
                 <button
                   type="button"
-                  className={`flex-1 py-2 rounded-lg font-bold transition-all ${
-                    activeTab === 'session'
-                      ? 'bg-zinc-800 text-white shadow-sm'
-                      : 'text-zinc-500 hover:text-zinc-300'
-                  }`}
-                  onClick={() => {
-                    setActiveTab('session')
-                    setErrorMsg('')
-                  }}
-                >
-                  Session String
-                </button>
-                <button
-                  type="button"
-                  className={`flex-1 py-2 rounded-lg font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  className={`flex-1 py-2.5 rounded-lg font-bold transition-all flex items-center justify-center gap-1.5 ${
                     activeTab === 'passcode'
                       ? 'bg-zinc-800 text-indigo-400 shadow-sm'
                       : 'text-zinc-500 hover:text-zinc-300'
@@ -336,7 +325,7 @@ export default function TelegramAuthModal({
                     setErrorMsg('')
                   }}
                 >
-                  <Lock size={12} /> Passcode Lock
+                  <Lock size={12} /> App Passcode Lock
                 </button>
               </div>
 
@@ -355,8 +344,8 @@ export default function TelegramAuthModal({
                 </div>
               )}
 
-              {/* TAB 1: PHONE LOGIN */}
-              {activeTab === 'phone' && (
+              {/* TAB 1: TELEGRAM ACCOUNT */}
+              {activeTab === 'telegram' && (
                 status?.authenticated ? (
                   <div className="space-y-4">
                     <div className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800 flex items-center justify-between">
@@ -377,6 +366,10 @@ export default function TelegramAuthModal({
                       <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">Active Session</Badge>
                     </div>
 
+                    <div className="p-3 rounded-xl bg-zinc-900/40 border border-zinc-800 text-xs text-zinc-400">
+                      <p>✨ Session is automatically saved to your local database. No manual session string required!</p>
+                    </div>
+
                     <div className="flex justify-end pt-2">
                       <Button variant="destructive" size="sm" onClick={handleLogout} disabled={submitting} className="gap-2">
                         <LogOut size={14} /> Disconnect Account
@@ -384,80 +377,97 @@ export default function TelegramAuthModal({
                     </div>
                   </div>
                 ) : (
-                  <form onSubmit={step === 'phone' ? handleSendCode : handleLogin} className="space-y-4">
-                    {step === 'phone' && (
-                      <>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-zinc-400">API ID</label>
-                            <Input placeholder="e.g. 12345678" value={apiId} onChange={(e) => setApiId(e.target.value)} className="bg-zinc-900 border-zinc-800 text-xs h-10" />
+                  <div className="space-y-4">
+                    {/* Guide link */}
+                    <div className="p-3 rounded-xl bg-blue-500/5 border border-blue-500/15 text-xs text-blue-300 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Sparkles size={14} className="text-blue-400 shrink-0" />
+                        <span>Need Telegram API ID & Hash?</span>
+                      </div>
+                      <a
+                        href="https://my.telegram.org"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-bold underline hover:text-white flex items-center gap-1"
+                      >
+                        Get at my.telegram.org <ExternalLink size={12} />
+                      </a>
+                    </div>
+
+                    <form onSubmit={step === 'phone' ? handleSendCode : handleLogin} className="space-y-4">
+                      {step === 'phone' && (
+                        <>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-semibold text-zinc-400">API ID</label>
+                              <Input placeholder="e.g. 12345678" value={apiId} onChange={(e) => setApiId(e.target.value)} className="bg-zinc-900 border-zinc-800 text-xs h-10" />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-semibold text-zinc-400">API Hash</label>
+                              <Input placeholder="32-char string" value={apiHash} onChange={(e) => setApiHash(e.target.value)} className="bg-zinc-900 border-zinc-800 text-xs h-10 font-mono" />
+                            </div>
                           </div>
+
                           <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-zinc-400">API Hash</label>
-                            <Input placeholder="32-char string" value={apiHash} onChange={(e) => setApiHash(e.target.value)} className="bg-zinc-900 border-zinc-800 text-xs h-10 font-mono" />
+                            <label className="text-xs font-semibold text-zinc-400">Phone Number (International Format)</label>
+                            <Input placeholder="+1234567890" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className="bg-zinc-900 border-zinc-800 text-xs h-10" />
                           </div>
-                        </div>
 
-                        <div className="space-y-1.5">
-                          <label className="text-xs font-semibold text-zinc-400">Phone Number (International Format)</label>
-                          <Input placeholder="+1234567890" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className="bg-zinc-900 border-zinc-800 text-xs h-10" />
-                        </div>
+                          <Button type="submit" disabled={submitting} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold h-10 rounded-xl">
+                            {submitting ? <Loader2 className="animate-spin size-4" /> : 'Send Login Code'}
+                          </Button>
+                        </>
+                      )}
 
-                        <Button type="submit" disabled={submitting} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold h-10 rounded-xl">
-                          {submitting ? <Loader2 className="animate-spin size-4" /> : 'Send Login Code'}
-                        </Button>
-                      </>
-                    )}
-
-                    {(step === 'code' || step === '2fa') && (
-                      <>
-                        <div className="space-y-1.5">
-                          <label className="text-xs font-semibold text-zinc-400">Telegram Login Code</label>
-                          <Input placeholder="Enter code" value={phoneCode} onChange={(e) => setPhoneCode(e.target.value)} className="bg-zinc-900 border-zinc-800 text-xs h-10" />
-                        </div>
-
-                        {step === '2fa' && (
+                      {(step === 'code' || step === '2fa') && (
+                        <>
                           <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-zinc-400">2FA Password {passwordHint && `(Hint: ${passwordHint})`}</label>
-                            <Input type="password" placeholder="Enter 2FA password" value={password} onChange={(e) => setPassword(e.target.value)} className="bg-zinc-900 border-zinc-800 text-xs h-10" />
+                            <label className="text-xs font-semibold text-zinc-400">Telegram Login Code</label>
+                            <Input placeholder="Enter code" value={phoneCode} onChange={(e) => setPhoneCode(e.target.value)} className="bg-zinc-900 border-zinc-800 text-xs h-10" />
                           </div>
-                        )}
 
-                        <Button type="submit" disabled={submitting} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold h-10 rounded-xl">
-                          {submitting ? <Loader2 className="animate-spin size-4" /> : 'Verify & Log In'}
-                        </Button>
-                      </>
-                    )}
-                  </form>
+                          {step === '2fa' && (
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-semibold text-zinc-400">2FA Password {passwordHint && `(Hint: ${passwordHint})`}</label>
+                              <Input type="password" placeholder="Enter 2FA password" value={password} onChange={(e) => setPassword(e.target.value)} className="bg-zinc-900 border-zinc-800 text-xs h-10" />
+                            </div>
+                          )}
+
+                          <Button type="submit" disabled={submitting} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold h-10 rounded-xl">
+                            {submitting ? <Loader2 className="animate-spin size-4" /> : 'Verify & Log In'}
+                          </Button>
+                        </>
+                      )}
+                    </form>
+
+                    {/* Collapsible Advanced Session String */}
+                    <div className="pt-2 border-t border-zinc-900">
+                      <button
+                        type="button"
+                        onClick={() => setShowManualSession(!showManualSession)}
+                        className="text-[11px] text-zinc-500 hover:text-zinc-300 font-semibold flex items-center gap-1 transition-colors"
+                      >
+                        {showManualSession ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                        Advanced: Paste Existing Session String
+                      </button>
+
+                      {showManualSession && (
+                        <form onSubmit={handleSaveSession} className="space-y-3 mt-3 p-3 rounded-xl bg-zinc-900/40 border border-zinc-800/60 animate-in fade-in">
+                          <div className="space-y-1">
+                            <label className="text-[11px] font-semibold text-zinc-400">Session String</label>
+                            <Input placeholder="Paste StringSession..." value={sessionString} onChange={(e) => setSessionString(e.target.value)} className="bg-zinc-950 border-zinc-800 text-xs h-9 font-mono" />
+                          </div>
+                          <Button type="submit" disabled={submitting} size="sm" className="w-full bg-zinc-800 hover:bg-zinc-700 text-white text-xs h-8">
+                            {submitting ? <Loader2 className="animate-spin size-3" /> : 'Save Session String'}
+                          </Button>
+                        </form>
+                      )}
+                    </div>
+                  </div>
                 )
               )}
 
-              {/* TAB 2: SESSION STRING */}
-              {activeTab === 'session' && (
-                <form onSubmit={handleSaveSession} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-zinc-400">API ID</label>
-                      <Input placeholder="e.g. 12345678" value={apiId} onChange={(e) => setApiId(e.target.value)} className="bg-zinc-900 border-zinc-800 text-xs h-10" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-zinc-400">API Hash</label>
-                      <Input placeholder="32-char string" value={apiHash} onChange={(e) => setApiHash(e.target.value)} className="bg-zinc-900 border-zinc-800 text-xs h-10 font-mono" />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-zinc-400">Session String</label>
-                    <Input placeholder="Paste StringSession..." value={sessionString} onChange={(e) => setSessionString(e.target.value)} className="bg-zinc-900 border-zinc-800 text-xs h-10 font-mono" />
-                  </div>
-
-                  <Button type="submit" disabled={submitting} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold h-10 rounded-xl">
-                    {submitting ? <Loader2 className="animate-spin size-4" /> : 'Save Session'}
-                  </Button>
-                </form>
-              )}
-
-              {/* TAB 3: PASSCODE LOCK SECURITY */}
+              {/* TAB 2: PASSCODE LOCK SECURITY */}
               {activeTab === 'passcode' && (
                 <div className="space-y-6">
                   <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-between">

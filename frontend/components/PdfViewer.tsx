@@ -12,7 +12,7 @@ import {
   RotateCw,
   FileText
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, getMediaTokenQuery } from '@/lib/utils'
 
 interface PdfViewerProps {
   fileUrl: string
@@ -29,6 +29,11 @@ export default function PdfViewer({ fileUrl, fileName, mimeType, onClose, isStan
   const [rotation, setRotation] = useState(0)
   const [isMobile, setIsMobile] = useState(false)
   const isPdf = mimeType === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf')
+
+  const mediaToken = getMediaTokenQuery()
+  const authenticatedFileUrl = fileUrl 
+    ? (fileUrl.includes('token=') ? fileUrl : (fileUrl.includes('?') ? `${fileUrl}&${mediaToken.replace('?', '')}` : `${fileUrl}${mediaToken}`))
+    : fileUrl
 
   useEffect(() => {
     const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
@@ -172,7 +177,7 @@ export default function PdfViewer({ fileUrl, fileName, mimeType, onClose, isStan
           </button>
           
           <a 
-            href={fileUrl}
+            href={authenticatedFileUrl}
             download={fileName}
             className="p-2 text-[#a1a1aa] hover:text-[#fafafa] hover:bg-[#18181b] rounded-lg transition-colors flex items-center gap-2"
           >
@@ -193,8 +198,8 @@ export default function PdfViewer({ fileUrl, fileName, mimeType, onClose, isStan
             <div className="w-full bg-[#18181b] shadow-2xl min-h-[1100px] ring-1 ring-[#27272a] rounded-sm overflow-hidden">
               <iframe
                 src={isMobile 
-                  ? `https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true` 
-                  : `${fileUrl}#page=${currentPage}&toolbar=0`
+                  ? `https://docs.google.com/gview?url=${encodeURIComponent(authenticatedFileUrl)}&embedded=true` 
+                  : `${authenticatedFileUrl}#page=${currentPage}&toolbar=0`
                 }
                 className="w-full h-full min-h-[1100px] border-none"
                 title={fileName}

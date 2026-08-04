@@ -41,6 +41,14 @@ export function formatDuration(seconds: number): string {
   return `${secs}s`
 }
 
+export function getMediaTokenQuery(): string {
+  if (typeof window !== 'undefined') {
+    const t = localStorage.getItem('app_passcode_token')
+    if (t) return `?token=${encodeURIComponent(t)}`
+  }
+  return ''
+}
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
