@@ -26,14 +26,15 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
-import { cn, cleanTitle } from '@/lib/utils'
+import { cn, cleanTitle, formatDuration } from '@/lib/utils'
 
 interface BatchManagerProps {
   channelId: number
   channelUsername: string
+  initialBatchId?: number
 }
 
-export default function BatchManager({ channelId, channelUsername }: BatchManagerProps) {
+export default function BatchManager({ channelId, channelUsername, initialBatchId }: BatchManagerProps) {
   const [batches, setBatches] = useState<Batch[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null)
@@ -47,6 +48,9 @@ export default function BatchManager({ channelId, channelUsername }: BatchManage
       if (selectedBatch) {
         const updated = data.find(b => b.id === selectedBatch.id)
         if (updated) setSelectedBatch(updated)
+      } else if (initialBatchId) {
+        const found = data.find(b => b.id === initialBatchId)
+        if (found) setSelectedBatch(found)
       }
     } finally {
       setLoading(false)
@@ -55,7 +59,7 @@ export default function BatchManager({ channelId, channelUsername }: BatchManage
 
   useEffect(() => {
     fetchBatches()
-  }, [channelId])
+  }, [channelId, initialBatchId])
 
   const handleDelete = async (id: number, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -288,6 +292,8 @@ function BatchDetail({ batch, channelUsername }: { batch: Batch; channelUsername
                 {cleanTitle(lastWatchedVideo.title)}
               </h3>
               <div className="flex items-center gap-3 text-xs text-zinc-400">
+                {lastWatchedVideo.duration > 0 && <span>{formatDuration(lastWatchedVideo.duration)}</span>}
+                {lastWatchedVideo.duration > 0 && <span>•</span>}
                 <span>{(lastWatchedVideo.watched_percentage || 0) > 0 ? `${Math.round(lastWatchedVideo.watched_percentage)}% watched` : 'Not started'}</span>
               </div>
             </div>
@@ -363,7 +369,7 @@ function BatchDetail({ batch, channelUsername }: { batch: Batch; channelUsername
                     {isVideo ? cleanTitle(video.title) : file.file_name}
                   </h4>
                   <div className="flex items-center gap-3 text-xs text-zinc-500 mt-0.5">
-                    <span>{isVideo ? 'Video Lecture' : `${ext || 'File'} • ${(file.file_size / 1024 / 1024).toFixed(1)} MB`}</span>
+                    <span>{isVideo ? `Video • ${formatDuration(video.duration)}` : `${ext || 'File'} • ${(file.file_size / 1024 / 1024).toFixed(1)} MB`}</span>
                     {isVideo && video.watched_percentage > 0 && (
                       <span className="text-indigo-400 font-medium">• {Math.round(video.watched_percentage)}% watched</span>
                     )}
@@ -391,7 +397,7 @@ function BatchDetail({ batch, channelUsername }: { batch: Batch; channelUsername
         <DocumentModal 
           isOpen={!!selectedFile}
           onClose={() => setSelectedFile(null)} 
-          fileUrl={`${API_BASE}/api/file/${selectedFile.id}/stream`}
+          fileUrl={`${API_BASE}/api/stream/file/${selectedFile.id}`}
           fileName={selectedFile.file_name || 'Document'}
           mimeType={selectedFile.mime_type}
         />

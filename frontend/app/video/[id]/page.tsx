@@ -42,7 +42,7 @@ import { Card } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { cn, cleanTitle } from '@/lib/utils'
+import { cn, cleanTitle, formatDuration } from '@/lib/utils'
 
 export default function VideoPage() {
   const params = useParams()
@@ -212,7 +212,7 @@ export default function VideoPage() {
   }
 
   const backHref = video.channel_username 
-    ? (video.batch_id ? `/channel/${video.channel_username}?tab=batches` : `/channel/${video.channel_username}`)
+    ? (video.batch_id ? `/channel/${video.channel_username}?tab=batches&batchId=${video.batch_id}` : `/channel/${video.channel_username}`)
     : '/'
 
   return (
@@ -346,7 +346,7 @@ export default function VideoPage() {
                             <ExternalLink size={14} className="mr-2" /> View
                           </Button>
                           <Button variant="secondary" className="flex-1 bg-[#18181b] hover:bg-zinc-800 text-zinc-300 h-8 text-xs rounded-lg" asChild>
-                            <a href={`${API_BASE}/api/file/${file.id}/download`}>
+                            <a href={`${API_BASE}/api/stream/file/${file.id}`}>
                               <Download size={14} className="mr-2" /> Download
                             </a>
                           </Button>
@@ -447,7 +447,7 @@ export default function VideoPage() {
                                   {cleanTitle(vid.title)}
                                 </h5>
                                 <div className="flex items-center gap-2 text-[10px] text-zinc-500 mt-0.5">
-                                  <span>{Math.floor((vid.duration || 0) / 60)}:{(vid.duration % 60).toString().padStart(2, '0')}</span>
+                                  <span>{formatDuration(vid.duration || 0)}</span>
                                   {vid.watched_percentage > 0 && (
                                     <span className="text-indigo-400">• {Math.round(vid.watched_percentage)}%</span>
                                   )}
@@ -510,7 +510,7 @@ export default function VideoPage() {
         <DocumentModal 
           isOpen={!!selectedDoc}
           onClose={() => setSelectedDoc(null)}
-          fileUrl={`${API_BASE}/api/file/${selectedDoc.id}/stream`}
+          fileUrl={`${API_BASE}/api/stream/file/${selectedDoc.id}`}
           fileName={selectedDoc.file_name || 'Document'}
           mimeType={selectedDoc.mime_type}
         />

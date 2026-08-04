@@ -32,12 +32,22 @@ router.get('/channel/:username/files', (req, res) => {
 });
 
 // ─── GET /api/file/:id ──────────────────────────────────────────────────────
-router.get('/file/:id', (req, res) => {
+router.get('/:id', (req, res) => {
   const file = getOne('SELECT * FROM files WHERE id = ?', [req.params.id]);
   if (!file) {
     return res.status(404).json({ error: 'File not found' });
   }
   res.json(file);
+});
+
+// ─── GET /api/file/:id/stream ───────────────────────────────────────────────
+router.get('/:id/stream', (req, res) => {
+  res.redirect(`/api/stream/file/${req.params.id}`);
+});
+
+// ─── GET /api/file/:id/download ─────────────────────────────────────────────
+router.get('/:id/download', (req, res) => {
+  res.redirect(`/api/stream/file/${req.params.id}`);
 });
 
 module.exports = router;

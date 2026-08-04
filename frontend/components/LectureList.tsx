@@ -1,7 +1,7 @@
 'use client'
 
 import { Video } from '@/lib/api'
-import { cn, cleanTitle } from '@/lib/utils'
+import { cn, cleanTitle, formatDuration } from '@/lib/utils'
 import { Play } from 'lucide-react'
 import Link from 'next/link'
 
@@ -87,7 +87,7 @@ export default function LectureList({ videos, channelUsername, currentVideoId }:
                   {cleaned}
                 </h5>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-600">
-                  {isCurrent ? 'CURRENT' : `${Math.floor(video.duration / 60)}:${(video.duration % 60).toString().padStart(2, '0')}`}
+                  {isCurrent ? 'CURRENT' : formatDuration(video.duration)}
                 </span>
               </div>
             </Link>

@@ -26,6 +26,21 @@ export function truncateTitle(title: string, limit: number = 60): string {
   return title.slice(0, limit) + '...'
 }
 
+export function formatDuration(seconds: number): string {
+  if (!seconds || seconds <= 0) return '0m'
+  const hours = Math.floor(seconds / 3600)
+  const mins = Math.floor((seconds % 3600) / 60)
+  const secs = Math.floor(seconds % 60)
+
+  if (hours > 0) {
+    return mins > 0 ? `${hours} hr ${mins} min` : `${hours} hr`
+  }
+  if (mins > 0) {
+    return secs > 0 && mins < 5 ? `${mins} min ${secs}s` : `${mins} min`
+  }
+  return `${secs}s`
+}
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }

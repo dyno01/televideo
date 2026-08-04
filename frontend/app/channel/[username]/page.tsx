@@ -40,9 +40,16 @@ export default function ChannelPage() {
   const [error, setError] = useState('')
   const [rescanning, setRescanning] = useState(false)
 
+  const [initialBatchId, setInitialBatchId] = useState<number | undefined>(undefined)
+
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search)
     const tab = searchParams.get('tab') as Tab
+    const bId = searchParams.get('batchId')
+    if (bId) {
+      const parsed = parseInt(bId, 10)
+      if (!isNaN(parsed)) setInitialBatchId(parsed)
+    }
     if (tab && ['videos', 'pdfs', 'files', 'batches', 'overview'].includes(tab)) {
       setActiveTab(tab)
     }
@@ -313,7 +320,7 @@ export default function ChannelPage() {
                               <Button className="flex-1 gap-2 bg-[#6366f1] hover:bg-[#6366f1]/90 text-[#fafafa] rounded-lg" onClick={() => router.push(`/video/${lastVideo.id}`)}>
                                 <Play size={16} fill="currentColor" /> Resume
                               </Button>
-                              <Button variant="outline" className="flex-1 border-[#27272a] bg-transparent text-[#a1a1aa] hover:bg-[#18181b] hover:text-[#fafafa] rounded-lg" onClick={() => setActiveTab('batches')}>
+                              <Button variant="outline" className="flex-1 border-[#27272a] bg-transparent text-[#a1a1aa] hover:bg-[#18181b] hover:text-[#fafafa] rounded-lg" onClick={() => { setInitialBatchId(batch.id); setActiveTab('batches'); }}>
                                 View Batch
                               </Button>
                             </div>
@@ -361,7 +368,7 @@ export default function ChannelPage() {
 
             {activeTab === 'batches' && channel && (
               <div className="animate-in fade-in duration-500">
-                <BatchManager channelId={channel.id} channelUsername={username} />
+                <BatchManager channelId={channel.id} channelUsername={username} initialBatchId={initialBatchId} />
               </div>
             )}
 
