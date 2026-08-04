@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { 
@@ -13,7 +13,9 @@ import {
   FileText, 
   Download, 
   ExternalLink,
-  Play
+  Play,
+  CheckCircle2,
+  ListOrdered
 } from 'lucide-react'
 import { 
   getVideo, 
@@ -33,7 +35,7 @@ import {
 import VideoPlayer, { type VideoPlayerHandle } from '@/components/VideoPlayer'
 import NotesPanel from '@/components/NotesPanel'
 import LectureList from '@/components/LectureList'
-import FileLibrary from '@/components/FileLibrary'
+import DocumentModal from '@/components/DocumentModal'
 import TelegramAuthModal from '@/components/TelegramAuthModal'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -49,6 +51,7 @@ export default function VideoPage() {
 
   const [video, setVideo] = useState<Video | null>(null)
   const [channelVideos, setChannelVideos] = useState<Video[]>([])
+  const [batchSequence, setBatchSequence] = useState<SequenceItem[]>([])
   const [videoFiles, setVideoFiles] = useState<TelegramFile[]>([])
   const [tags, setTags] = useState<VideoTag[]>([])
   const [newTag, setNewTag] = useState('')
@@ -57,8 +60,68 @@ export default function VideoPage() {
   const [activeTab, setActiveTab] = useState<'playlist' | 'notes'>('playlist')
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   const [isTagging, setIsTagging] = useState(false)
-  const playerRef = useRef<VideoPlayerHandle>(null)
+  const [selectedDoc, setSelectedDoc] = useState<TelegramFile | null>(null)
 
+  const playerRef = useRef<VideoPlayerHandle>(null)
+  const lastSavedRef = useRef<{ time: number; ts: number }>({ time: 0, ts: 0 })
+  const currentPosRef = useRef<{ currentTime: number; duration: number }>({ currentTime: 0, duration: 0 })
+
+  // --- PROGRESS PERSISTENCE (100% Reliable across all leave events) ---
+  const persistProgress = useCallback((currentTime: number, duration: number, force: boolean = false) => {
+    if (!videoId || isNaN(videoId) || !duration || duration <= 0) return
+
+    currentPosRef.current = { currentTime, duration }
+
+    const now = Date.now()
+    if (!force && Math.abs(currentTime - lastSavedRef.current.time) < 3 && now - lastSavedRef.current.ts < 3000) {
+      return
+    }
+
+    lastSavedRef.current = { time: currentTime, ts: now }
+
+    // Use keepalive fetch so HTTP request finishes even if page unmounts/navigates
+    fetch(`${API_BASE}/api/progress`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ videoId, currentTime, duration }),
+      keepalive: true,
+    }).catch(() => {})
+  }, [videoId])
+
+  // Save progress on unmount / navigation
+  useEffect(() => {
+    return () => {
+      const { currentTime, duration } = currentPosRef.current
+      if (videoId && duration > 0) {
+        fetch(`${API_BASE}/api/progress`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ videoId, currentTime, duration }),
+          keepalive: true,
+        }).catch(() => {})
+      }
+    }
+  }, [videoId])
+
+  // Save progress on browser tab close / refresh
+  useEffect(() => {
+    const handleUnload = () => {
+      const { currentTime, duration } = currentPosRef.current
+      if (videoId && duration > 0) {
+        const blob = new Blob([JSON.stringify({ videoId, currentTime, duration })], { type: 'application/json' })
+        navigator.sendBeacon(`${API_BASE}/api/progress`, blob)
+      }
+    }
+
+    window.addEventListener('beforeunload', handleUnload)
+    window.addEventListener('pagehide', handleUnload)
+    return () => {
+      window.removeEventListener('beforeunload', handleUnload)
+      window.removeEventListener('pagehide', handleUnload)
+    }
+  }, [videoId])
+
+  // Load video & batch/channel context
   useEffect(() => {
     if (isNaN(videoId)) { 
       setError('Invalid video ID specified in the navigation path.')
@@ -70,8 +133,10 @@ export default function VideoPage() {
     getVideo(videoId)
       .then(async (v) => {
         setVideo(v)
+
         if (v.batch_id) {
           getBatchSequence(v.batch_id).then(seq => {
+            setBatchSequence(seq)
             const vids = seq.filter(i => i.item_type === 'video') as Video[]
             setChannelVideos(vids)
           }).catch(() => [])
@@ -111,11 +176,20 @@ export default function VideoPage() {
     }
   }
 
+  const handleNavigateToVideo = (targetVideoId: number) => {
+    // Save current progress before navigating to next/prev video
+    const { currentTime, duration } = currentPosRef.current
+    if (duration > 0) {
+      persistProgress(currentTime, duration, true)
+    }
+    router.push(`/video/${targetVideoId}`)
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center space-y-4 bg-[#0a0a0b]">
         <Loader2 className="w-10 h-10 animate-spin text-indigo-500" />
-        <p className="text-sm font-bold uppercase tracking-widest text-zinc-500">Initializing context...</p>
+        <p className="text-sm font-bold uppercase tracking-widest text-zinc-500">Initializing Video Studio...</p>
       </div>
     )
   }
@@ -137,25 +211,31 @@ export default function VideoPage() {
     )
   }
 
+  const backHref = video.channel_username 
+    ? (video.batch_id ? `/channel/${video.channel_username}?tab=batches` : `/channel/${video.channel_username}`)
+    : '/'
+
   return (
     <main className="min-h-screen bg-[#0a0a0b] text-zinc-50 flex flex-col font-sans">
       {/* HEADER */}
       <header className="flex items-center justify-between px-4 lg:px-6 h-14 border-b border-zinc-800 bg-[#111113] sticky top-0 z-50">
         <div className="flex items-center gap-4 min-w-0">
           <Link
-            href={video.channel_username 
-              ? (video.batch_id ? `/channel/${video.channel_username}?tab=batches` : `/channel/${video.channel_username}`)
-              : '/'}
+            href={backHref}
+            onClick={() => {
+              const { currentTime, duration } = currentPosRef.current
+              if (duration > 0) persistProgress(currentTime, duration, true)
+            }}
             className="flex items-center text-sm font-semibold text-zinc-400 hover:text-zinc-50 transition-colors shrink-0"
           >
             <ArrowLeft size={16} className="mr-2" />
-            {video.batch_name ? `${video.batch_name}` : (video.channel_title || video.channel_username || 'Channel')}
+            {video.batch_name ? `Batch: ${video.batch_name}` : (video.channel_title || video.channel_username || 'Channel')}
           </Link>
         </div>
         <div className="flex items-center min-w-0 flex-1 justify-center px-4">
-            <h2 className="text-sm font-semibold text-zinc-50 truncate max-w-lg">
-              {cleanTitle(video.title)}
-            </h2>
+          <h2 className="text-sm font-semibold text-zinc-50 truncate max-w-lg">
+            {cleanTitle(video.title)}
+          </h2>
         </div>
         <div className="w-20 shrink-0"></div>
       </header>
@@ -170,17 +250,29 @@ export default function VideoPage() {
             video={video}
             ref={playerRef}
             initialPercentage={video.watched_percentage}
+            initialTimestamp={video.last_timestamp}
             onOpenTelegramAuth={() => setIsAuthModalOpen(true)}
+            onTimeUpdate={(c, d) => persistProgress(c, d, false)}
+            onPause={(c, d) => persistProgress(c, d, true)}
+            onEnded={() => {
+              if (video.duration) {
+                persistProgress(video.duration, video.duration, true)
+              }
+              const idx = channelVideos.findIndex(v => v.id === videoId)
+              if (idx !== -1 && idx < channelVideos.length - 1) {
+                handleNavigateToVideo(channelVideos[idx + 1].id)
+              }
+            }}
             onPrev={() => {
               const idx = channelVideos.findIndex(v => v.id === videoId)
               if (idx > 0) {
-                router.push(`/video/${channelVideos[idx - 1].id}`)
+                handleNavigateToVideo(channelVideos[idx - 1].id)
               }
             }}
             onNext={() => {
               const idx = channelVideos.findIndex(v => v.id === videoId)
               if (idx !== -1 && idx < channelVideos.length - 1) {
-                router.push(`/video/${channelVideos[idx + 1].id}`)
+                handleNavigateToVideo(channelVideos[idx + 1].id)
               }
             }}
           />
@@ -246,10 +338,12 @@ export default function VideoPage() {
                           </div>
                         </div>
                         <div className="flex gap-2 w-full">
-                          <Button variant="secondary" className="flex-1 bg-[#18181b] hover:bg-zinc-800 text-zinc-300 h-8 text-xs rounded-lg" asChild>
-                            <a href={`${API_BASE}/api/file/${file.id}/stream`} target="_blank" rel="noopener noreferrer">
-                              <ExternalLink size={14} className="mr-2" /> View
-                            </a>
+                          <Button 
+                            variant="secondary" 
+                            className="flex-1 bg-[#18181b] hover:bg-zinc-800 text-zinc-300 h-8 text-xs rounded-lg"
+                            onClick={() => setSelectedDoc(file)}
+                          >
+                            <ExternalLink size={14} className="mr-2" /> View
                           </Button>
                           <Button variant="secondary" className="flex-1 bg-[#18181b] hover:bg-zinc-800 text-zinc-300 h-8 text-xs rounded-lg" asChild>
                             <a href={`${API_BASE}/api/file/${file.id}/download`}>
@@ -277,7 +371,7 @@ export default function VideoPage() {
                    activeTab === 'playlist' ? "bg-zinc-800 text-zinc-50 shadow-sm" : "text-zinc-500 hover:text-zinc-300"
                  )}
                >
-                 Playlist
+                 {video.batch_id ? 'Batch Sequence' : 'Playlist'}
                </button>
                <button
                  onClick={() => setActiveTab('notes')}
@@ -293,19 +387,111 @@ export default function VideoPage() {
 
           <div className="flex-1 overflow-hidden relative min-h-[400px]">
             <div className={cn("absolute inset-0 flex-col bg-[#111113]", activeTab === 'playlist' ? 'flex' : 'hidden')}>
-              {video.batch_id && video.batch_name && (
-                <div className="p-4 border-b border-zinc-800 bg-[#18181b]">
-                  <p className="text-xs text-zinc-500 uppercase font-semibold tracking-wider mb-1">Batch Playlist</p>
-                  <p className="text-sm font-bold text-zinc-50 truncate">{video.batch_name}</p>
+              {video.batch_id && video.batch_name ? (
+                <div className="p-4 border-b border-zinc-800 bg-[#18181b] flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Serial Batch Curriculum</p>
+                    <p className="text-xs font-bold text-zinc-50 truncate max-w-[220px]">{video.batch_name}</p>
+                  </div>
+                  <Badge variant="outline" className="border-zinc-700 text-zinc-400 text-[10px]">
+                    {batchSequence.filter(i => i.item_type === 'video' && (i as Video).completed).length} / {batchSequence.filter(i => i.item_type === 'video').length} Done
+                  </Badge>
                 </div>
-              )}
+              ) : null}
+              
               <ScrollArea className="h-full flex-1">
-                <div className="p-4 pb-12">
-                  <LectureList
-                    videos={channelVideos}
-                    currentVideoId={videoId}
-                    channelUsername={video.channel_username || ''}
-                  />
+                <div className="p-3 pb-16 space-y-2">
+                  {video.batch_id && batchSequence.length > 0 ? (
+                    // --- BATCH SERIAL ALL CONTENT LIST (Videos + PDFs/Files in sequence order) ---
+                    batchSequence.map((item, idx) => {
+                      const isVideo = item.item_type === 'video'
+                      const isCurrent = isVideo && item.id === videoId
+                      const vid = item as Video
+                      const file = item as TelegramFile
+                      const ext = (file.file_name?.split('.').pop() || '').toUpperCase()
+
+                      if (isVideo) {
+                        const isCompleted = vid.completed === 1 || (vid.watched_percentage || 0) >= 90
+                        return (
+                          <div
+                            key={`seq-vid-${item.id}`}
+                            onClick={() => {
+                              if (!isCurrent) handleNavigateToVideo(item.id)
+                            }}
+                            className={cn(
+                              "group flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer",
+                              isCurrent 
+                                ? "bg-indigo-500/10 border-indigo-500/30 text-white" 
+                                : "bg-[#18181b]/50 border-zinc-800/80 hover:bg-[#18181b] hover:border-zinc-700"
+                            )}
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className={cn(
+                                "size-8 rounded-lg flex items-center justify-center shrink-0 font-bold text-xs",
+                                isCurrent ? "bg-indigo-500 text-white" : isCompleted ? "bg-emerald-500/20 text-emerald-400" : "bg-zinc-800 text-zinc-400"
+                              )}>
+                                {isCurrent ? (
+                                  <Play size={14} fill="currentColor" />
+                                ) : isCompleted ? (
+                                  <CheckCircle2 size={14} />
+                                ) : (
+                                  <span>{String(idx + 1).padStart(2, '0')}</span>
+                                )}
+                              </div>
+
+                              <div className="min-w-0 flex-1">
+                                <h5 className={cn(
+                                  "text-xs font-semibold truncate leading-snug",
+                                  isCurrent ? "text-indigo-200" : "text-zinc-200 group-hover:text-white"
+                                )}>
+                                  {cleanTitle(vid.title)}
+                                </h5>
+                                <div className="flex items-center gap-2 text-[10px] text-zinc-500 mt-0.5">
+                                  <span>{Math.floor((vid.duration || 0) / 60)}:{(vid.duration % 60).toString().padStart(2, '0')}</span>
+                                  {vid.watched_percentage > 0 && (
+                                    <span className="text-indigo-400">• {Math.round(vid.watched_percentage)}%</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      } else {
+                        // File/Document item in sequence
+                        return (
+                          <div
+                            key={`seq-file-${item.id}`}
+                            onClick={() => setSelectedDoc(file)}
+                            className="group flex items-center justify-between p-3 rounded-xl bg-[#18181b]/20 border border-zinc-800/40 hover:bg-[#18181b] hover:border-zinc-700 transition-all cursor-pointer"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="size-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-500 group-hover:text-indigo-400 shrink-0">
+                                <FileText size={14} />
+                              </div>
+                              <div className="min-w-0">
+                                <h5 className="text-xs font-medium text-zinc-300 group-hover:text-white truncate" title={file.file_name}>
+                                  {file.file_name}
+                                </h5>
+                                <p className="text-[10px] text-zinc-500">
+                                  {ext || 'Document'} • {(file.file_size / 1024 / 1024).toFixed(1)} MB
+                                </p>
+                              </div>
+                            </div>
+                            <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px] text-zinc-400 group-hover:text-white">
+                              View <ExternalLink size={12} className="ml-1" />
+                            </Button>
+                          </div>
+                        )
+                      }
+                    })
+                  ) : (
+                    // Fallback channel video list
+                    <LectureList
+                      videos={channelVideos}
+                      currentVideoId={videoId}
+                      channelUsername={video.channel_username || ''}
+                    />
+                  )}
                 </div>
               </ScrollArea>
             </div>
@@ -319,6 +505,16 @@ export default function VideoPage() {
           </div>
         </div>
       </div>
+
+      {selectedDoc && (
+        <DocumentModal 
+          isOpen={!!selectedDoc}
+          onClose={() => setSelectedDoc(null)}
+          fileUrl={`${API_BASE}/api/file/${selectedDoc.id}/stream`}
+          fileName={selectedDoc.file_name || 'Document'}
+          mimeType={selectedDoc.mime_type}
+        />
+      )}
 
       <TelegramAuthModal
         isOpen={isAuthModalOpen}

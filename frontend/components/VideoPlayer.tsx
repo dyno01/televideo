@@ -30,13 +30,27 @@ interface VideoPlayerProps {
   video: Video
   onProgress?: (percentage: number) => void
   initialPercentage?: number
+  initialTimestamp?: number
+  onTimeUpdate?: (currentTime: number, duration: number) => void
+  onPause?: (currentTime: number, duration: number) => void
   onEnded?: () => void
   onPrev?: () => void
   onNext?: () => void
   onOpenTelegramAuth?: () => void
 }
 
-const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video, onProgress, initialPercentage = 0, onEnded, onPrev, onNext, onOpenTelegramAuth }, ref) => {
+const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ 
+  video, 
+  onProgress, 
+  initialPercentage = 0, 
+  initialTimestamp = 0,
+  onTimeUpdate,
+  onPause,
+  onEnded, 
+  onPrev, 
+  onNext, 
+  onOpenTelegramAuth 
+}, ref) => {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [progress, setProgress] = useState(initialPercentage)
@@ -50,7 +64,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video, on
   const [isWaiting, setIsWaiting] = useState(false)
   const [hasStreamError, setHasStreamError] = useState(false)
   const [streamErrorDetails, setStreamErrorDetails] = useState('')
-
+  const hasSeekedInitialRef = useRef(false)
 
   const speeds = [1, 1.25, 1.5, 2]
 
@@ -82,14 +96,39 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video, on
   }))
 
   useEffect(() => {
+    hasSeekedInitialRef.current = false
+  }, [video.id])
+
+  useEffect(() => {
     const v = videoRef.current
     if (!v) return
 
-    const handleLoadedMetadata = () => {
+    const applyInitialSeek = () => {
+      if (hasSeekedInitialRef.current || !v.duration) return
+      hasSeekedInitialRef.current = true
       setDuration(v.duration)
-      if (initialPercentage > 0) {
-        v.currentTime = (initialPercentage / 100) * v.duration
+
+      let targetTime = 0
+      if (initialTimestamp && initialTimestamp > 0 && initialTimestamp < v.duration - 2) {
+        targetTime = initialTimestamp
+      } else if (initialPercentage > 0 && initialPercentage < 98) {
+        targetTime = (initialPercentage / 100) * v.duration
       }
+
+      if (targetTime > 0) {
+        v.currentTime = targetTime
+        setCurrentTime(targetTime)
+        setProgress((targetTime / v.duration) * 100)
+      }
+    }
+
+    const handleLoadedMetadata = () => {
+      applyInitialSeek()
+    }
+
+    const handleCanPlay = () => {
+      setIsWaiting(false)
+      applyInitialSeek()
     }
 
     const handleTimeUpdate = () => {
@@ -97,8 +136,28 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video, on
       const p = (v.currentTime / v.duration) * 100
       setProgress(p)
       setCurrentTime(v.currentTime)
+      if (onTimeUpdate) {
+        onTimeUpdate(v.currentTime, v.duration)
+      }
       if (onProgress && Math.abs(p - progress) > 1) {
         onProgress(p)
+      }
+    }
+
+    const handlePauseEvent = () => {
+      setIsPlaying(false)
+      if (v.duration && onPause) {
+        onPause(v.currentTime, v.duration)
+      }
+    }
+
+    const handleEndedEvent = () => {
+      setIsPlaying(false)
+      if (v.duration && onTimeUpdate) {
+        onTimeUpdate(v.duration, v.duration)
+      }
+      if (onEnded) {
+        onEnded()
       }
     }
 
@@ -109,18 +168,20 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ video, on
     v.addEventListener('timeupdate', handleTimeUpdate)
     v.addEventListener('waiting', handleWaiting)
     v.addEventListener('playing', handlePlaying)
-    v.addEventListener('canplay', handlePlaying)
-    v.addEventListener('ended', onEnded || (() => {}))
+    v.addEventListener('canplay', handleCanPlay)
+    v.addEventListener('pause', handlePauseEvent)
+    v.addEventListener('ended', handleEndedEvent)
 
     return () => {
       v.removeEventListener('loadedmetadata', handleLoadedMetadata)
       v.removeEventListener('timeupdate', handleTimeUpdate)
       v.removeEventListener('waiting', handleWaiting)
       v.removeEventListener('playing', handlePlaying)
-      v.removeEventListener('canplay', handlePlaying)
-      v.removeEventListener('ended', onEnded || (() => {}))
+      v.removeEventListener('canplay', handleCanPlay)
+      v.removeEventListener('pause', handlePauseEvent)
+      v.removeEventListener('ended', handleEndedEvent)
     }
-  }, [video.id, onProgress])
+  }, [video.id, initialPercentage, initialTimestamp, onTimeUpdate, onPause, onEnded, onProgress])
 
   // Synchronize playback speed
   useEffect(() => {
