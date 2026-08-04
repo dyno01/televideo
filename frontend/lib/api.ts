@@ -14,6 +14,16 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
+api.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('app_passcode_token')
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`
+    }
+  }
+  return config
+})
+
 // ── Types ───────────────────────────────────────────────────────────────────
 
 export interface Channel {
@@ -245,5 +255,19 @@ export const addVideoTag = (videoId: number, tag: string): Promise<VideoTag> =>
 
 export const removeVideoTag = (id: number): Promise<{ success: boolean }> =>
   api.delete<{ success: boolean }>(`/api/tags/${id}`).then(d)
+
+// ── Passcode Security API ───────────────────────────────────────────────────
+
+export const getPasscodeStatus = (): Promise<{ passcodeSet: boolean }> =>
+  api.get<{ passcodeSet: boolean }>('/api/telegram/passcode-status').then(d)
+
+export const verifyPasscode = (passcode: string): Promise<{ success: boolean; token: string }> =>
+  api.post<{ success: boolean; token: string }>('/api/telegram/verify-passcode', { passcode }).then(d)
+
+export const setAppPasscode = (passcode: string, currentPasscode?: string): Promise<{ success: boolean; token?: string }> =>
+  api.post<{ success: boolean; token?: string }>('/api/telegram/set-passcode', { passcode, currentPasscode }).then(d)
+
+export const removeAppPasscode = (currentPasscode: string): Promise<{ success: boolean }> =>
+  api.post<{ success: boolean }>('/api/telegram/remove-passcode', { currentPasscode }).then(d)
 
 export default api

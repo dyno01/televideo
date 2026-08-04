@@ -45,6 +45,36 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+const { getSetting } = require('./db/database');
+const { verifyPasscodeToken } = require('./routes/authRoutes');
+
+// ─── App Passcode Security Middleware ──────────────────────────────────────
+app.use((req, res, next) => {
+  const storedHash = getSetting('APP_PASSCODE', process.env.APP_PASSCODE || null);
+  if (!storedHash) {
+    return next(); // Passcode protection disabled
+  }
+
+  const path = req.path;
+  if (
+    path === '/api/health' ||
+    path === '/api/telegram/passcode-status' ||
+    path === '/api/telegram/verify-passcode' ||
+    path === '/api/telegram/status'
+  ) {
+    return next();
+  }
+
+  const authHeader = req.headers['authorization'] || '';
+  const token = authHeader.replace(/^Bearer\s+/, '') || req.headers['x-app-passcode'] || req.query.passcode;
+
+  if (token && verifyPasscodeToken(token, storedHash)) {
+    return next();
+  }
+
+  return res.status(401).json({ error: 'Passcode authentication required', passcodeRequired: true });
+});
+
 // ─── Health check ──────────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

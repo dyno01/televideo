@@ -75,14 +75,89 @@ router.post('/save-session', async (req, res) => {
   }
 });
 
-// POST /api/telegram/logout — logout current session
-router.post('/logout', async (_req, res) => {
-  try {
-    const result = await telegramClient.logout();
-    res.json(result);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+const crypto = require('crypto');
+const { getSetting, setSetting } = require('../db/database');
+
+function hashPasscode(passcode) {
+  return crypto.createHash('sha256').update(String(passcode).trim()).digest('hex');
+}
+
+function generatePasscodeToken(passcodeHash) {
+  const salt = 'televideo_secure_salt_2026';
+  return crypto.createHash('sha256').update(passcodeHash + salt).digest('hex');
+}
+
+function verifyPasscodeToken(token, passcodeHash) {
+  if (!token || !passcodeHash) return false;
+  const expectedToken = generatePasscodeToken(passcodeHash);
+  return token === expectedToken || token === passcodeHash;
+}
+
+// ─── GET /api/telegram/passcode-status ──────────────────────────────────────
+router.get('/passcode-status', (_req, res) => {
+  const stored = getSetting('APP_PASSCODE', process.env.APP_PASSCODE || null);
+  res.json({ passcodeSet: Boolean(stored) });
+});
+
+// ─── POST /api/telegram/verify-passcode ─────────────────────────────────────
+router.post('/verify-passcode', (req, res) => {
+  const { passcode } = req.body;
+  const stored = getSetting('APP_PASSCODE', process.env.APP_PASSCODE || null);
+
+  if (!stored) {
+    return res.json({ success: true, token: 'unlocked' });
   }
+
+  if (!passcode) {
+    return res.status(400).json({ error: 'Passcode is required' });
+  }
+
+  const inputHash = hashPasscode(passcode);
+  if (inputHash === stored) {
+    const token = generatePasscodeToken(stored);
+    return res.json({ success: true, token });
+  }
+
+  return res.status(401).json({ error: 'Incorrect passcode. Please try again.' });
+});
+
+// ─── POST /api/telegram/set-passcode ────────────────────────────────────────
+router.post('/set-passcode', (req, res) => {
+  const { passcode, currentPasscode } = req.body;
+  const stored = getSetting('APP_PASSCODE', process.env.APP_PASSCODE || null);
+
+  if (stored) {
+    if (!currentPasscode || hashPasscode(currentPasscode) !== stored) {
+      return res.status(401).json({ error: 'Current passcode is incorrect.' });
+    }
+  }
+
+  if (!passcode || String(passcode).trim().length < 4) {
+    return res.status(400).json({ error: 'Passcode must be at least 4 characters long.' });
+  }
+
+  const newHash = hashPasscode(passcode);
+  setSetting('APP_PASSCODE', newHash);
+  const token = generatePasscodeToken(newHash);
+
+  res.json({ success: true, message: 'App Passcode set successfully.', token });
+});
+
+// ─── POST /api/telegram/remove-passcode ─────────────────────────────────────
+router.post('/remove-passcode', (req, res) => {
+  const { currentPasscode } = req.body;
+  const stored = getSetting('APP_PASSCODE', process.env.APP_PASSCODE || null);
+
+  if (stored) {
+    if (!currentPasscode || hashPasscode(currentPasscode) !== stored) {
+      return res.status(401).json({ error: 'Current passcode is incorrect.' });
+    }
+  }
+
+  setSetting('APP_PASSCODE', null);
+  res.json({ success: true, message: 'App Passcode protection disabled.' });
 });
 
 module.exports = router;
+module.exports.verifyPasscodeToken = verifyPasscodeToken;
+module.exports.generatePasscodeToken = generatePasscodeToken;

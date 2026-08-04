@@ -22,7 +22,8 @@ import {
   getChannels, 
   deleteChannel, 
   getVideos, 
-  getTelegramStatus, 
+  getTelegramStatus,
+  getPasscodeStatus,
   Channel, 
   Video, 
   TelegramStatus 
@@ -33,6 +34,7 @@ import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import TelegramAuthModal from '@/components/TelegramAuthModal'
+import PasscodeLock from '@/components/PasscodeLock'
 import { cleanTitle } from '@/lib/utils'
 
 export default function HomePage() {
@@ -52,6 +54,7 @@ export default function HomePage() {
   
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   const [telegramStatus, setTelegramStatus] = useState<TelegramStatus | null>(null)
+  const [isLocked, setIsLocked] = useState(false)
 
   const checkTgStatus = async () => {
     try {
@@ -60,7 +63,18 @@ export default function HomePage() {
     } catch (_) {}
   }
 
+  const checkPasscode = async () => {
+    try {
+      const res = await getPasscodeStatus()
+      if (res.passcodeSet) {
+        const token = localStorage.getItem('app_passcode_token')
+        if (!token) setIsLocked(true)
+      }
+    } catch (_) {}
+  }
+
   useEffect(() => {
+    checkPasscode()
     checkTgStatus()
     loadDashboardData()
   }, [])
@@ -405,6 +419,10 @@ export default function HomePage() {
         onClose={() => setIsAuthModalOpen(false)}
         onStatusChange={setTelegramStatus}
       />
+
+      {isLocked && (
+        <PasscodeLock onUnlocked={() => { setIsLocked(false); loadDashboardData(); }} />
+      )}
     </div>
   )
 }
