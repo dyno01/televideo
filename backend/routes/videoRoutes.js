@@ -45,11 +45,13 @@ router.get('/video/:id', (req, res) => {
        v.*,
        c.username AS channel_username,
        c.title    AS channel_title,
+       b.name     AS batch_name,
        COALESCE(p.watched_percentage, 0) AS watched_percentage,
        COALESCE(p.last_timestamp, 0)     AS last_timestamp,
        COALESCE(p.completed, 0)          AS completed
      FROM videos v
      JOIN channels c ON c.id = v.channel_id
+     LEFT JOIN batches b ON b.id = v.batch_id
      LEFT JOIN progress p ON p.video_id = v.id
      WHERE v.id = ?`,
     [videoId]

@@ -143,11 +143,13 @@ export default function VideoPage() {
       <header className="flex items-center justify-between px-4 lg:px-6 h-14 border-b border-zinc-800 bg-[#111113] sticky top-0 z-50">
         <div className="flex items-center gap-4 min-w-0">
           <Link
-            href={video.channel_username ? `/channel/${video.channel_username}` : '/'}
+            href={video.channel_username 
+              ? (video.batch_id ? `/channel/${video.channel_username}?tab=batches` : `/channel/${video.channel_username}`)
+              : '/'}
             className="flex items-center text-sm font-semibold text-zinc-400 hover:text-zinc-50 transition-colors shrink-0"
           >
             <ArrowLeft size={16} className="mr-2" />
-            {video.channel_title || video.channel_username || 'Channel'}
+            {video.batch_name ? `${video.batch_name}` : (video.channel_title || video.channel_username || 'Channel')}
           </Link>
         </div>
         <div className="flex items-center min-w-0 flex-1 justify-center px-4">

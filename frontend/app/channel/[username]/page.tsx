@@ -258,11 +258,11 @@ export default function ChannelPage() {
                 </h2>
                 
                 {/* 1. All Channel Videos in-progress fallback */}
-                {videos.filter(v => (v.watched_percentage || 0) > 0 && !v.completed).length > 0 && (
+                {videos.filter(v => ((v.watched_percentage || 0) > 0 || (v.last_timestamp || 0) > 0) && !v.completed).length > 0 && (
                   <div className="mb-6">
                     <p className="text-xs font-semibold text-[#a1a1aa] uppercase tracking-wider mb-3">Recent Channel Progress</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {videos.filter(v => (v.watched_percentage || 0) > 0 && !v.completed).slice(0, 3).map(vid => (
+                      {videos.filter(v => ((v.watched_percentage || 0) > 0 || (v.last_timestamp || 0) > 0) && !v.completed).slice(0, 3).map(vid => (
                         <Card key={vid.id} className="p-4 bg-[#111113] border-[#27272a] rounded-xl flex flex-col justify-between gap-3 shadow-none hover:border-[#52525b] transition-colors">
                           <div>
                             <h3 className="font-semibold text-sm text-[#fafafa] line-clamp-2 leading-tight" title={vid.title}>{cleanTitle(vid.title)}</h3>
