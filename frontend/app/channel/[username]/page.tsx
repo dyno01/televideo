@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { 
   ArrowLeft, Video as VideoIcon, FileText, Folder, RefreshCw, Loader2, AlertCircle, 
-  Layers, LayoutDashboard, Settings, Menu, X, Play, ChevronRight, BookOpen
+  Layers, LayoutDashboard, Settings, Menu, X, Play, ChevronRight, BookOpen, Lock
 } from 'lucide-react'
 import { getChannel, getVideos, getFiles, scanChannel, getBatches, getBatchVideos, type Channel, type Video, type TelegramFile, type Batch } from '@/lib/api'
 import LectureList from '@/components/LectureList'
@@ -195,6 +195,17 @@ export default function ChannelPage() {
         >
           <Settings size={16} />
           Telegram Settings
+        </Button>
+        <Button 
+          variant="ghost" 
+          className="w-full justify-start gap-2 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10"
+          onClick={() => {
+            localStorage.removeItem('app_passcode_token')
+            window.dispatchEvent(new Event('app_passcode_required'))
+          }}
+        >
+          <Lock size={16} />
+          Lock App
         </Button>
       </div>
     </div>

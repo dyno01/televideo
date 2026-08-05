@@ -15,7 +15,8 @@ import {
   ShieldAlert, 
   BookOpen, 
   TrendingUp, 
-  Play 
+  Play,
+  Lock
 } from 'lucide-react'
 import { 
   scanChannel, 
@@ -219,6 +220,17 @@ export default function HomePage() {
                 <span>Telegram Auth</span>
               </>
             )}
+          </button>
+          <button
+            onClick={() => {
+              localStorage.removeItem('app_passcode_token')
+              window.dispatchEvent(new Event('app_passcode_required'))
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-800 hover:text-white transition-all"
+            title="Lock Dashboard / Log Out Passcode"
+          >
+            <Lock size={14} className="text-indigo-400" />
+            <span className="hidden sm:inline">Lock App</span>
           </button>
           <button
             onClick={() => setIsAuthModalOpen(true)}

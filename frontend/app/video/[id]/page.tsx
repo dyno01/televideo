@@ -282,6 +282,15 @@ export default function VideoPage() {
               <h1 className="text-xl lg:text-3xl font-bold text-zinc-50 tracking-tight">
                 {cleanTitle(video.title)}
               </h1>
+
+              <div className="flex items-center gap-3 text-xs text-zinc-400 font-medium">
+                <span className="bg-zinc-900 border border-zinc-800 px-3 py-1 rounded-lg text-indigo-300 font-semibold">
+                  {formatDuration(video.duration)}
+                </span>
+                {video.watched_percentage > 0 && (
+                  <span className="text-zinc-400">• {Math.round(video.watched_percentage)}% Watched</span>
+                )}
+              </div>
               
               {/* VIDEO TAGS SECTION */}
               <div className="flex flex-wrap items-center gap-2">
