@@ -419,10 +419,6 @@ export default function HomePage() {
         onClose={() => setIsAuthModalOpen(false)}
         onStatusChange={setTelegramStatus}
       />
-
-      {isLocked && (
-        <PasscodeLock onUnlocked={() => { setIsLocked(false); loadDashboardData(); }} />
-      )}
     </div>
   )
 }

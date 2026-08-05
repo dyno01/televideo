@@ -3,6 +3,8 @@ import './globals.css'
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 
+import PasscodeGuard from '@/components/PasscodeGuard'
+
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
@@ -18,7 +20,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={cn("dark", geist.variable)}>
       <body className="min-h-screen font-sans antialiased" suppressHydrationWarning>
-        {children}
+        <PasscodeGuard>
+          {children}
+        </PasscodeGuard>
       </body>
     </html>
   )

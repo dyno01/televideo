@@ -24,6 +24,18 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error?.response?.status === 401 && error?.response?.data?.passcodeRequired) {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('app_passcode_required'))
+      }
+    }
+    return Promise.reject(error)
+  }
+)
+
 // ── Types ───────────────────────────────────────────────────────────────────
 
 export interface Channel {
