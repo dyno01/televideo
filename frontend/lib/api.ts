@@ -230,6 +230,7 @@ export interface TelegramUser {
 export interface TelegramStatus {
   configured: boolean
   authenticated: boolean
+  hasSession?: boolean
   user: TelegramUser | null
   apiId?: number
   apiHashConfigured?: boolean

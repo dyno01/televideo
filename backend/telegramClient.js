@@ -136,11 +136,13 @@ async function getClient() {
 async function getStatus() {
   const { apiId, apiHash, sessionString } = getConfig();
   const configured = Boolean(apiId && apiHash);
+  const hasSession = Boolean(sessionString && sessionString.trim().length > 10);
 
   if (!configured) {
     return {
       configured: false,
       authenticated: false,
+      hasSession: false,
       user: null,
       apiId,
       apiHashConfigured: Boolean(apiHash),
@@ -153,6 +155,7 @@ async function getStatus() {
     return {
       configured: true,
       authenticated: true,
+      hasSession: true,
       user: me ? {
         id: String(me.id),
         username: me.username || null,
@@ -165,7 +168,8 @@ async function getStatus() {
   } catch (err) {
     return {
       configured: true,
-      authenticated: false,
+      authenticated: hasSession,
+      hasSession,
       user: null,
       apiId,
       apiHashConfigured: true,
