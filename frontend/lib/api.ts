@@ -4,9 +4,21 @@
  */
 import axios, { AxiosResponse } from 'axios'
 
-export const API_BASE =
-  (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_URL) ||
-  'http://localhost:4000'
+export const getApiBase = (): string => {
+  if (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL
+  }
+  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+    const host = window.location.hostname
+    const protocol = window.location.protocol || 'http:'
+    if (host !== 'localhost' && host !== '127.0.0.1') {
+      return `${protocol}//${host}:4000`
+    }
+  }
+  return 'http://localhost:4000'
+}
+
+export const API_BASE = getApiBase()
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -15,6 +27,7 @@ const api = axios.create({
 })
 
 api.interceptors.request.use((config) => {
+  config.baseURL = getApiBase()
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('app_passcode_token')
     if (token) {

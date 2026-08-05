@@ -19,7 +19,7 @@ import {
   Loader2
 } from 'lucide-react'
 import { cn, getMediaTokenQuery } from '@/lib/utils'
-import { Video, API_BASE } from '@/lib/api'
+import { Video, getApiBase } from '@/lib/api'
 
 export interface VideoPlayerHandle {
   seekTo: (seconds: number) => void
@@ -321,7 +321,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   const handleVideoError = async () => {
     setHasStreamError(true)
     try {
-      const res = await fetch(`${API_BASE}/api/stream/${video.id}`, { headers: { Range: 'bytes=0-1' } })
+      const res = await fetch(`${getApiBase()}/api/stream/${video.id}`, { headers: { Range: 'bytes=0-1' } })
       if (!res.ok) {
         const json = await res.json().catch(() => ({}))
         if (json.error) {
@@ -352,7 +352,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     >
       <video
         ref={videoRef}
-        src={`${API_BASE}/api/stream/${video.id}${getMediaTokenQuery()}`}
+        src={`${getApiBase()}/api/stream/${video.id}${getMediaTokenQuery()}`}
         className="w-full h-full object-contain"
         onClick={handleVideoClick}
         onError={handleVideoError}
