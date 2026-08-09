@@ -452,39 +452,40 @@ export default function VideoPage() {
                               if (!isCurrent) handleNavigateToVideo(item.id)
                             }}
                             className={cn(
-                              "group flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer",
+                              "group flex items-center justify-between p-2 rounded-lg border transition-all cursor-pointer",
                               isCurrent 
                                 ? "bg-indigo-500/10 border-indigo-500/30 text-white" 
-                                : "bg-[#18181b]/50 border-zinc-800/80 hover:bg-[#18181b] hover:border-zinc-700"
+                                : "bg-[#18181b]/40 border-zinc-800/60 hover:bg-[#18181b] hover:border-zinc-700"
                             )}
                           >
-                            <div className="flex items-center gap-3 min-w-0">
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
                               <div className={cn(
-                                "size-8 rounded-lg flex items-center justify-center shrink-0 font-bold text-xs",
-                                isCurrent ? "bg-indigo-500 text-white" : isCompleted ? "bg-emerald-500/20 text-emerald-400" : "bg-zinc-800 text-zinc-400"
+                                "size-7 rounded-md flex items-center justify-center shrink-0 font-bold text-[11px]",
+                                isCurrent ? "bg-indigo-600 text-white" : isCompleted ? "bg-emerald-500/20 text-emerald-400" : "bg-zinc-800 text-zinc-400"
                               )}>
                                 {isCurrent ? (
-                                  <Play size={14} fill="currentColor" />
+                                  <Play size={12} fill="currentColor" />
                                 ) : isCompleted ? (
-                                  <CheckCircle2 size={14} />
+                                  <CheckCircle2 size={12} />
                                 ) : (
-                                  <span>{String(idx + 1).padStart(2, '0')}</span>
+                                  <span>{idx + 1}</span>
                                 )}
                               </div>
 
                               <div className="min-w-0 flex-1">
                                 <h5 className={cn(
-                                  "text-xs font-semibold truncate leading-snug",
-                                  isCurrent ? "text-indigo-200" : "text-zinc-200 group-hover:text-white"
+                                  "text-xs font-semibold truncate leading-tight",
+                                  isCurrent ? "text-indigo-200" : "text-zinc-300 group-hover:text-white"
                                 )}>
                                   {cleanTitle(vid.title)}
                                 </h5>
-                                <div className="flex items-center gap-2 text-[10px] text-zinc-500 mt-0.5">
-                                  <span>{formatDuration(vid.duration || 0)}</span>
-                                  {vid.watched_percentage > 0 && (
-                                    <span className="text-indigo-400">• {Math.round(vid.watched_percentage)}%</span>
-                                  )}
-                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-mono shrink-0 pl-2">
+                                <span>{formatDuration(vid.duration || 0)}</span>
+                                {vid.watched_percentage > 0 && !isCompleted && (
+                                  <span className="text-indigo-400 font-bold">({Math.round(vid.watched_percentage)}%)</span>
+                                )}
                               </div>
                             </div>
                           </div>

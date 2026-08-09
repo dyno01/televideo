@@ -175,17 +175,91 @@ export default function HomePage() {
     <div className="min-h-screen w-full bg-[#0a0a0b] text-zinc-100 font-sans selection:bg-indigo-500/30 selection:text-white">
       
       {/* 1. HEADER (sticky top) */}
-      <header className="sticky top-0 z-50 flex items-center justify-between border-b border-zinc-800/50 bg-[#0a0a0b]/80 px-6 py-4 backdrop-blur-md">
-        <div className="text-lg font-black tracking-tighter text-white">TeleVideo</div>
-        
-        <form onSubmit={handleScan} className="flex items-center gap-2 max-w-sm w-full mx-4">
+      <header className="sticky top-0 z-50 border-b border-zinc-800/50 bg-[#0a0a0b]/90 px-4 sm:px-6 py-3 sm:py-4 backdrop-blur-md space-y-3 sm:space-y-0">
+        <div className="flex items-center justify-between gap-4">
+          {/* Logo */}
+          <div className="flex items-center gap-2">
+            <div className="size-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/30">
+              <Play size={14} fill="currentColor" className="ml-0.5" />
+            </div>
+            <span className="text-lg font-black tracking-tighter text-white">TeleVideo</span>
+          </div>
+          
+          {/* Desktop Scan Form */}
+          <form onSubmit={handleScan} className="hidden sm:flex items-center gap-2 max-w-md w-full mx-4">
+            <div className="relative flex-1">
+              <div className="absolute inset-y-0 left-3 flex items-center text-zinc-500 pointer-events-none">
+                <Search size={14} />
+              </div>
+              <Input 
+                className="h-9 w-full rounded-lg border border-zinc-800 bg-[#111113] pl-9 pr-3 text-xs text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-1 focus-visible:ring-indigo-500 outline-none"
+                placeholder="Paste Telegram link or @username..."
+                value={channelInput}
+                onChange={e => setChannelInput(e.target.value)}
+              />
+            </div>
+            <Button 
+              type="submit" 
+              size="sm" 
+              disabled={isScanning || !channelInput.trim()}
+              className="h-9 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-colors shrink-0 shadow-lg shadow-indigo-600/20"
+            >
+              {isScanning ? <Loader2 size={14} className="animate-spin" /> : 'Scan Channel'}
+            </Button>
+          </form>
+
+          {/* User Actions */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-[10px] sm:text-[11px] font-bold border transition-all ${
+                telegramStatus?.authenticated
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
+                  : 'bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20'
+              }`}
+            >
+              {telegramStatus?.authenticated ? (
+                <>
+                  <ShieldCheck size={14} />
+                  <span className="max-w-[80px] sm:max-w-[140px] truncate">@{telegramStatus.user?.username || telegramStatus.user?.firstName || 'Connected'}</span>
+                </>
+              ) : (
+                <>
+                  <ShieldAlert size={14} />
+                  <span>Connect TG</span>
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => {
+                localStorage.removeItem('app_passcode_token')
+                window.dispatchEvent(new Event('app_passcode_required'))
+              }}
+              className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-lg text-xs font-semibold bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-800 hover:text-white transition-all shrink-0"
+              title="Lock Dashboard / Passcode Auth"
+            >
+              <Lock size={14} className="text-indigo-400" />
+              <span className="hidden sm:inline">Lock App</span>
+            </button>
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className="flex items-center justify-center rounded-lg size-8 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors shrink-0"
+              title="Settings"
+            >
+              <Settings size={16} />
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Scan Form (Row 2) */}
+        <form onSubmit={handleScan} className="flex sm:hidden items-center gap-2 w-full pt-1">
           <div className="relative flex-1">
             <div className="absolute inset-y-0 left-3 flex items-center text-zinc-500 pointer-events-none">
               <Search size={14} />
             </div>
             <Input 
-              className="h-9 w-full rounded-lg border border-zinc-800 bg-[#111113] pl-9 pr-3 text-sm text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-1 focus-visible:ring-indigo-500 outline-none"
-              placeholder="Paste link or @username"
+              className="h-9 w-full rounded-xl border border-zinc-800 bg-[#111113] pl-9 pr-3 text-xs text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-1 focus-visible:ring-indigo-500 outline-none"
+              placeholder="Paste Telegram channel link or @username..."
               value={channelInput}
               onChange={e => setChannelInput(e.target.value)}
             />
@@ -194,52 +268,11 @@ export default function HomePage() {
             type="submit" 
             size="sm" 
             disabled={isScanning || !channelInput.trim()}
-            className="h-9 px-4 rounded-lg bg-white text-zinc-950 hover:bg-zinc-200 font-semibold transition-colors"
+            className="h-9 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-colors shrink-0"
           >
-            {isScanning ? <Loader2 size={16} className="animate-spin" /> : 'Scan'}
+            {isScanning ? <Loader2 size={14} className="animate-spin" /> : 'Scan'}
           </Button>
         </form>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setIsAuthModalOpen(true)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all ${
-              telegramStatus?.authenticated
-                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
-                : 'bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20'
-            }`}
-          >
-            {telegramStatus?.authenticated ? (
-              <>
-                <ShieldCheck size={14} />
-                <span>@{telegramStatus.user?.username || telegramStatus.user?.firstName || 'Connected'}</span>
-              </>
-            ) : (
-              <>
-                <ShieldAlert size={14} />
-                <span>Telegram Auth</span>
-              </>
-            )}
-          </button>
-          <button
-            onClick={() => {
-              localStorage.removeItem('app_passcode_token')
-              window.dispatchEvent(new Event('app_passcode_required'))
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-800 hover:text-white transition-all"
-            title="Lock Dashboard / Log Out Passcode"
-          >
-            <Lock size={14} className="text-indigo-400" />
-            <span className="hidden sm:inline">Lock App</span>
-          </button>
-          <button
-            onClick={() => setIsAuthModalOpen(true)}
-            className="flex items-center justify-center rounded-lg h-8 w-8 text-zinc-400 hover:text-white hover:bg-zinc-800/50 transition-colors"
-            title="Settings"
-          >
-             <Settings size={18} />
-          </button>
-        </div>
       </header>
 
       <main className="max-w-[1400px] mx-auto px-6 py-8 flex flex-col gap-10">

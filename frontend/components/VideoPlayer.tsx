@@ -224,7 +224,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     const mins = Math.floor((time % 3600) / 60)
     const secs = Math.floor(time % 60)
     if (hours > 0) {
-      return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+      return `${hours} hr ${mins} min`
     }
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }

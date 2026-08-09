@@ -69,51 +69,57 @@ export default function LectureList({ videos, channelUsername, currentVideoId, s
           </button>
         </div>
       ) : (
-        <div className="flex flex-col gap-1.5 px-1">
-          {filteredVideos.map((video) => {
+        <div className="flex flex-col gap-1.5">
+          {filteredVideos.map((video, idx) => {
             const isCurrent = video.id === currentVideoId
             const cleaned = cleanTitle(video.title)
+            const isCompleted = video.completed === 1 || (video.watched_percentage || 0) >= 90
             
             return (
               <Link 
                 key={video.id} 
                 href={`/video/${video.id}`}
                 className={cn(
-                  "group relative flex items-center gap-4 p-3 rounded-xl transition-all duration-300 border",
+                  "group relative flex items-center justify-between p-2.5 rounded-xl transition-all duration-300 border",
                   isCurrent 
                     ? "bg-indigo-500/10 border-indigo-500/30 text-white" 
-                    : "bg-[#111113]/50 border-zinc-800/60 hover:bg-[#18181b] hover:border-zinc-700"
+                    : "bg-[#111113]/60 border-zinc-800/60 hover:bg-[#18181b] hover:border-zinc-700"
                 )}
               >
-                {/* Thumbnail Area */}
-                <div className="relative size-14 shrink-0 rounded-lg overflow-hidden bg-zinc-900 flex items-center justify-center">
-                   {isCurrent ? (
-                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-20">
-                        <Play size={16} fill="white" className="text-white" />
-                     </div>
-                   ) : video.completed ? (
-                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-20">
-                        <div className="size-5 rounded-full border border-white/20 flex items-center justify-center">
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="20 6 9 17 4 12"></polyline>
-                          </svg>
-                        </div>
-                     </div>
-                   ) : null}
-                   <div className="size-full bg-zinc-800/50" />
-                </div>
-
-                {/* Info Area */}
-                <div className="flex flex-col min-w-0 flex-1">
-                  <h5 className={cn(
-                    "text-[13px] font-bold leading-tight transition-colors mb-1 truncate pr-2",
-                    isCurrent ? "text-white" : "text-zinc-400 group-hover:text-zinc-200"
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  {/* Badge / Play Icon */}
+                  <div className={cn(
+                    "size-8 rounded-lg flex items-center justify-center shrink-0 font-bold text-xs",
+                    isCurrent ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30" : isCompleted ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-zinc-800/80 text-zinc-400"
                   )}>
-                    {cleaned}
-                  </h5>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-600">
-                    {isCurrent ? 'CURRENT' : formatDuration(video.duration)}
-                  </span>
+                    {isCurrent ? (
+                      <Play size={14} fill="currentColor" />
+                    ) : isCompleted ? (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    ) : (
+                      <span>{idx + 1}</span>
+                    )}
+                  </div>
+
+                  {/* Title */}
+                  <div className="min-w-0 flex-1">
+                    <h5 className={cn(
+                      "text-xs font-semibold leading-snug truncate pr-2",
+                      isCurrent ? "text-indigo-200 font-bold" : "text-zinc-300 group-hover:text-white"
+                    )}>
+                      {cleaned}
+                    </h5>
+                  </div>
+
+                  {/* Duration Badge */}
+                  <div className="flex items-center gap-2 text-[11px] text-zinc-400 font-mono shrink-0 pl-2">
+                    <span>{isCurrent ? 'Playing' : formatDuration(video.duration)}</span>
+                    {video.watched_percentage > 0 && !isCompleted && (
+                      <span className="text-indigo-400 font-bold">({Math.round(video.watched_percentage)}%)</span>
+                    )}
+                  </div>
                 </div>
               </Link>
             )
