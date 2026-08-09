@@ -525,38 +525,38 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
 
       {/* --- macOS-style Glassmorphic Center Overlay Buttons --- */}
       <div className={cn(
-        "absolute inset-0 z-25 flex items-center justify-center gap-6 pointer-events-none transition-all duration-300",
+        "absolute inset-0 z-25 flex items-center justify-center gap-3 sm:gap-6 pointer-events-none transition-all duration-300 pb-8 sm:pb-0",
         showControls && !isWaiting ? "opacity-100" : "opacity-0"
       )}>
         {/* Skip Back -10 */}
         <button
-          className="pointer-events-auto size-14 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white hover:bg-white/20 hover:scale-110 active:scale-95 transition-all shadow-2xl"
+          className="pointer-events-auto size-10 sm:size-14 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white hover:bg-white/20 hover:scale-110 active:scale-95 transition-all shadow-2xl"
           onClick={(e) => { e.stopPropagation(); skip(-10); triggerSeekRipple('left', 'ccw'); resetControlsTimeout(); }}
           title="Rewind 10s"
         >
-          <RotateCcw size={22} />
+          <RotateCcw className="size-4 sm:size-5" />
         </button>
 
         {/* Center Play/Pause */}
         <button
-          className="pointer-events-auto size-20 rounded-full bg-white/15 backdrop-blur-2xl border border-white/25 flex items-center justify-center text-white hover:bg-white/25 hover:scale-105 active:scale-95 transition-all shadow-2xl"
+          className="pointer-events-auto size-14 sm:size-20 rounded-full bg-white/15 backdrop-blur-2xl border border-white/25 flex items-center justify-center text-white hover:bg-white/25 hover:scale-105 active:scale-95 transition-all shadow-2xl"
           onClick={(e) => { e.stopPropagation(); togglePlay(); resetControlsTimeout(); }}
           title={isPlaying ? "Pause" : "Play"}
         >
           {isPlaying ? (
-            <Pause size={32} fill="white" />
+            <Pause className="size-6 sm:size-8" fill="white" />
           ) : (
-            <Play size={32} fill="white" className="ml-1" />
+            <Play className="size-6 sm:size-8 ml-1" fill="white" />
           )}
         </button>
 
         {/* Skip Forward +10 */}
         <button
-          className="pointer-events-auto size-14 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white hover:bg-white/20 hover:scale-110 active:scale-95 transition-all shadow-2xl"
+          className="pointer-events-auto size-10 sm:size-14 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white hover:bg-white/20 hover:scale-110 active:scale-95 transition-all shadow-2xl"
           onClick={(e) => { e.stopPropagation(); skip(10); triggerSeekRipple('right', 'cw'); resetControlsTimeout(); }}
           title="Forward 10s"
         >
-          <RotateCw size={22} />
+          <RotateCw className="size-4 sm:size-5" />
         </button>
       </div>
 
@@ -596,7 +596,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
 
       {/* --- Immersive Controls Layer --- */}
       <div className={cn(
-        "absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent transition-opacity duration-500 flex flex-col justify-end p-6 z-20 pointer-events-none",
+        "absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent transition-opacity duration-500 flex flex-col justify-end p-3 sm:p-4 lg:p-6 z-20 pointer-events-none",
         showControls || isDragging ? "opacity-100" : "opacity-0"
       )}>
         
