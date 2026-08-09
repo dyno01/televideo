@@ -40,7 +40,9 @@ export default function ChannelPage() {
   const [error, setError] = useState('')
   const [rescanning, setRescanning] = useState(false)
 
-  const [initialBatchId, setInitialBatchId] = useState<number | undefined>(undefined)
+  const [initialBatchId, setInitialBatchId] = useState<number | null>(null)
+  const [dismissedChannelVideos, setDismissedChannelVideos] = useState<Set<number>>(new Set())
+  const [dismissedBatches, setDismissedBatches] = useState<Set<number>>(new Set())
 
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search)
@@ -276,16 +278,23 @@ export default function ChannelPage() {
                 </h2>
                 
                 {/* 1. All Channel Videos in-progress fallback */}
-                {videos.filter(v => ((v.watched_percentage || 0) > 0 || (v.last_timestamp || 0) > 0) && !v.completed).length > 0 && (
+                {videos.filter(v => ((v.watched_percentage || 0) > 0 || (v.last_timestamp || 0) > 0) && !v.completed && !dismissedChannelVideos.has(v.id)).length > 0 && (
                   <div className="mb-6">
                     <p className="text-xs font-semibold text-[#a1a1aa] uppercase tracking-wider mb-3">Recent Channel Progress</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {videos.filter(v => ((v.watched_percentage || 0) > 0 || (v.last_timestamp || 0) > 0) && !v.completed).slice(0, 3).map(vid => (
-                        <Card key={vid.id} className="p-4 bg-[#111113] border-[#27272a] rounded-xl flex flex-col justify-between gap-3 shadow-none hover:border-[#52525b] transition-colors">
-                          <div>
+                    <div className="flex gap-4 overflow-x-auto pb-4 snap-x hide-scrollbar">
+                      {videos.filter(v => ((v.watched_percentage || 0) > 0 || (v.last_timestamp || 0) > 0) && !v.completed && !dismissedChannelVideos.has(v.id)).map(vid => (
+                        <Card key={vid.id} className="group/card relative flex-shrink-0 w-[300px] p-4 bg-[#111113] border-[#27272a] rounded-xl flex flex-col justify-between gap-3 shadow-none hover:border-[#52525b] transition-colors snap-start">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setDismissedChannelVideos(prev => new Set(Array.from(prev).concat(vid.id))) }}
+                            className="absolute top-3 right-3 z-10 size-6 rounded-full bg-zinc-900/80 border border-[#27272a] text-[#a1a1aa] hover:text-[#fafafa] hover:bg-[#18181b] flex items-center justify-center transition-all opacity-0 group-hover/card:opacity-100"
+                            title="Remove from continue watching"
+                          >
+                            <X size={12} />
+                          </button>
+                          <div className="pr-6">
                             <h3 className="font-semibold text-sm text-[#fafafa] line-clamp-2 leading-tight" title={vid.title}>{cleanTitle(vid.title)}</h3>
                           </div>
-                          <div className="space-y-3">
+                          <div className="space-y-3 mt-auto pt-2">
                             <div>
                               <div className="flex justify-between text-xs text-[#a1a1aa] mb-1">
                                 <span>Progress</span>
@@ -304,9 +313,12 @@ export default function ChannelPage() {
                 )}
 
                 {/* 2. Batch Continue Watching */}
-                {batches.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {batches.map(batch => {
+                {batches.filter(b => !dismissedBatches.has(b.id)).length > 0 && batches.some(b => {
+                  const vids = batchVideos[b.id] || []
+                  return vids.filter(v => (v.watched_percentage || 0) > 0 && !v.completed).length > 0
+                }) && (
+                  <div className="flex gap-4 overflow-x-auto pb-4 snap-x hide-scrollbar">
+                    {batches.filter(b => !dismissedBatches.has(b.id)).map(batch => {
                       const vids = batchVideos[batch.id] || []
                       const inProgress = vids.filter(v => (v.watched_percentage || 0) > 0 && !v.completed)
                       const lastVideo = inProgress.length > 0 ? inProgress[inProgress.length - 1] : null
@@ -314,12 +326,19 @@ export default function ChannelPage() {
                       if (!lastVideo) return null
                       
                       return (
-                        <Card key={batch.id} className="p-5 bg-[#111113] border-[#27272a] rounded-xl flex flex-col gap-4 shadow-none hover:border-[#52525b] transition-colors">
-                          <div>
+                        <Card key={batch.id} className="group/card relative flex-shrink-0 w-[350px] p-5 bg-[#111113] border-[#27272a] rounded-xl flex flex-col gap-4 shadow-none hover:border-[#52525b] transition-colors snap-start">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setDismissedBatches(prev => new Set(Array.from(prev).concat(batch.id))) }}
+                            className="absolute top-4 right-4 z-10 size-6 rounded-full bg-zinc-900/80 border border-[#27272a] text-[#a1a1aa] hover:text-[#fafafa] hover:bg-[#18181b] flex items-center justify-center transition-all opacity-0 group-hover/card:opacity-100"
+                            title="Remove from continue watching"
+                          >
+                            <X size={12} />
+                          </button>
+                          <div className="pr-6">
                             <Badge variant="outline" className="mb-3 border-[#52525b] text-[#a1a1aa] bg-[#18181b]">{batch.name}</Badge>
                             <h3 className="font-semibold text-[#fafafa] line-clamp-2 leading-tight" title={lastVideo.title}>{cleanTitle(lastVideo.title)}</h3>
                           </div>
-                          <div className="mt-auto space-y-4">
+                          <div className="mt-auto space-y-4 pt-2">
                             <div>
                               <div className="flex justify-between text-xs text-[#a1a1aa] mb-1.5">
                                 <span>Progress</span>
