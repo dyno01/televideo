@@ -16,7 +16,8 @@ import {
   BookOpen, 
   TrendingUp, 
   Play,
-  Lock
+  Lock,
+  X
 } from 'lucide-react'
 import { 
   scanChannel, 
@@ -51,6 +52,7 @@ export default function HomePage() {
   const [fetchError, setFetchError] = useState('')
   
   const [inProgressVideos, setInProgressVideos] = useState<Video[]>([])
+  const [dismissedVideoIds, setDismissedVideoIds] = useState<Set<number>>(new Set())
   const [overallCompletion, setOverallCompletion] = useState(0)
   
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
@@ -105,8 +107,13 @@ export default function HomePage() {
       )
       const allFetchedVideos = allResults.flat()
       
-      // Continue Learning: (watched_percentage > 0 || last_timestamp > 0) && completed === 0
-      const inProgress = allFetchedVideos.filter(v => ((v.watched_percentage || 0) > 0 || (v.last_timestamp || 0) > 0) && v.completed === 0)
+      // Continue Learning: deduplicated by ID, (watched_percentage > 0 || last_timestamp > 0) && completed === 0
+      const seenIds = new Set<number>()
+      const inProgress = allFetchedVideos.filter(v => {
+        if (seenIds.has(v.id)) return false
+        seenIds.add(v.id)
+        return ((v.watched_percentage || 0) > 0 || (v.last_timestamp || 0) > 0) && v.completed === 0
+      })
       setInProgressVideos(inProgress)
       
       // Calculate overall completion % (only from fetched videos that have progress)
@@ -319,20 +326,36 @@ export default function HomePage() {
         </section>
 
         {/* 3. CONTINUE LEARNING */}
-        {inProgressVideos.length > 0 && (
+        {inProgressVideos.filter(v => !dismissedVideoIds.has(v.id)).length > 0 && (
           <section className="flex flex-col gap-4">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <Play size={18} className="text-indigo-400" />
-              Continue Learning
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <Play size={18} className="text-indigo-400" />
+                Continue Learning
+              </h2>
+              <button
+                onClick={() => setDismissedVideoIds(new Set(inProgressVideos.map(v => v.id)))}
+                className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors font-medium"
+              >
+                Clear all
+              </button>
+            </div>
             <div className="flex gap-4 overflow-x-auto pb-4 snap-x hide-scrollbar">
-              {inProgressVideos.map(video => (
+              {inProgressVideos.filter(v => !dismissedVideoIds.has(v.id)).map(video => (
                 <div 
                   key={video.id} 
-                  className="flex-shrink-0 w-[300px] sm:w-[350px] bg-[#111113] border border-zinc-800 rounded-xl overflow-hidden snap-start hover:border-zinc-700 transition-colors"
+                  className="group/card flex-shrink-0 w-[300px] sm:w-[350px] bg-[#111113] border border-zinc-800 rounded-xl overflow-hidden snap-start hover:border-zinc-700 transition-colors relative"
                 >
+                  {/* Dismiss X button */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setDismissedVideoIds(prev => new Set(Array.from(prev).concat(video.id))) }}
+                    className="absolute top-3 right-3 z-10 size-6 rounded-full bg-zinc-900/80 border border-zinc-700 text-zinc-500 hover:text-white hover:bg-zinc-800 flex items-center justify-center transition-all opacity-0 group-hover/card:opacity-100"
+                    title="Remove from continue watching"
+                  >
+                    <X size={12} />
+                  </button>
                   <div className="p-4 flex flex-col gap-3 h-full">
-                    <div className="flex-1">
+                    <div className="flex-1 pr-6">
                       <h3 className="text-sm font-bold text-white line-clamp-2 mb-1" title={video.title}>
                         {cleanTitle(video.title) || 'Untitled Video'}
                       </h3>

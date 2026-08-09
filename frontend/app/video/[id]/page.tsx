@@ -161,12 +161,13 @@ export default function VideoPage() {
         setVideo(v)
 
         if (v.batch_id) {
+          // Load batch sequence (contains both videos & files in order)
           getBatchSequence(v.batch_id).then(seq => {
             setBatchSequence(seq)
-            const vids = seq.filter(i => i.item_type === 'video') as Video[]
-            setChannelVideos(vids)
+            // Do NOT set channelVideos here — avoid duplication
           }).catch(() => [])
         } else if (v.channel_username) {
+          // No batch — load all channel videos as playlist
           getVideos(v.channel_username).then(setChannelVideos).catch(() => [])
         }
         if (v.channel_username) {
@@ -439,19 +440,111 @@ export default function VideoPage() {
               
               <ScrollArea className="h-full flex-1">
                 <div className="p-3 pb-16 space-y-2">
-                  {/* --- DEDUPLICATED PLAYLIST & GUARANTEED PDF/FILE LIST --- */}
                   {(() => {
-                    const seqVideos = batchSequence.filter(i => i.item_type === 'video') as Video[]
-                    const displayVideos = seqVideos.length > 0 ? seqVideos : channelVideos
+                    // If we have a batch sequence, render items in their original order (videos + files mixed)
+                    // Otherwise fall back to channelVideos + channelFiles
+                    const hasBatchSeq = batchSequence.length > 0
 
-                    // Deduplicate videos by ID
+                    if (hasBatchSeq) {
+                      // Deduplicate batch sequence items by id+type
+                      const seenKeys = new Set<string>()
+                      const deduped = batchSequence.filter(item => {
+                        const key = `${item.item_type}-${item.id}`
+                        if (seenKeys.has(key)) return false
+                        seenKeys.add(key)
+                        return true
+                      })
+                      let videoIdx = 0
+                      return (
+                        <div className="space-y-1.5">
+                          {deduped.map((item) => {
+                            if (item.item_type === 'video') {
+                              const vid = item as Video
+                              const isCurrent = vid.id === videoId
+                              const isCompleted = vid.completed === 1 || (vid.watched_percentage || 0) >= 90
+                              videoIdx++
+                              const vIdx = videoIdx
+                              return (
+                                <div
+                                  key={`bseq-v-${vid.id}`}
+                                  onClick={() => { if (!isCurrent) handleNavigateToVideo(vid.id) }}
+                                  className={cn(
+                                    "group flex items-center justify-between p-2 rounded-lg border transition-all cursor-pointer",
+                                    isCurrent
+                                      ? "bg-indigo-500/10 border-indigo-500/30 text-white"
+                                      : "bg-[#18181b]/40 border-zinc-800/60 hover:bg-[#18181b] hover:border-zinc-700"
+                                  )}
+                                >
+                                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                    <div className={cn(
+                                      "size-7 rounded-md flex items-center justify-center shrink-0 font-bold text-[11px]",
+                                      isCurrent ? "bg-indigo-600 text-white" : isCompleted ? "bg-emerald-500/20 text-emerald-400" : "bg-zinc-800 text-zinc-400"
+                                    )}>
+                                      {isCurrent ? (
+                                        <Play size={12} fill="currentColor" />
+                                      ) : isCompleted ? (
+                                        <CheckCircle2 size={12} />
+                                      ) : (
+                                        <span>{vIdx}</span>
+                                      )}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <h5 className={cn(
+                                        "text-xs font-semibold truncate leading-tight",
+                                        isCurrent ? "text-indigo-200" : "text-zinc-300 group-hover:text-white"
+                                      )}>
+                                        {cleanTitle(vid.title)}
+                                      </h5>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-mono shrink-0 pl-2">
+                                      <span>{formatDuration(vid.duration || 0)}</span>
+                                      {vid.watched_percentage > 0 && !isCompleted && (
+                                        <span className="text-indigo-400 font-bold">({Math.round(vid.watched_percentage)}%)</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              )
+                            } else {
+                              // file item
+                              const file = item as TelegramFile
+                              const ext = (file.file_name?.split('.').pop() || '').toUpperCase()
+                              return (
+                                <div
+                                  key={`bseq-f-${file.id}`}
+                                  onClick={() => setSelectedDoc(file)}
+                                  className="group flex items-center justify-between p-2.5 rounded-xl bg-indigo-500/5 border border-indigo-500/15 hover:bg-indigo-500/10 hover:border-indigo-500/30 transition-all cursor-pointer"
+                                >
+                                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                    <div className="size-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
+                                      <FileText size={13} />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <h5 className="text-xs font-medium text-zinc-200 group-hover:text-white truncate" title={file.file_name}>
+                                        {file.file_name}
+                                      </h5>
+                                      <p className="text-[10px] text-zinc-500">
+                                        {ext || 'FILE'} • {file.file_size ? (file.file_size / 1024 / 1024).toFixed(1) + ' MB' : ''}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px] text-indigo-300 hover:text-white hover:bg-indigo-600/20">
+                                    View <ExternalLink size={12} className="ml-1" />
+                                  </Button>
+                                </div>
+                              )
+                            }
+                          })}
+                        </div>
+                      )
+                    }
+
+                    // Fallback: no batch — show channel videos then channel+video files
                     const vidMap = new Map<number, Video>()
-                    displayVideos.forEach(v => vidMap.set(v.id, v))
+                    channelVideos.forEach(v => vidMap.set(v.id, v))
                     const uniquePlaylistVideos = Array.from(vidMap.values())
 
-                    // Combine & deduplicate files across batch sequence, videoFiles, and channelFiles
                     const fileMap = new Map<number, TelegramFile>()
-                    batchSequence.filter(i => i.item_type === 'file').forEach(i => fileMap.set(i.id, i as TelegramFile))
                     videoFiles.forEach(f => fileMap.set(f.id, f))
                     channelFiles.forEach(f => fileMap.set(f.id, f))
                     const uniquePlaylistFiles = Array.from(fileMap.values())
@@ -471,8 +564,8 @@ export default function VideoPage() {
                                 }}
                                 className={cn(
                                   "group flex items-center justify-between p-2 rounded-lg border transition-all cursor-pointer",
-                                  isCurrent 
-                                    ? "bg-indigo-500/10 border-indigo-500/30 text-white" 
+                                  isCurrent
+                                    ? "bg-indigo-500/10 border-indigo-500/30 text-white"
                                     : "bg-[#18181b]/40 border-zinc-800/60 hover:bg-[#18181b] hover:border-zinc-700"
                                 )}
                               >
@@ -489,7 +582,6 @@ export default function VideoPage() {
                                       <span>{idx + 1}</span>
                                     )}
                                   </div>
-
                                   <div className="min-w-0 flex-1">
                                     <h5 className={cn(
                                       "text-xs font-semibold truncate leading-tight",
@@ -498,7 +590,6 @@ export default function VideoPage() {
                                       {cleanTitle(vid.title)}
                                     </h5>
                                   </div>
-
                                   <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-mono shrink-0 pl-2">
                                     <span>{formatDuration(vid.duration || 0)}</span>
                                     {vid.watched_percentage > 0 && !isCompleted && (
@@ -537,7 +628,7 @@ export default function VideoPage() {
                                         {file.file_name}
                                       </h5>
                                       <p className="text-[10px] text-zinc-500">
-                                        {ext || 'PDF'} • {(file.file_size / 1024 / 1024).toFixed(1)} MB
+                                        {ext || 'PDF'} • {file.file_size ? (file.file_size / 1024 / 1024).toFixed(1) + ' MB' : ''}
                                       </p>
                                     </div>
                                   </div>

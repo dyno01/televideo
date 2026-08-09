@@ -263,26 +263,35 @@ router.get('/:id/sequence', (req, res) => {
   const batch = getOne('SELECT * FROM batches WHERE id = ?', [id]);
   if (!batch) return res.status(404).json({ error: 'Batch not found' });
   
+  // Use a subquery to deduplicate videos BEFORE joining progress,
+  // avoiding duplicate rows from OR condition or multiple progress entries
   const videos = getAll(
-    `SELECT v.*, 'video' as item_type,
+    `SELECT vd.*, 'video' as item_type,
        COALESCE(p.watched_percentage, 0) AS watched_percentage,
        COALESCE(p.last_timestamp, 0)     AS last_timestamp,
        COALESCE(p.completed, 0)          AS completed,
        c.username AS channel_username,
        c.title    AS channel_title
-     FROM videos v
-     JOIN channels c ON c.id = v.channel_id
-     LEFT JOIN progress p ON p.video_id = v.id
-     WHERE v.batch_id = ? OR (v.channel_id = ? AND v.message_id >= ? AND v.message_id <= ?)
-     GROUP BY v.id`,
+     FROM (
+       SELECT DISTINCT v.*
+       FROM videos v
+       WHERE v.batch_id = ?
+          OR (v.channel_id = ? AND v.message_id >= ? AND v.message_id <= ?)
+     ) vd
+     JOIN channels c ON c.id = vd.channel_id
+     LEFT JOIN progress p ON p.video_id = vd.id`,
     [id, batch.channel_id, batch.start_msg_id, batch.end_msg_id]
   );
 
   const files = getAll(
-    `SELECT f.*, 'file' as item_type, c.username AS channel_username
-     FROM files f JOIN channels c ON c.id = f.channel_id
-     WHERE f.batch_id = ? OR (f.channel_id = ? AND f.message_id >= ? AND f.message_id <= ?)
-     GROUP BY f.id`,
+    `SELECT fd.*, 'file' as item_type, c.username AS channel_username
+     FROM (
+       SELECT DISTINCT f.*
+       FROM files f
+       WHERE f.batch_id = ?
+          OR (f.channel_id = ? AND f.message_id >= ? AND f.message_id <= ?)
+     ) fd
+     JOIN channels c ON c.id = fd.channel_id`,
     [id, batch.channel_id, batch.start_msg_id, batch.end_msg_id]
   );
 

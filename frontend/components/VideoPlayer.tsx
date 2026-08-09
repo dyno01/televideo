@@ -67,6 +67,23 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   const [streamErrorDetails, setStreamErrorDetails] = useState('')
   const hasSeekedInitialRef = useRef(false)
 
+  // Center overlay buttons (glassmorphic macOS style)
+  const [showCenterOverlay, setShowCenterOverlay] = useState(false)
+  const centerOverlayTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  // Seek ripple: { side: 'left'|'right'|'center', key: number }
+  const [seekRipple, setSeekRipple] = useState<{ side: 'left' | 'right' | 'center'; key: number } | null>(null)
+
+  const showCenterOverlayBriefly = () => {
+    setShowCenterOverlay(true)
+    if (centerOverlayTimeoutRef.current) clearTimeout(centerOverlayTimeoutRef.current)
+    centerOverlayTimeoutRef.current = setTimeout(() => setShowCenterOverlay(false), 2500)
+  }
+
+  const triggerSeekRipple = (side: 'left' | 'right' | 'center') => {
+    setSeekRipple({ side, key: Date.now() })
+    setTimeout(() => setSeekRipple(null), 700)
+  }
+
   const [showSpeedMenu, setShowSpeedMenu] = useState(false)
   const speeds = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3]
 
@@ -319,6 +336,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   }
 
   const lastTapRef = useRef<number>(0)
+  const lastTapPosRef = useRef<{ x: number; width: number } | null>(null)
 
   const handleVideoClick = (e: React.MouseEvent) => {
     const now = Date.now()
@@ -328,17 +346,21 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     const width = rect.width
 
     if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
-      // Double tap detected -> skip or toggle play/pause
+      // Double tap detected -> seek or toggle
       if (x < width * 0.35) {
         skip(-10)
+        triggerSeekRipple('left')
       } else if (x > width * 0.65) {
         skip(10)
+        triggerSeekRipple('right')
       } else {
         togglePlay()
+        triggerSeekRipple('center')
       }
-      lastTapRef.current = 0 
+      lastTapRef.current = 0
     } else {
-      // Single tap -> toggle controls bar visibility
+      // Single tap -> show center overlay and toggle controls
+      showCenterOverlayBriefly()
       if (showControls) {
         setShowControls(false)
         if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current)
@@ -389,6 +411,73 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
         onError={handleVideoError}
         playsInline
       />
+
+      {/* --- Seek Ripple Animation --- */}
+      {seekRipple && (
+        <div
+          key={seekRipple.key}
+          className={cn(
+            "absolute inset-y-0 z-40 flex items-center justify-center pointer-events-none",
+            seekRipple.side === 'left' ? 'left-0 w-1/3' : seekRipple.side === 'right' ? 'right-0 w-1/3' : 'inset-x-0'
+          )}
+        >
+          <div className="animate-ping-once flex flex-col items-center gap-1.5">
+            <div className="size-16 rounded-full bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-2xl">
+              {seekRipple.side === 'left' ? (
+                <RotateCcw size={26} className="text-white" />
+              ) : seekRipple.side === 'right' ? (
+                <RotateCw size={26} className="text-white" />
+              ) : isPlaying ? (
+                <Pause size={26} className="text-white" fill="white" />
+              ) : (
+                <Play size={26} className="text-white ml-0.5" fill="white" />
+              )}
+            </div>
+            <span className="text-white/80 text-xs font-bold drop-shadow">
+              {seekRipple.side === 'left' ? '-10s' : seekRipple.side === 'right' ? '+10s' : ''}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* --- macOS-style Glassmorphic Center Overlay Buttons --- */}
+      <div className={cn(
+        "absolute inset-0 z-30 flex items-center justify-center gap-6 pointer-events-none transition-all duration-300",
+        showCenterOverlay ? "opacity-100" : "opacity-0"
+      )}>
+        {/* Skip Back -10 */}
+        <button
+          className="pointer-events-auto size-14 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white hover:bg-white/20 hover:scale-110 active:scale-95 transition-all shadow-2xl"
+          onClick={(e) => { e.stopPropagation(); skip(-10); triggerSeekRipple('left'); showCenterOverlayBriefly(); }}
+          title="Rewind 10s"
+        >
+          <RotateCcw size={22} />
+        </button>
+
+        {/* Center Play/Pause */}
+        <button
+          className="pointer-events-auto size-20 rounded-full bg-white/15 backdrop-blur-2xl border border-white/25 flex items-center justify-center text-white hover:bg-white/25 hover:scale-105 active:scale-95 transition-all shadow-2xl"
+          onClick={(e) => { e.stopPropagation(); togglePlay(); showCenterOverlayBriefly(); }}
+          title={isPlaying ? "Pause" : "Play"}
+        >
+          {isWaiting ? (
+            <Loader2 size={32} className="animate-spin text-white" />
+          ) : isPlaying ? (
+            <Pause size={32} fill="white" />
+          ) : (
+            <Play size={32} fill="white" className="ml-1" />
+          )}
+        </button>
+
+        {/* Skip Forward +10 */}
+        <button
+          className="pointer-events-auto size-14 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white hover:bg-white/20 hover:scale-110 active:scale-95 transition-all shadow-2xl"
+          onClick={(e) => { e.stopPropagation(); skip(10); triggerSeekRipple('right'); showCenterOverlayBriefly(); }}
+          title="Forward 10s"
+        >
+          <RotateCw size={22} />
+        </button>
+      </div>
 
       {/* --- Stream Error Overlay --- */}
       {hasStreamError && (
