@@ -542,41 +542,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
           </div>
         </div>
       </div>
-
-      {/* --- Centered Glassmorphic Controls (Play, RotateCcw, RotateCw) --- */}
-      {showControls && (
-        <div className="absolute inset-0 flex items-center justify-center gap-6 lg:gap-12 z-20 pointer-events-none -translate-y-6 lg:translate-y-0 animate-in fade-in duration-200">
-           <button 
-             onClick={(e) => { e.stopPropagation(); skip(-10); }}
-             className="size-12 lg:size-14 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/80 hover:bg-white/10 hover:text-white transition-all active:scale-95 pointer-events-auto shadow-2xl"
-             title="Skip 10s back"
-           >
-              <RotateCcw size={22} />
-           </button>
-           
-           <button 
-             onClick={(e) => { e.stopPropagation(); togglePlay(); }}
-             className="size-16 lg:size-20 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-all active:scale-95 pointer-events-auto shadow-2xl"
-             title={isPlaying ? "Pause" : "Play"}
-           >
-              {isWaiting ? (
-                <Loader2 size={32} className="animate-spin text-indigo-400" />
-              ) : isPlaying ? (
-                <Pause size={30} fill="white" />
-              ) : (
-                <Play size={30} fill="white" className="ml-1" />
-              )}
-           </button>
-
-           <button 
-             onClick={(e) => { e.stopPropagation(); skip(10); }}
-             className="size-12 lg:size-14 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/80 hover:bg-white/10 hover:text-white transition-all active:scale-95 pointer-events-auto shadow-2xl"
-             title="Skip 10s forward"
-           >
-              <RotateCw size={22} />
-           </button>
-        </div>
-      )}
     </div>
   )
 })

@@ -273,14 +273,16 @@ router.get('/:id/sequence', (req, res) => {
      FROM videos v
      JOIN channels c ON c.id = v.channel_id
      LEFT JOIN progress p ON p.video_id = v.id
-     WHERE v.batch_id = ? OR (v.channel_id = ? AND v.message_id >= ? AND v.message_id <= ?)`,
+     WHERE v.batch_id = ? OR (v.channel_id = ? AND v.message_id >= ? AND v.message_id <= ?)
+     GROUP BY v.id`,
     [id, batch.channel_id, batch.start_msg_id, batch.end_msg_id]
   );
 
   const files = getAll(
     `SELECT f.*, 'file' as item_type, c.username AS channel_username
      FROM files f JOIN channels c ON c.id = f.channel_id
-     WHERE f.batch_id = ? OR (f.channel_id = ? AND f.message_id >= ? AND f.message_id <= ?)`,
+     WHERE f.batch_id = ? OR (f.channel_id = ? AND f.message_id >= ? AND f.message_id <= ?)
+     GROUP BY f.id`,
     [id, batch.channel_id, batch.start_msg_id, batch.end_msg_id]
   );
 

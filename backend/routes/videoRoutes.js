@@ -28,6 +28,7 @@ router.get('/channel/:username/videos', (req, res) => {
      FROM videos v
      LEFT JOIN progress p ON p.video_id = v.id
      WHERE v.channel_id = ?
+     GROUP BY v.id
      ORDER BY v.created_at ASC`,
     [channel.id]
   );
