@@ -469,15 +469,15 @@ export default function VideoPage() {
                                   key={`bseq-v-${vid.id}`}
                                   onClick={() => { if (!isCurrent) handleNavigateToVideo(vid.id) }}
                                   className={cn(
-                                    "group flex items-center justify-between p-2 rounded-lg border transition-all cursor-pointer",
+                                    "group flex items-center justify-between p-1.5 rounded-lg border transition-all cursor-pointer",
                                     isCurrent
                                       ? "bg-indigo-500/10 border-indigo-500/30 text-white"
                                       : "bg-[#18181b]/40 border-zinc-800/60 hover:bg-[#18181b] hover:border-zinc-700"
                                   )}
                                 >
-                                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 min-w-0 flex-1">
                                     <div className={cn(
-                                      "size-7 rounded-md flex items-center justify-center shrink-0 font-bold text-[11px]",
+                                      "size-6 rounded flex items-center justify-center shrink-0 font-bold text-[10px]",
                                       isCurrent ? "bg-indigo-600 text-white" : isCompleted ? "bg-emerald-500/20 text-emerald-400" : "bg-zinc-800 text-zinc-400"
                                     )}>
                                       {isCurrent ? (
@@ -513,10 +513,10 @@ export default function VideoPage() {
                                 <div
                                   key={`bseq-f-${file.id}`}
                                   onClick={() => setSelectedDoc(file)}
-                                  className="group flex items-center justify-between p-2.5 rounded-xl bg-indigo-500/5 border border-indigo-500/15 hover:bg-indigo-500/10 hover:border-indigo-500/30 transition-all cursor-pointer"
+                                  className="group flex items-center justify-between p-1.5 rounded-lg bg-indigo-500/5 border border-indigo-500/15 hover:bg-indigo-500/10 hover:border-indigo-500/30 transition-all cursor-pointer"
                                 >
-                                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                    <div className="size-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
+                                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                                    <div className="size-6 rounded bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
                                       <FileText size={13} />
                                     </div>
                                     <div className="min-w-0 flex-1">
@@ -563,15 +563,15 @@ export default function VideoPage() {
                                   if (!isCurrent) handleNavigateToVideo(vid.id)
                                 }}
                                 className={cn(
-                                  "group flex items-center justify-between p-2 rounded-lg border transition-all cursor-pointer",
+                                  "group flex items-center justify-between p-1.5 rounded-lg border transition-all cursor-pointer",
                                   isCurrent
                                     ? "bg-indigo-500/10 border-indigo-500/30 text-white"
                                     : "bg-[#18181b]/40 border-zinc-800/60 hover:bg-[#18181b] hover:border-zinc-700"
                                 )}
                               >
-                                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
                                   <div className={cn(
-                                    "size-7 rounded-md flex items-center justify-center shrink-0 font-bold text-[11px]",
+                                    "size-6 rounded flex items-center justify-center shrink-0 font-bold text-[10px]",
                                     isCurrent ? "bg-indigo-600 text-white" : isCompleted ? "bg-emerald-500/20 text-emerald-400" : "bg-zinc-800 text-zinc-400"
                                   )}>
                                     {isCurrent ? (
@@ -617,10 +617,10 @@ export default function VideoPage() {
                                 <div
                                   key={`seq-file-${file.id}`}
                                   onClick={() => setSelectedDoc(file)}
-                                  className="group flex items-center justify-between p-2.5 rounded-xl bg-[#18181b]/50 border border-zinc-800/60 hover:bg-[#18181b] hover:border-zinc-700 transition-all cursor-pointer"
+                                  className="group flex items-center justify-between p-1.5 rounded-lg bg-[#18181b]/50 border border-zinc-800/60 hover:bg-[#18181b] hover:border-zinc-700 transition-all cursor-pointer"
                                 >
-                                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                    <div className="size-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
+                                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                                    <div className="size-6 rounded bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
                                       <FileText size={13} />
                                     </div>
                                     <div className="min-w-0 flex-1">

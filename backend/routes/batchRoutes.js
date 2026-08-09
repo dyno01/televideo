@@ -290,9 +290,17 @@ router.get('/:id/sequence', (req, res) => {
        FROM files f
        WHERE f.batch_id = ?
           OR (f.channel_id = ? AND f.message_id >= ? AND f.message_id <= ?)
+          OR f.parent_video_id IN (
+              SELECT id FROM videos v 
+              WHERE v.batch_id = ? 
+                 OR (v.channel_id = ? AND v.message_id >= ? AND v.message_id <= ?)
+          )
      ) fd
      JOIN channels c ON c.id = fd.channel_id`,
-    [id, batch.channel_id, batch.start_msg_id, batch.end_msg_id]
+    [
+      id, batch.channel_id, batch.start_msg_id, batch.end_msg_id,
+      id, batch.channel_id, batch.start_msg_id, batch.end_msg_id
+    ]
   );
 
   // Combine and sort by message_id

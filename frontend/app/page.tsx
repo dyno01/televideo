@@ -219,7 +219,7 @@ export default function HomePage() {
           <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={() => setIsAuthModalOpen(true)}
-              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-[10px] sm:text-[11px] font-bold border transition-all ${
+              className={`flex items-center justify-center sm:px-3 sm:py-1.5 size-8 sm:size-auto rounded-full sm:rounded-full text-[10px] sm:text-[11px] font-bold border transition-all shrink-0 ${
                 telegramStatus?.authenticated
                   ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
                   : 'bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20'
@@ -228,12 +228,12 @@ export default function HomePage() {
               {telegramStatus?.authenticated ? (
                 <>
                   <ShieldCheck size={14} />
-                  <span className="max-w-[80px] sm:max-w-[140px] truncate">@{telegramStatus.user?.username || telegramStatus.user?.firstName || 'Connected'}</span>
+                  <span className="hidden sm:inline sm:ml-1.5 max-w-[140px] truncate">@{telegramStatus.user?.username || telegramStatus.user?.firstName || 'Connected'}</span>
                 </>
               ) : (
                 <>
                   <ShieldAlert size={14} />
-                  <span>Connect TG</span>
+                  <span className="hidden sm:inline sm:ml-1.5">Connect TG</span>
                 </>
               )}
             </button>
@@ -242,11 +242,11 @@ export default function HomePage() {
                 localStorage.removeItem('app_passcode_token')
                 window.dispatchEvent(new Event('app_passcode_required'))
               }}
-              className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-lg text-xs font-semibold bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-800 hover:text-white transition-all shrink-0"
+              className="hidden sm:flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-lg text-xs font-semibold bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-800 hover:text-white transition-all shrink-0"
               title="Lock Dashboard / Passcode Auth"
             >
               <Lock size={14} className="text-indigo-400" />
-              <span className="hidden sm:inline">Lock App</span>
+              <span>Lock App</span>
             </button>
             <button
               onClick={() => setIsAuthModalOpen(true)}

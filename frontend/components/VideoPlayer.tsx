@@ -70,8 +70,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   // Center overlay buttons (glassmorphic macOS style)
   const [showCenterOverlay, setShowCenterOverlay] = useState(false)
   const centerOverlayTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  // Seek ripple: { side: 'left'|'right'|'center', key: number }
-  const [seekRipple, setSeekRipple] = useState<{ side: 'left' | 'right' | 'center'; key: number } | null>(null)
+  // Seek ripple: { side: 'left'|'right'|'center', icon: 'ccw'|'cw'|'play'|'pause', key: number }
+  const [seekRipple, setSeekRipple] = useState<{ side: 'left' | 'right' | 'center'; icon: 'ccw'|'cw'|'play'|'pause'; key: number } | null>(null)
 
   const showCenterOverlayBriefly = () => {
     setShowCenterOverlay(true)
@@ -79,8 +79,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     centerOverlayTimeoutRef.current = setTimeout(() => setShowCenterOverlay(false), 2500)
   }
 
-  const triggerSeekRipple = (side: 'left' | 'right' | 'center') => {
-    setSeekRipple({ side, key: Date.now() })
+  const triggerSeekRipple = (side: 'left' | 'right' | 'center', icon: 'ccw'|'cw'|'play'|'pause') => {
+    setSeekRipple({ side, icon, key: Date.now() })
     setTimeout(() => setSeekRipple(null), 700)
   }
 
@@ -249,7 +249,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     const mins = Math.floor((time % 3600) / 60)
     const secs = Math.floor(time % 60)
     if (hours > 0) {
-      return `${hours} hr ${mins} min`
+      return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
     }
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
@@ -349,13 +349,14 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
       // Double tap detected -> seek or toggle
       if (x < width * 0.35) {
         skip(-10)
-        triggerSeekRipple('left')
+        triggerSeekRipple('left', 'ccw')
       } else if (x > width * 0.65) {
         skip(10)
-        triggerSeekRipple('right')
+        triggerSeekRipple('right', 'cw')
       } else {
+        const wasPaused = videoRef.current?.paused
         togglePlay()
-        triggerSeekRipple('center')
+        triggerSeekRipple('center', wasPaused ? 'play' : 'pause')
       }
       lastTapRef.current = 0
     } else {
@@ -423,32 +424,43 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
         >
           <div className="animate-ping-once flex flex-col items-center gap-1.5">
             <div className="size-16 rounded-full bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-2xl">
-              {seekRipple.side === 'left' ? (
+              {seekRipple.icon === 'ccw' ? (
                 <RotateCcw size={26} className="text-white" />
-              ) : seekRipple.side === 'right' ? (
+              ) : seekRipple.icon === 'cw' ? (
                 <RotateCw size={26} className="text-white" />
-              ) : isPlaying ? (
+              ) : seekRipple.icon === 'pause' ? (
                 <Pause size={26} className="text-white" fill="white" />
               ) : (
                 <Play size={26} className="text-white ml-0.5" fill="white" />
               )}
             </div>
-            <span className="text-white/80 text-xs font-bold drop-shadow">
-              {seekRipple.side === 'left' ? '-10s' : seekRipple.side === 'right' ? '+10s' : ''}
-            </span>
+            {seekRipple.side !== 'center' && (
+              <span className="text-white/80 text-xs font-bold drop-shadow">
+                {seekRipple.side === 'left' ? '-10s' : '+10s'}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* --- Loading Overlay (Visible whenever isWaiting is true) --- */}
+      {isWaiting && !hasStreamError && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none">
+          <div className="size-16 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center shadow-2xl">
+            <Loader2 size={32} className="animate-spin text-white" />
           </div>
         </div>
       )}
 
       {/* --- macOS-style Glassmorphic Center Overlay Buttons --- */}
       <div className={cn(
-        "absolute inset-0 z-30 flex items-center justify-center gap-6 pointer-events-none transition-all duration-300",
-        showCenterOverlay ? "opacity-100" : "opacity-0"
+        "absolute inset-0 z-25 flex items-center justify-center gap-6 pointer-events-none transition-all duration-300",
+        showCenterOverlay && !isWaiting ? "opacity-100" : "opacity-0"
       )}>
         {/* Skip Back -10 */}
         <button
           className="pointer-events-auto size-14 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white hover:bg-white/20 hover:scale-110 active:scale-95 transition-all shadow-2xl"
-          onClick={(e) => { e.stopPropagation(); skip(-10); triggerSeekRipple('left'); showCenterOverlayBriefly(); }}
+          onClick={(e) => { e.stopPropagation(); skip(-10); triggerSeekRipple('left', 'ccw'); showCenterOverlayBriefly(); }}
           title="Rewind 10s"
         >
           <RotateCcw size={22} />
@@ -460,9 +472,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
           onClick={(e) => { e.stopPropagation(); togglePlay(); showCenterOverlayBriefly(); }}
           title={isPlaying ? "Pause" : "Play"}
         >
-          {isWaiting ? (
-            <Loader2 size={32} className="animate-spin text-white" />
-          ) : isPlaying ? (
+          {isPlaying ? (
             <Pause size={32} fill="white" />
           ) : (
             <Play size={32} fill="white" className="ml-1" />
@@ -472,7 +482,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
         {/* Skip Forward +10 */}
         <button
           className="pointer-events-auto size-14 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white hover:bg-white/20 hover:scale-110 active:scale-95 transition-all shadow-2xl"
-          onClick={(e) => { e.stopPropagation(); skip(10); triggerSeekRipple('right'); showCenterOverlayBriefly(); }}
+          onClick={(e) => { e.stopPropagation(); skip(10); triggerSeekRipple('right', 'cw'); showCenterOverlayBriefly(); }}
           title="Forward 10s"
         >
           <RotateCw size={22} />
