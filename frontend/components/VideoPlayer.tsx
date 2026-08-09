@@ -328,6 +328,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
 
   const lastTapRef = useRef<number>(0)
   const lastTapPosRef = useRef<{ x: number; width: number } | null>(null)
+  const singleTapTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const handleVideoClick = (e: React.MouseEvent) => {
     const now = Date.now()
@@ -337,7 +338,14 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     const width = rect.width
 
     if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
-      // Double tap detected -> seek or toggle
+      // Double tap detected -> clear single tap timeout
+      if (singleTapTimeoutRef.current) clearTimeout(singleTapTimeoutRef.current)
+      
+      // Hide controls on double tap
+      setShowControls(false)
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current)
+
+      // Double tap logic
       if (x < width * 0.35) {
         skip(-10)
         triggerSeekRipple('left', 'ccw')
@@ -351,16 +359,89 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
       }
       lastTapRef.current = 0
     } else {
-      // Single tap -> toggle controls
-      if (showControls) {
-        setShowControls(false)
-        if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current)
-      } else {
-        resetControlsTimeout()
-      }
+      // Single tap -> defer execution to ensure it's not a double tap
       lastTapRef.current = now
+      
+      if (singleTapTimeoutRef.current) clearTimeout(singleTapTimeoutRef.current)
+      singleTapTimeoutRef.current = setTimeout(() => {
+        if (showControls) {
+          setShowControls(false)
+          if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current)
+        } else {
+          resetControlsTimeout()
+        }
+      }, DOUBLE_TAP_DELAY)
     }
   }
+
+  // Keyboard controls
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in an input or textarea
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') {
+        return
+      }
+      
+      switch (e.key) {
+        case ' ':
+        case 'k':
+          e.preventDefault()
+          togglePlay()
+          resetControlsTimeout()
+          break
+        case 'ArrowLeft':
+        case 'j':
+          e.preventDefault()
+          skip(-10)
+          triggerSeekRipple('left', 'ccw')
+          resetControlsTimeout()
+          break
+        case 'ArrowRight':
+        case 'l':
+          e.preventDefault()
+          skip(10)
+          triggerSeekRipple('right', 'cw')
+          resetControlsTimeout()
+          break
+        case 'ArrowUp':
+          e.preventDefault()
+          if (videoRef.current) {
+            const newVol = Math.min(1, videoRef.current.volume + 0.1)
+            videoRef.current.volume = newVol
+            setVolume(newVol)
+            setIsMuted(newVol === 0)
+            resetControlsTimeout()
+          }
+          break
+        case 'ArrowDown':
+          e.preventDefault()
+          if (videoRef.current) {
+            const newVol = Math.max(0, videoRef.current.volume - 0.1)
+            videoRef.current.volume = newVol
+            setVolume(newVol)
+            setIsMuted(newVol === 0)
+            resetControlsTimeout()
+          }
+          break
+        case 'm':
+          e.preventDefault()
+          if (videoRef.current) {
+            const m = !videoRef.current.muted
+            videoRef.current.muted = m
+            setIsMuted(m)
+            resetControlsTimeout()
+          }
+          break
+        case 'f':
+          e.preventDefault()
+          toggleFullscreen()
+          break
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [showControls])
 
   const handleVideoError = async () => {
     setHasStreamError(true)
