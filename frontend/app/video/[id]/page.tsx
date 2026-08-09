@@ -435,8 +435,8 @@ export default function VideoPage() {
               <ScrollArea className="h-full flex-1">
                 <div className="p-3 pb-16 space-y-2">
                   {video.batch_id && batchSequence.length > 0 ? (
-                    // --- BATCH SERIAL ALL CONTENT LIST (Videos + PDFs/Files in sequence order) ---
-                    batchSequence.map((item, idx) => {
+                    // --- BATCH SERIAL ALL CONTENT LIST (Videos first, Files/PDFs after) ---
+                    [...batchSequence.filter(i => i.item_type === 'video'), ...batchSequence.filter(i => i.item_type !== 'video')].map((item, idx) => {
                       const isVideo = item.item_type === 'video'
                       const isCurrent = isVideo && item.id === videoId
                       const vid = item as Video

@@ -16,7 +16,8 @@ import {
   Settings,
   Tv,
   Type,
-  Loader2
+  Loader2,
+  X
 } from 'lucide-react'
 import { cn, getMediaTokenQuery } from '@/lib/utils'
 import { Video, getApiBase } from '@/lib/api'
@@ -66,13 +67,20 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   const [streamErrorDetails, setStreamErrorDetails] = useState('')
   const hasSeekedInitialRef = useRef(false)
 
-  const speeds = [1, 1.25, 1.5, 2]
+  const [showSpeedMenu, setShowSpeedMenu] = useState(false)
+  const speeds = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3]
 
   const cycleSpeed = () => {
     const nextIndex = (speeds.indexOf(playbackSpeed) + 1) % speeds.length
     const nextSpeed = speeds[nextIndex]
     setPlaybackSpeed(nextSpeed)
     if (videoRef.current) videoRef.current.playbackRate = nextSpeed
+  }
+
+  const selectSpeed = (sp: number) => {
+    setPlaybackSpeed(sp)
+    if (videoRef.current) videoRef.current.playbackRate = sp
+    setShowSpeedMenu(false)
   }
 
   const toggleFullscreen = () => {
@@ -487,16 +495,49 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
              </div>
           </div>
 
-          <div className="flex items-center gap-4 lg:gap-6">
+          <div className="relative flex items-center gap-3 lg:gap-5">
+             {/* Floating Speed Selection Popover Menu */}
+             {showSpeedMenu && (
+               <div className="absolute right-0 bottom-12 z-40 p-2.5 rounded-xl bg-zinc-950/95 border border-zinc-800 shadow-2xl backdrop-blur-md flex flex-col gap-1.5 w-48 animate-in fade-in zoom-in-95">
+                 <div className="px-2 py-1 text-[10px] font-bold text-zinc-400 uppercase tracking-wider border-b border-zinc-800/80 flex items-center justify-between">
+                   <span>Playback Speed</span>
+                   <button onClick={(e) => { e.stopPropagation(); setShowSpeedMenu(false); }} className="text-zinc-500 hover:text-white">
+                     <X size={12} />
+                   </button>
+                 </div>
+                 <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto pr-1">
+                   {speeds.map((sp) => (
+                     <button
+                       key={sp}
+                       onClick={(e) => { e.stopPropagation(); selectSpeed(sp); }}
+                       className={cn(
+                         "px-2 py-1 rounded-lg text-xs font-bold transition-all text-center",
+                         playbackSpeed === sp 
+                           ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30" 
+                           : "bg-zinc-900/80 text-zinc-400 hover:bg-zinc-800 hover:text-white"
+                       )}
+                     >
+                       {sp}x
+                     </button>
+                   ))}
+                 </div>
+               </div>
+             )}
+
              <button 
-                onClick={(e) => { e.stopPropagation(); cycleSpeed(); }}
-                className="flex items-center justify-center h-7 lg:h-8 px-2 lg:px-3 rounded-lg bg-white/5 border border-white/10 text-[9px] lg:text-[10px] font-black text-white hover:bg-white/10 transition-all tracking-widest drop-shadow-md"
+                onClick={(e) => { e.stopPropagation(); setShowSpeedMenu(!showSpeedMenu); }}
+                className={cn(
+                  "flex items-center justify-center h-7 lg:h-8 px-2 lg:px-3 rounded-lg border text-[10px] lg:text-xs font-bold transition-all tracking-wider drop-shadow-md",
+                  playbackSpeed !== 1 ? "bg-indigo-600/30 border-indigo-500/50 text-indigo-300" : "bg-white/5 border-white/10 text-white hover:bg-white/10"
+                )}
+                title="Playback Speed"
              >
                 {playbackSpeed}X
              </button>
              <button 
                 onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }}
                 className="text-white/40 hover:text-white transition-colors drop-shadow-md"
+                title="Fullscreen"
              >
                 <Maximize size={18} />
              </button>
