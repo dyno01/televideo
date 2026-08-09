@@ -337,7 +337,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     const width = rect.width
 
     if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
-      // Double tap detected -> check region
+      // Double tap detected
       if (x < width * 0.35) {
         skip(-10)
         triggerRipple('left', '-10s')
@@ -350,10 +350,10 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
       }
       lastTapRef.current = 0 
     } else {
-      // Single tap -> toggle controls visibility & play/pause if middle
-      if (x >= width * 0.35 && x <= width * 0.65) {
-        togglePlay()
-        triggerRipple('center', !isPlaying ? 'Play' : 'Pause')
+      // Single tap -> toggle controls bar visibility
+      if (showControls) {
+        setShowControls(false)
+        if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current)
       } else {
         resetControlsTimeout()
       }
@@ -554,6 +554,58 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
           </div>
         </div>
       </div>
+
+      {/* --- Ripple Seek & Play/Pause Feedback Overlays --- */}
+      {seekRipple && (
+        <div className={cn(
+          "absolute inset-y-0 z-30 flex items-center justify-center pointer-events-none animate-in zoom-in-75 duration-200",
+          seekRipple.type === 'left' && "left-0 w-1/3 bg-white/10 rounded-r-full backdrop-blur-xs",
+          seekRipple.type === 'right' && "right-0 w-1/3 bg-white/10 rounded-l-full backdrop-blur-xs",
+          seekRipple.type === 'center' && "inset-0 bg-black/20"
+        )}>
+          <div className="flex flex-col items-center gap-1.5 p-4 rounded-full bg-zinc-950/90 border border-white/20 text-white font-black shadow-2xl">
+            {seekRipple.type === 'left' && <RotateCcw size={28} className="animate-pulse" />}
+            {seekRipple.type === 'right' && <RotateCw size={28} className="animate-pulse" />}
+            {seekRipple.type === 'center' && (isPlaying ? <Pause size={32} fill="white" /> : <Play size={32} fill="white" className="ml-1" />)}
+            <span className="text-xs tracking-widest uppercase">{seekRipple.text}</span>
+          </div>
+        </div>
+      )}
+
+      {/* --- Centered Glassmorphic Controls (Play, RotateCcw, RotateCw) --- */}
+      {showControls && (
+        <div className="absolute inset-0 flex items-center justify-center gap-6 lg:gap-12 z-20 pointer-events-none -translate-y-6 lg:translate-y-0 animate-in fade-in duration-200">
+           <button 
+             onClick={(e) => { e.stopPropagation(); skip(-10); triggerRipple('left', '-10s'); }}
+             className="size-12 lg:size-14 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/80 hover:bg-white/10 hover:text-white transition-all active:scale-95 pointer-events-auto shadow-2xl"
+             title="Skip 10s back"
+           >
+              <RotateCcw size={22} />
+           </button>
+           
+           <button 
+             onClick={(e) => { e.stopPropagation(); togglePlay(); triggerRipple('center', !isPlaying ? 'Play' : 'Pause'); }}
+             className="size-16 lg:size-20 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-all active:scale-95 pointer-events-auto shadow-2xl"
+             title={isPlaying ? "Pause" : "Play"}
+           >
+              {isWaiting ? (
+                <Loader2 size={32} className="animate-spin text-indigo-400" />
+              ) : isPlaying ? (
+                <Pause size={30} fill="white" />
+              ) : (
+                <Play size={30} fill="white" className="ml-1" />
+              )}
+           </button>
+
+           <button 
+             onClick={(e) => { e.stopPropagation(); skip(10); triggerRipple('right', '+10s'); }}
+             className="size-12 lg:size-14 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/80 hover:bg-white/10 hover:text-white transition-all active:scale-95 pointer-events-auto shadow-2xl"
+             title="Skip 10s forward"
+           >
+              <RotateCw size={22} />
+           </button>
+        </div>
+      )}
     </div>
   )
 })

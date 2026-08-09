@@ -202,8 +202,8 @@ router.get('/channel/:channelId', (req, res) => {
   const channelId = parseInt(req.params.channelId, 10);
   const batches = getAll(
     `SELECT b.*,
-       (SELECT COUNT(*) FROM videos v WHERE v.batch_id = b.id) AS videoCount,
-       (SELECT COUNT(*) FROM files  f WHERE f.batch_id = b.id) AS fileCount
+       (SELECT COUNT(*) FROM videos v WHERE v.batch_id = b.id OR (v.channel_id = b.channel_id AND v.message_id >= b.start_msg_id AND v.message_id <= b.end_msg_id)) AS videoCount,
+       (SELECT COUNT(*) FROM files  f WHERE f.batch_id = b.id OR (f.channel_id = b.channel_id AND f.message_id >= b.start_msg_id AND f.message_id <= b.end_msg_id)) AS fileCount
      FROM batches b WHERE b.channel_id = ? ORDER BY b.id ASC`,
     [channelId]
   );
@@ -260,6 +260,8 @@ router.get('/:id/files', (req, res) => {
 // ── GET /api/batches/:id/sequence ──────────────────────────────────────────
 router.get('/:id/sequence', (req, res) => {
   const id = parseInt(req.params.id, 10);
+  const batch = getOne('SELECT * FROM batches WHERE id = ?', [id]);
+  if (!batch) return res.status(404).json({ error: 'Batch not found' });
   
   const videos = getAll(
     `SELECT v.*, 'video' as item_type,
@@ -271,15 +273,15 @@ router.get('/:id/sequence', (req, res) => {
      FROM videos v
      JOIN channels c ON c.id = v.channel_id
      LEFT JOIN progress p ON p.video_id = v.id
-     WHERE v.batch_id = ?`,
-    [id]
+     WHERE v.batch_id = ? OR (v.channel_id = ? AND v.message_id >= ? AND v.message_id <= ?)`,
+    [id, batch.channel_id, batch.start_msg_id, batch.end_msg_id]
   );
 
   const files = getAll(
     `SELECT f.*, 'file' as item_type, c.username AS channel_username
      FROM files f JOIN channels c ON c.id = f.channel_id
-     WHERE f.batch_id = ?`,
-    [id]
+     WHERE f.batch_id = ? OR (f.channel_id = ? AND f.message_id >= ? AND f.message_id <= ?)`,
+    [id, batch.channel_id, batch.start_msg_id, batch.end_msg_id]
   );
 
   // Combine and sort by message_id
