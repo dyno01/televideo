@@ -389,7 +389,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   return (
 
     <div 
-      className="relative group bg-zinc-950 rounded-2xl overflow-hidden aspect-video border border-zinc-900 shadow-2xl"
+      className="relative group bg-black rounded-2xl overflow-hidden aspect-video border border-zinc-900 shadow-2xl"
       onMouseMove={handleMouseMove}
       onMouseLeave={() => !isDragging && setShowControls(false)}
     >
@@ -479,9 +479,19 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
              <button onClick={(e) => { e.stopPropagation(); onPrev?.(); }} className="text-white/60 hover:text-white transition-colors drop-shadow-md">
                <SkipBack size={20} fill="currentColor" />
              </button>
-             <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="text-white hover:scale-110 transition-transform drop-shadow-lg">
-               {isPlaying ? <Pause size={28} fill="white" /> : <Play size={28} fill="white" />}
-             </button>
+              <button 
+                onClick={(e) => { e.stopPropagation(); togglePlay(); }} 
+                className="text-white hover:scale-110 transition-transform drop-shadow-lg p-1"
+                title={isPlaying ? "Pause" : "Play"}
+              >
+                {isWaiting ? (
+                  <Loader2 size={24} className="animate-spin text-indigo-400" />
+                ) : isPlaying ? (
+                  <Pause size={26} fill="white" />
+                ) : (
+                  <Play size={26} fill="white" className="ml-0.5" />
+                )}
+              </button>
              <button onClick={(e) => { e.stopPropagation(); onNext?.(); }} className="text-white/60 hover:text-white transition-colors drop-shadow-md">
                <SkipForward size={20} fill="currentColor" />
              </button>
@@ -544,59 +554,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
           </div>
         </div>
       </div>
-
-      {/* Standalone Always-Visible Loading Spinner (Never hidden by controls timeout) */}
-      {isWaiting && (
-        <div className="absolute inset-0 z-30 bg-black/40 backdrop-blur-[2px] flex flex-col items-center justify-center pointer-events-none animate-in fade-in">
-          <div className="p-4 rounded-2xl bg-zinc-950/90 border border-zinc-800/80 shadow-2xl flex items-center gap-3">
-            <Loader2 className="animate-spin text-indigo-400" size={32} />
-            <span className="text-xs font-bold text-zinc-200 tracking-wide">Buffering Video...</span>
-          </div>
-        </div>
-      )}
-
-      {/* Ripple Seek & Play/Pause Feedback Overlays */}
-      {seekRipple && (
-        <div className={cn(
-          "absolute inset-y-0 z-20 flex items-center justify-center pointer-events-none animate-in zoom-in-75 duration-200",
-          seekRipple.type === 'left' && "left-0 w-1/3 bg-white/10 rounded-r-full backdrop-blur-xs",
-          seekRipple.type === 'right' && "right-0 w-1/3 bg-white/10 rounded-l-full backdrop-blur-xs",
-          seekRipple.type === 'center' && "inset-0 bg-black/20"
-        )}>
-          <div className="flex flex-col items-center gap-1.5 p-4 rounded-full bg-zinc-950/90 border border-white/20 text-white font-black shadow-2xl">
-            {seekRipple.type === 'left' && <RotateCcw size={28} className="animate-pulse" />}
-            {seekRipple.type === 'right' && <RotateCw size={28} className="animate-pulse" />}
-            {seekRipple.type === 'center' && (isPlaying ? <Pause size={32} fill="white" /> : <Play size={32} fill="white" />)}
-            <span className="text-xs tracking-widest uppercase">{seekRipple.text}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Centered Controls: Play, RotateCcw, RotateCw */}
-      {showControls && !isWaiting && (
-        <div className="absolute inset-0 flex items-center justify-center gap-6 lg:gap-12 z-10 pointer-events-none -translate-y-8 lg:translate-y-0">
-           <button 
-             onClick={(e) => { e.stopPropagation(); skip(-10); }}
-             className="size-10 lg:size-14 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/80 hover:bg-white/10 hover:text-white transition-all active:scale-95 pointer-events-auto shadow-2xl"
-           >
-              <RotateCcw size={20} className="lg:size-6" />
-           </button>
-           
-           <button 
-             onClick={(e) => { e.stopPropagation(); togglePlay(); }}
-             className="size-14 lg:size-20 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-all active:scale-95 pointer-events-auto shadow-2xl"
-           >
-              {isPlaying ? <Pause size={28} className="lg:size-8" fill="currentColor" /> : <Play size={28} className="lg:size-8 ml-1" fill="currentColor" />}
-           </button>
-
-           <button 
-             onClick={(e) => { e.stopPropagation(); skip(10); }}
-             className="size-10 lg:size-14 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/80 hover:bg-white/10 hover:text-white transition-all active:scale-95 pointer-events-auto shadow-2xl"
-           >
-              <RotateCw size={20} className="lg:size-6" />
-           </button>
-        </div>
-      )}
     </div>
   )
 })

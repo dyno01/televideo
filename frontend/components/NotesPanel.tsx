@@ -56,10 +56,10 @@ export default function NotesPanel({ videoId, playerRef }: NotesPanelProps) {
 
   async function handleDeleteNote(e: React.MouseEvent, id: number) {
     e.stopPropagation()
-    if (!confirm('Are you sure you want to delete this note?')) return
+    // Instant deletion without browser confirm popup
     try {
-      await deleteNote(id)
       setNotes((prev) => prev.filter((n) => n.id !== id))
+      await deleteNote(id)
     } catch (err) {
       console.error('Failed to delete note:', err)
     }
