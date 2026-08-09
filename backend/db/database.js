@@ -96,9 +96,49 @@ try { db.exec('ALTER TABLE videos ADD COLUMN batch_id INTEGER REFERENCES batches
 try { db.exec('ALTER TABLE files  ADD COLUMN batch_id INTEGER REFERENCES batches(id)'); } catch (_) {}
 try { db.exec('ALTER TABLE files  ADD COLUMN parent_video_id INTEGER REFERENCES videos(id)'); } catch (_) {}
 
+// --- MIGRATION: Deduplicate videos and files before applying unique constraints ---
+try {
+  db.transaction(() => {
+    // 1. Find all duplicate videos
+    const dupVideos = db.prepare(`
+      SELECT channel_id, message_id, MIN(id) as keep_id
+      FROM videos GROUP BY channel_id, message_id HAVING COUNT(*) > 1
+    `).all();
+
+    for (const group of dupVideos) {
+      const others = db.prepare(`SELECT id FROM videos WHERE channel_id = ? AND message_id = ? AND id != ?`).all(group.channel_id, group.message_id, group.keep_id);
+      for (const other of others) {
+        const oldId = other.id;
+        db.prepare(`UPDATE OR IGNORE progress SET video_id = ? WHERE video_id = ?`).run(group.keep_id, oldId);
+        db.prepare(`DELETE FROM progress WHERE video_id = ?`).run(oldId);
+        db.prepare(`UPDATE notes SET video_id = ? WHERE video_id = ?`).run(group.keep_id, oldId);
+        try {
+          db.prepare(`UPDATE OR IGNORE video_tags SET video_id = ? WHERE video_id = ?`).run(group.keep_id, oldId);
+          db.prepare(`DELETE FROM video_tags WHERE video_id = ?`).run(oldId);
+        } catch (e) {}
+        db.prepare(`UPDATE files SET parent_video_id = ? WHERE parent_video_id = ?`).run(group.keep_id, oldId);
+        db.prepare(`DELETE FROM videos WHERE id = ?`).run(oldId);
+      }
+    }
+
+    // 2. Find and delete duplicate files
+    const dupFiles = db.prepare(`
+      SELECT channel_id, message_id, MIN(id) as keep_id
+      FROM files GROUP BY channel_id, message_id HAVING COUNT(*) > 1
+    `).all();
+
+    for (const group of dupFiles) {
+      db.prepare(`DELETE FROM files WHERE channel_id = ? AND message_id = ? AND id != ?`).run(group.channel_id, group.message_id, group.keep_id);
+    }
+  })();
+} catch (err) {
+  console.error('[DB] Migration error during deduplication:', err);
+}
+// ----------------------------------------------------------------------------------
+
 // Unique indexes to enable non-destructive re-scans (preserves video IDs, progress & notes)
-try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_videos_channel_message ON videos(channel_id, message_id)'); } catch (_) {}
-try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_files_channel_message ON files(channel_id, message_id)'); } catch (_) {}
+try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_videos_channel_message ON videos(channel_id, message_id)'); } catch (e) { console.error('Failed to create idx_videos_channel_message', e) }
+try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_files_channel_message ON files(channel_id, message_id)'); } catch (e) { console.error('Failed to create idx_files_channel_message', e) }
 
 // High-Performance Query Indexes
 try { db.exec('CREATE INDEX IF NOT EXISTS idx_videos_channel_id ON videos(channel_id)'); } catch (_) {}
