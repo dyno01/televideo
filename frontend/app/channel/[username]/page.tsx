@@ -7,7 +7,7 @@ import {
   ArrowLeft, Video as VideoIcon, FileText, Folder, RefreshCw, Loader2, AlertCircle, 
   Layers, LayoutDashboard, Settings, Menu, X, Play, ChevronRight, BookOpen, Lock
 } from 'lucide-react'
-import { getChannel, getVideos, getFiles, scanChannel, getBatches, getBatchVideos, type Channel, type Video, type TelegramFile, type Batch } from '@/lib/api'
+import { getChannel, getVideos, getFiles, scanChannel, getBatches, getBatchVideos, saveProgress, type Channel, type Video, type TelegramFile, type Batch } from '@/lib/api'
 import LectureList from '@/components/LectureList'
 import FileLibrary from '@/components/FileLibrary'
 import BatchManager from '@/components/BatchManager'
@@ -285,7 +285,13 @@ export default function ChannelPage() {
                       {videos.filter(v => ((v.watched_percentage || 0) > 0 || (v.last_timestamp || 0) > 0) && !v.completed && !dismissedChannelVideos.has(v.id)).map(vid => (
                         <Card key={vid.id} className="group/card relative flex-shrink-0 w-[300px] p-4 bg-[#111113] border-[#27272a] rounded-xl flex flex-col justify-between gap-3 shadow-none hover:border-[#52525b] transition-colors snap-start">
                           <button
-                            onClick={(e) => { e.stopPropagation(); setDismissedChannelVideos(prev => new Set(Array.from(prev).concat(vid.id))) }}
+                            onClick={async (e) => { 
+                              e.stopPropagation(); 
+                              setDismissedChannelVideos(prev => new Set(Array.from(prev).concat(vid.id)));
+                              try {
+                                await saveProgress(vid.id, 0, vid.duration || 1);
+                              } catch(err) { console.error('Failed to clear progress', err) }
+                            }}
                             className="absolute top-3 right-3 z-10 size-6 rounded-full bg-zinc-900/80 border border-[#27272a] text-[#a1a1aa] hover:text-[#fafafa] hover:bg-[#18181b] flex items-center justify-center transition-all opacity-0 group-hover/card:opacity-100"
                             title="Remove from continue watching"
                           >
@@ -313,22 +319,38 @@ export default function ChannelPage() {
                 )}
 
                 {/* 2. Batch Continue Watching */}
-                {batches.filter(b => !dismissedBatches.has(b.id)).length > 0 && batches.some(b => {
+                {batches.length > 0 && batches.some(b => {
                   const vids = batchVideos[b.id] || []
                   return vids.filter(v => (v.watched_percentage || 0) > 0 && !v.completed).length > 0
                 }) && (
                   <div className="flex gap-4 overflow-x-auto pb-4 snap-x hide-scrollbar">
-                    {batches.filter(b => !dismissedBatches.has(b.id)).map(batch => {
+                    {batches.map(batch => {
                       const vids = batchVideos[batch.id] || []
                       const inProgress = vids.filter(v => (v.watched_percentage || 0) > 0 && !v.completed)
-                      const lastVideo = inProgress.length > 0 ? inProgress[inProgress.length - 1] : null
                       
-                      if (!lastVideo) return null
+                      if (inProgress.length === 0) return null
+                      
+                      // Sort by progress_updated_at to find the truly lastly watched video
+                      const sortedInProgress = [...inProgress].sort((a, b) => {
+                        const dateA = a.progress_updated_at ? new Date(a.progress_updated_at).getTime() : 0;
+                        const dateB = b.progress_updated_at ? new Date(b.progress_updated_at).getTime() : 0;
+                        return dateA - dateB;
+                      });
+                      
+                      const lastVideo = sortedInProgress[sortedInProgress.length - 1]
+                      
+                      if (!lastVideo || dismissedBatches.has(batch.id)) return null
                       
                       return (
                         <Card key={batch.id} className="group/card relative flex-shrink-0 w-[350px] p-5 bg-[#111113] border-[#27272a] rounded-xl flex flex-col gap-4 shadow-none hover:border-[#52525b] transition-colors snap-start">
                           <button
-                            onClick={(e) => { e.stopPropagation(); setDismissedBatches(prev => new Set(Array.from(prev).concat(batch.id))) }}
+                            onClick={async (e) => { 
+                              e.stopPropagation(); 
+                              setDismissedBatches(prev => new Set(Array.from(prev).concat(batch.id)));
+                              try {
+                                await saveProgress(lastVideo.id, 0, lastVideo.duration || 1);
+                              } catch(err) { console.error('Failed to clear progress', err) }
+                            }}
                             className="absolute top-4 right-4 z-10 size-6 rounded-full bg-zinc-900/80 border border-[#27272a] text-[#a1a1aa] hover:text-[#fafafa] hover:bg-[#18181b] flex items-center justify-center transition-all opacity-0 group-hover/card:opacity-100"
                             title="Remove from continue watching"
                           >

@@ -77,6 +77,7 @@ export interface Video {
   watched_percentage: number
   last_timestamp: number
   completed: number
+  progress_updated_at?: string
   batch_id?: number
   batch_name?: string
 }

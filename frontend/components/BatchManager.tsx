@@ -279,8 +279,13 @@ function BatchDetail({ batch, channelUsername }: { batch: Batch; channelUsername
     // 1. First priority: video with percentage > 0 and not completed
     const inProgress = vids.filter(v => (v.watched_percentage || 0) > 0 && !v.completed)
     if (inProgress.length > 0) {
-      // Pick the highest progress or last updated
-      return inProgress[inProgress.length - 1]
+      // Pick the highest progress or last updated by progress_updated_at
+      const sortedInProgress = [...inProgress].sort((a, b) => {
+        const dateA = a.progress_updated_at ? new Date(a.progress_updated_at).getTime() : 0;
+        const dateB = b.progress_updated_at ? new Date(b.progress_updated_at).getTime() : 0;
+        return dateA - dateB;
+      });
+      return sortedInProgress[sortedInProgress.length - 1]
     }
 
     // 2. Fallback: First video of batch if no progress started yet

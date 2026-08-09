@@ -232,6 +232,7 @@ router.get('/:id/videos', (req, res) => {
        COALESCE(p.watched_percentage, 0) AS watched_percentage,
        COALESCE(p.last_timestamp, 0)     AS last_timestamp,
        COALESCE(p.completed, 0)          AS completed,
+       p.updated_at                      AS progress_updated_at,
        c.username AS channel_username,
        c.title    AS channel_title
      FROM videos v
@@ -270,6 +271,7 @@ router.get('/:id/sequence', (req, res) => {
        COALESCE(p.watched_percentage, 0) AS watched_percentage,
        COALESCE(p.last_timestamp, 0)     AS last_timestamp,
        COALESCE(p.completed, 0)          AS completed,
+       p.updated_at                      AS progress_updated_at,
        c.username AS channel_username,
        c.title    AS channel_title
      FROM (
