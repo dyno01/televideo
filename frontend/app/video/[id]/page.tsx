@@ -26,6 +26,7 @@ import {
   getVideoTags, 
   addVideoTag, 
   removeVideoTag, 
+  getApiBase,
   Video, 
   TelegramFile, 
   VideoTag, 
@@ -66,7 +67,14 @@ export default function VideoPage() {
   const lastSavedRef = useRef<{ time: number; ts: number }>({ time: 0, ts: 0 })
   const currentPosRef = useRef<{ currentTime: number; duration: number }>({ currentTime: 0, duration: 0 })
 
-  // --- PROGRESS PERSISTENCE (100% Reliable across all leave events) ---
+  const getAuthHeaders = () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('app_passcode_token') : null
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (token) headers['Authorization'] = `Bearer ${token}`
+    return { headers, token }
+  }
+
+  // --- PROGRESS PERSISTENCE (100% Reliable across mobile & desktop) ---
   const persistProgress = useCallback((currentTime: number, duration: number, force: boolean = false) => {
     if (!videoId || isNaN(videoId) || !duration || duration <= 0) return
 
@@ -79,10 +87,12 @@ export default function VideoPage() {
 
     lastSavedRef.current = { time: currentTime, ts: now }
 
-    // Use keepalive fetch so HTTP request finishes even if page unmounts/navigates
-    fetch(`${API_BASE}/api/progress`, {
+    const { headers } = getAuthHeaders()
+    const apiBase = getApiBase()
+
+    fetch(`${apiBase}/api/progress`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ videoId, currentTime, duration }),
       keepalive: true,
     }).catch(() => {})
@@ -93,9 +103,11 @@ export default function VideoPage() {
     return () => {
       const { currentTime, duration } = currentPosRef.current
       if (videoId && duration > 0) {
-        fetch(`${API_BASE}/api/progress`, {
+        const { headers } = getAuthHeaders()
+        const apiBase = getApiBase()
+        fetch(`${apiBase}/api/progress`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({ videoId, currentTime, duration }),
           keepalive: true,
         }).catch(() => {})
@@ -103,21 +115,33 @@ export default function VideoPage() {
     }
   }, [videoId])
 
-  // Save progress on browser tab close / refresh
+  // Save progress on mobile visibilitychange, pagehide & beforeunload
   useEffect(() => {
     const handleUnload = () => {
       const { currentTime, duration } = currentPosRef.current
       if (videoId && duration > 0) {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('app_passcode_token') : null
+        const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : ''
+        const apiBase = getApiBase()
         const blob = new Blob([JSON.stringify({ videoId, currentTime, duration })], { type: 'application/json' })
-        navigator.sendBeacon(`${API_BASE}/api/progress`, blob)
+        navigator.sendBeacon(`${apiBase}/api/progress${tokenQuery}`, blob)
+      }
+    }
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        handleUnload()
       }
     }
 
     window.addEventListener('beforeunload', handleUnload)
     window.addEventListener('pagehide', handleUnload)
+    document.addEventListener('visibilitychange', handleVisibility)
+
     return () => {
       window.removeEventListener('beforeunload', handleUnload)
       window.removeEventListener('pagehide', handleUnload)
+      document.removeEventListener('visibilitychange', handleVisibility)
     }
   }, [videoId])
 

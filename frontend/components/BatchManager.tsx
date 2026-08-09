@@ -16,11 +16,14 @@ import {
   Rocket, 
   ArrowLeft,
   Sparkles,
-  ExternalLink
+  ExternalLink,
+  Share2,
+  Upload
 } from 'lucide-react'
 import { Batch, getBatches, deleteBatch, getBatchSequence, SequenceItem, Video, TelegramFile, API_BASE } from '@/lib/api'
 import NewBatchModal from './NewBatchModal'
 import DocumentModal from './DocumentModal'
+import { ExportBatchModal, ImportBatchModal } from './BatchShareModal'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -40,6 +43,8 @@ export default function BatchManager({ channelId, channelUsername, initialBatchI
   const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [editingBatch, setEditingBatch] = useState<Batch | null>(null)
+  const [exportingBatch, setExportingBatch] = useState<Batch | null>(null)
+  const [showImportModal, setShowImportModal] = useState(false)
 
   const fetchBatches = async () => {
     try {
@@ -120,25 +125,43 @@ export default function BatchManager({ channelId, channelUsername, initialBatchI
           <h2 className="text-xl font-bold tracking-tight text-white">Batches & Modules</h2>
           <p className="text-xs text-zinc-400">Select a batch to access structured lectures and notes.</p>
         </div>
-        <Button 
-          onClick={() => { setEditingBatch(null); setShowModal(true); }}
-          className="gap-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold px-4 h-9 shadow-lg shadow-indigo-600/20"
-        >
-          <Plus size={16} /> Create Batch
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline"
+            onClick={() => setShowImportModal(true)}
+            className="gap-2 bg-[#111113] border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-lg text-xs font-semibold px-3 h-9"
+          >
+            <Upload size={14} /> Import Batch
+          </Button>
+          <Button 
+            onClick={() => { setEditingBatch(null); setShowModal(true); }}
+            className="gap-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold px-4 h-9 shadow-lg shadow-indigo-600/20"
+          >
+            <Plus size={16} /> Create Batch
+          </Button>
+        </div>
       </div>
 
       {batches.length === 0 ? (
         <div className="text-center py-20 border border-dashed border-zinc-800 rounded-2xl bg-[#111113]">
           <BookOpen size={36} className="mx-auto text-zinc-600 mb-3" />
           <p className="text-sm font-semibold text-zinc-300 mb-1">No Batches Created</p>
-          <p className="text-xs text-zinc-500 max-w-sm mx-auto mb-4">Organize your channel's videos into structured modules by creating your first batch.</p>
-          <Button 
-            onClick={() => { setEditingBatch(null); setShowModal(true); }}
-            className="bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-semibold rounded-lg"
-          >
-            Create First Batch
-          </Button>
+          <p className="text-xs text-zinc-500 max-w-sm mx-auto mb-4">Organize your channel's videos into structured modules by creating or importing a batch.</p>
+          <div className="flex items-center justify-center gap-3">
+            <Button 
+              onClick={() => { setEditingBatch(null); setShowModal(true); }}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg"
+            >
+              Create First Batch
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={() => setShowImportModal(true)}
+              className="bg-zinc-900 border-zinc-800 text-zinc-300 hover:bg-zinc-800 text-xs font-semibold rounded-lg"
+            >
+              Import Batch
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -155,14 +178,23 @@ export default function BatchManager({ channelId, channelUsername, initialBatchI
                   </h3>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                     <button 
+                      onClick={(e) => { e.stopPropagation(); setExportingBatch(b); }}
+                      className="p-1 rounded text-zinc-500 hover:text-indigo-400 hover:bg-indigo-500/10"
+                      title="Share / Export Batch"
+                    >
+                      <Share2 size={14} />
+                    </button>
+                    <button 
                       onClick={(e) => handleEdit(b, e)}
                       className="p-1 rounded text-zinc-500 hover:text-white hover:bg-zinc-800"
+                      title="Edit Batch"
                     >
                       <Edit2 size={14} />
                     </button>
                     <button 
                       onClick={(e) => handleDelete(b.id, e)}
                       className="p-1 rounded text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10"
+                      title="Delete Batch"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -196,6 +228,20 @@ export default function BatchManager({ channelId, channelUsername, initialBatchI
         onSuccess={fetchBatches}
         channelId={channelId}
         editingBatch={editingBatch}
+      />
+
+      <ExportBatchModal
+        isOpen={!!exportingBatch}
+        onClose={() => setExportingBatch(null)}
+        batch={exportingBatch}
+        channelUsername={channelUsername}
+      />
+
+      <ImportBatchModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        channelId={channelId}
+        onSuccess={fetchBatches}
       />
     </div>
   )

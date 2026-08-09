@@ -90,6 +90,18 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
         videoRef.current.currentTime = seconds
       }
     },
+    play: () => {
+      if (videoRef.current) {
+        videoRef.current.play().catch(() => {})
+        setIsPlaying(true)
+      }
+    },
+    pause: () => {
+      if (videoRef.current) {
+        videoRef.current.pause()
+        setIsPlaying(false)
+      }
+    },
     getCurrentTime: () => {
       return videoRef.current?.currentTime ?? 0
     }
@@ -298,6 +310,15 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     if (!isDragging) resetControlsTimeout()
   }
 
+  const [seekRipple, setSeekRipple] = useState<{ type: 'left' | 'right' | 'center'; text: string } | null>(null)
+  const rippleTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  const triggerRipple = (type: 'left' | 'right' | 'center', text: string) => {
+    setSeekRipple({ type, text })
+    if (rippleTimeoutRef.current) clearTimeout(rippleTimeoutRef.current)
+    rippleTimeoutRef.current = setTimeout(() => setSeekRipple(null), 600)
+  }
+
   const lastTapRef = useRef<number>(0)
 
   const handleVideoClick = (e: React.MouseEvent) => {
@@ -305,17 +326,26 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     const DOUBLE_TAP_DELAY = 300
     const rect = e.currentTarget.getBoundingClientRect()
     const x = e.clientX - rect.left
-    const isRightSide = x > rect.width / 2
+    const width = rect.width
 
     if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
-      // Double tap detected -> skip
-      skip(isRightSide ? 10 : -10)
+      // Double tap detected -> check region
+      if (x < width * 0.35) {
+        skip(-10)
+        triggerRipple('left', '-10s')
+      } else if (x > width * 0.65) {
+        skip(10)
+        triggerRipple('right', '+10s')
+      } else {
+        togglePlay()
+        triggerRipple('center', !isPlaying ? 'Play' : 'Pause')
+      }
       lastTapRef.current = 0 
     } else {
-      // Single tap detected -> toggle controls visibility
-      if (showControls) {
-        setShowControls(false)
-        if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current)
+      // Single tap -> toggle controls visibility & play/pause if middle
+      if (x >= width * 0.35 && x <= width * 0.65) {
+        togglePlay()
+        triggerRipple('center', !isPlaying ? 'Play' : 'Pause')
       } else {
         resetControlsTimeout()
       }
@@ -474,16 +504,36 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
         </div>
       </div>
 
-      {/* Centered Controls: Play, RotateCcw, RotateCw */}
-      {showControls && (
-        <div className="absolute inset-0 flex items-center justify-center gap-6 lg:gap-12 z-10 pointer-events-none -translate-y-8 lg:translate-y-0">
-          {/* Buffering/Loading Spinner */}
-          {isWaiting && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/10 backdrop-blur-[2px] z-20 pointer-events-none">
-              <Loader2 className="animate-spin text-white/80" size={48} />
-            </div>
-          )}
+      {/* Standalone Always-Visible Loading Spinner (Never hidden by controls timeout) */}
+      {isWaiting && (
+        <div className="absolute inset-0 z-30 bg-black/40 backdrop-blur-[2px] flex flex-col items-center justify-center pointer-events-none animate-in fade-in">
+          <div className="p-4 rounded-2xl bg-zinc-950/90 border border-zinc-800/80 shadow-2xl flex items-center gap-3">
+            <Loader2 className="animate-spin text-indigo-400" size={32} />
+            <span className="text-xs font-bold text-zinc-200 tracking-wide">Buffering Video...</span>
+          </div>
+        </div>
+      )}
 
+      {/* Ripple Seek & Play/Pause Feedback Overlays */}
+      {seekRipple && (
+        <div className={cn(
+          "absolute inset-y-0 z-20 flex items-center justify-center pointer-events-none animate-in zoom-in-75 duration-200",
+          seekRipple.type === 'left' && "left-0 w-1/3 bg-white/10 rounded-r-full backdrop-blur-xs",
+          seekRipple.type === 'right' && "right-0 w-1/3 bg-white/10 rounded-l-full backdrop-blur-xs",
+          seekRipple.type === 'center' && "inset-0 bg-black/20"
+        )}>
+          <div className="flex flex-col items-center gap-1.5 p-4 rounded-full bg-zinc-950/90 border border-white/20 text-white font-black shadow-2xl">
+            {seekRipple.type === 'left' && <RotateCcw size={28} className="animate-pulse" />}
+            {seekRipple.type === 'right' && <RotateCw size={28} className="animate-pulse" />}
+            {seekRipple.type === 'center' && (isPlaying ? <Pause size={32} fill="white" /> : <Play size={32} fill="white" />)}
+            <span className="text-xs tracking-widest uppercase">{seekRipple.text}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Centered Controls: Play, RotateCcw, RotateCw */}
+      {showControls && !isWaiting && (
+        <div className="absolute inset-0 flex items-center justify-center gap-6 lg:gap-12 z-10 pointer-events-none -translate-y-8 lg:translate-y-0">
            <button 
              onClick={(e) => { e.stopPropagation(); skip(-10); }}
              className="size-10 lg:size-14 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/80 hover:bg-white/10 hover:text-white transition-all active:scale-95 pointer-events-auto shadow-2xl"

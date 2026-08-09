@@ -8,14 +8,19 @@ import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 
 function formatTimestamp(seconds: number): string {
-  const m = Math.floor(seconds / 60)
+  if (!seconds || seconds <= 0) return '0:00'
+  const hours = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
   const s = Math.floor(seconds % 60)
+  if (hours > 0) {
+    return `${hours}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  }
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
 interface NotesPanelProps {
   videoId: number
-  playerRef: RefObject<{ seekTo: (t: number) => void; getCurrentTime?: () => number }>
+  playerRef: RefObject<{ seekTo: (t: number) => void; play?: () => void; getCurrentTime?: () => number }>
 }
 
 export default function NotesPanel({ videoId, playerRef }: NotesPanelProps) {
@@ -65,11 +70,13 @@ export default function NotesPanel({ videoId, playerRef }: NotesPanelProps) {
     // Set bookmark to current time before jumping
     setBookmarkTime(currentTime)
     playerRef.current?.seekTo(timestamp)
+    playerRef.current?.play?.()
   }
 
   function handleReturn() {
     if (bookmarkTime !== null) {
       playerRef.current?.seekTo(bookmarkTime)
+      playerRef.current?.play?.()
       setBookmarkTime(null)
     }
   }
