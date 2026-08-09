@@ -130,6 +130,13 @@ try {
     for (const group of dupFiles) {
       db.prepare(`DELETE FROM files WHERE channel_id = ? AND message_id = ? AND id != ?`).run(group.channel_id, group.message_id, group.keep_id);
     }
+
+    // 3. Restore missing batch_ids
+    const batches = db.prepare('SELECT * FROM batches').all();
+    for (const b of batches) {
+      db.prepare('UPDATE videos SET batch_id = ? WHERE channel_id = ? AND message_id >= ? AND message_id <= ?').run(b.id, b.channel_id, b.start_msg_id, b.end_msg_id);
+      db.prepare('UPDATE files SET batch_id = ? WHERE channel_id = ? AND message_id >= ? AND message_id <= ?').run(b.id, b.channel_id, b.start_msg_id, b.end_msg_id);
+    }
   })();
 } catch (err) {
   console.error('[DB] Migration error during deduplication:', err);
