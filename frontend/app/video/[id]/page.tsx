@@ -545,6 +545,10 @@ return (
             ref={playerRef}
             initialPercentage={video.watched_percentage}
             initialTimestamp={video.last_timestamp}
+            sidebarContent={sidebarContent}
+            isSidebarOpen={isSidebarOpen}
+            onOpenSidebar={() => setIsSidebarOpen(true)}
+            onCloseSidebar={() => setIsSidebarOpen(false)}
             onOpenTelegramAuth={() => setIsAuthModalOpen(true)}
             onTimeUpdate={(c, d) => persistProgress(c, d, false)}
             onPause={(c, d) => persistProgress(c, d, true)}
