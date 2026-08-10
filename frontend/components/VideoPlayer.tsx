@@ -19,7 +19,8 @@ import {
   Loader2,
   X,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ListVideo
 } from 'lucide-react'
 import { cn, getMediaTokenQuery } from '@/lib/utils'
 import { Video, getApiBase } from '@/lib/api'
@@ -635,19 +636,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
         showControls || isDragging ? "opacity-100" : "opacity-0"
       )}>
 
-        {/* TOGGLE BUTTON (when closed) - Moved here to sync with controls visibility */}
-        {sidebarContent && !isSidebarOpen && (
-          <button 
-            onClick={(e) => { e.stopPropagation(); if (onOpenSidebar) onOpenSidebar(); }}
-            className={cn(
-              "pointer-events-auto absolute top-1/2 right-0 -translate-y-1/2 bg-[#111113]/80 backdrop-blur border border-r-0 border-zinc-800 p-2 rounded-l-xl text-zinc-400 hover:text-white hover:bg-zinc-800 z-40 transition-all shadow-lg",
-              isFullscreen ? "flex" : "flex xl:hidden"
-            )}
-            title="Open Sidebar"
-          >
-            <ChevronLeft size={24} />
-          </button>
-        )}
+        {/* TOGGLE BUTTON REMOVED FROM HERE, MOVED TO BOTTOM BAR */}
         
         {/* Time Markers Area (Above Progress) */}
         <div className="flex items-center justify-between mb-3 px-1 pointer-events-none">
@@ -751,6 +740,19 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
              >
                 {playbackSpeed}X
              </button>
+             
+             {sidebarContent && (
+               <button 
+                  onClick={(e) => { e.stopPropagation(); if (onOpenSidebar) onOpenSidebar(); }}
+                  className={cn(
+                    "text-white/40 hover:text-white transition-colors drop-shadow-md",
+                    isFullscreen ? "flex" : "flex xl:hidden"
+                  )}
+                  title="Playlist & Notes"
+               >
+                  <ListVideo size={18} />
+               </button>
+             )}
              <button 
                 onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }}
                 className="text-white/40 hover:text-white transition-colors drop-shadow-md"
