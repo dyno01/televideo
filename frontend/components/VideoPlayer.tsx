@@ -86,6 +86,15 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   }
 
   const [showSpeedMenu, setShowSpeedMenu] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement)
+    }
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  }, [])
   const speeds = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3]
 
   const cycleSpeed = () => {
@@ -363,9 +372,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
         skip(10)
         triggerSeekRipple('right', 'cw')
       } else {
-        const wasPaused = videoRef.current?.paused
-        togglePlay()
-        triggerSeekRipple('center', wasPaused ? 'play' : 'pause')
+        toggleFullscreen()
       }
       lastTapRef.current = 0
     } else {
@@ -397,21 +404,19 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
         case 'k':
           e.preventDefault()
           togglePlay()
-          resetControlsTimeout()
+          triggerSeekRipple('center', videoRef.current?.paused ? 'pause' : 'play')
           break
         case 'ArrowLeft':
         case 'j':
           e.preventDefault()
           skip(-10)
           triggerSeekRipple('left', 'ccw')
-          resetControlsTimeout()
           break
         case 'ArrowRight':
         case 'l':
           e.preventDefault()
           skip(10)
           triggerSeekRipple('right', 'cw')
-          resetControlsTimeout()
           break
         case 'ArrowUp':
           e.preventDefault()
@@ -555,7 +560,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
 
       {/* --- macOS-style Glassmorphic Center Overlay Buttons --- */}
       <div className={cn(
-        "absolute inset-0 z-25 flex items-center justify-center gap-3 sm:gap-6 pointer-events-none transition-all duration-300 pb-8 sm:pb-0",
+        "absolute inset-0 z-25 flex items-center justify-center gap-4 sm:gap-6 pointer-events-none transition-all duration-300 pb-16 sm:pb-0",
         showControls && !isWaiting ? "opacity-100" : "opacity-0"
       )}>
         {/* Skip Back -10 */}
@@ -569,14 +574,14 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
 
         {/* Center Play/Pause */}
         <button
-          className="pointer-events-auto size-14 sm:size-20 rounded-full bg-white/15 backdrop-blur-2xl border border-white/25 flex items-center justify-center text-white hover:bg-white/25 hover:scale-105 active:scale-95 transition-all shadow-2xl"
+          className="pointer-events-auto size-12 sm:size-20 rounded-full bg-white/15 backdrop-blur-2xl border border-white/25 flex items-center justify-center text-white hover:bg-white/25 hover:scale-105 active:scale-95 transition-all shadow-2xl"
           onClick={(e) => { e.stopPropagation(); togglePlay(); resetControlsTimeout(); }}
           title={isPlaying ? "Pause" : "Play"}
         >
           {isPlaying ? (
-            <Pause className="size-6 sm:size-8" fill="white" />
+            <Pause className="size-5 sm:size-8" fill="white" />
           ) : (
-            <Play className="size-6 sm:size-8 ml-1" fill="white" />
+            <Play className="size-5 sm:size-8 ml-1" fill="white" />
           )}
         </button>
 
@@ -629,6 +634,20 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
         "absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent transition-opacity duration-500 flex flex-col justify-end p-3 sm:p-4 lg:p-6 z-20 pointer-events-none",
         showControls || isDragging ? "opacity-100" : "opacity-0"
       )}>
+
+        {/* TOGGLE BUTTON (when closed) - Moved here to sync with controls visibility */}
+        {sidebarContent && !isSidebarOpen && (
+          <button 
+            onClick={(e) => { e.stopPropagation(); if (onOpenSidebar) onOpenSidebar(); }}
+            className={cn(
+              "pointer-events-auto absolute top-1/2 right-0 -translate-y-1/2 bg-[#111113]/80 backdrop-blur border border-r-0 border-zinc-800 p-2 rounded-l-xl text-zinc-400 hover:text-white hover:bg-zinc-800 z-40 transition-all shadow-lg",
+              isFullscreen ? "flex" : "flex xl:hidden"
+            )}
+            title="Open Sidebar"
+          >
+            <ChevronLeft size={24} />
+          </button>
+        )}
         
         {/* Time Markers Area (Above Progress) */}
         <div className="flex items-center justify-between mb-3 px-1 pointer-events-none">
@@ -769,16 +788,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
             </div>
           </div>
 
-          {/* TOGGLE BUTTON (when closed) */}
-          {!isSidebarOpen && (
-            <button 
-              onClick={onOpenSidebar}
-              className="absolute top-1/2 right-0 -translate-y-1/2 bg-[#111113]/80 backdrop-blur border border-r-0 border-zinc-800 p-2 rounded-l-xl text-zinc-400 hover:text-white hover:bg-zinc-800 z-40 transition-all shadow-lg"
-              title="Open Sidebar"
-            >
-              <ChevronLeft size={24} />
-            </button>
-          )}
+
         </>
       )}
     </div>

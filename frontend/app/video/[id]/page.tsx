@@ -535,10 +535,10 @@ return (
       </header>
 
       {/* MAIN AREA */}
-      <div className="flex-1 flex flex-col bg-[#0a0a0b]">
+      <div className="flex-1 flex flex-col xl:flex-row bg-[#0a0a0b] overflow-hidden">
         
         {/* LEFT COLUMN */}
-        <div className="flex flex-col border-r border-zinc-800 bg-[#0a0a0b]">
+        <div className="flex-1 flex flex-col border-r border-zinc-800 bg-[#0a0a0b] overflow-y-auto">
           
           <VideoPlayer
             video={video}
@@ -660,6 +660,11 @@ return (
                </div>
             )}
           </div>
+        </div>
+
+        {/* RIGHT COLUMN (DESKTOP) - Hidden when fullscreen or mobile */}
+        <div className="hidden xl:flex w-[400px] border-l border-zinc-800 bg-[#111113] overflow-hidden shrink-0 flex-col">
+          {sidebarContent}
         </div>
       </div>
 

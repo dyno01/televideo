@@ -281,14 +281,34 @@ function BatchDetail({ batch, channelUsername }: { batch: Batch; channelUsername
     if (inProgress.length > 0) {
       // Pick the highest progress or last updated by progress_updated_at
       const sortedInProgress = [...inProgress].sort((a, b) => {
-        const dateA = a.updated_at ? new Date(a.updated_at).getTime() : (a.progress_updated_at ? new Date(a.progress_updated_at).getTime() : 0);
-        const dateB = b.updated_at ? new Date(b.updated_at).getTime() : (b.progress_updated_at ? new Date(b.progress_updated_at).getTime() : 0);
+        const dateA = a.progress_updated_at ? new Date(a.progress_updated_at).getTime() : 0;
+        const dateB = b.progress_updated_at ? new Date(b.progress_updated_at).getTime() : 0;
         return dateA - dateB;
       });
       return sortedInProgress[sortedInProgress.length - 1]
     }
 
-    // 2. Fallback: First video of batch if no progress started yet
+    // 2. Second priority: Next uncompleted video after the most recently updated completed video
+    const completed = vids.filter(v => v.completed)
+    if (completed.length > 0) {
+      const sortedCompleted = [...completed].sort((a, b) => {
+        const dateA = a.progress_updated_at ? new Date(a.progress_updated_at).getTime() : 0;
+        const dateB = b.progress_updated_at ? new Date(b.progress_updated_at).getTime() : 0;
+        return dateA - dateB;
+      });
+      const lastCompleted = sortedCompleted[sortedCompleted.length - 1];
+      const lastCompletedIndex = vids.findIndex(v => v.id === lastCompleted.id);
+      
+      if (lastCompletedIndex >= 0 && lastCompletedIndex < vids.length - 1) {
+          // Return the video immediately following the last completed one
+          return vids[lastCompletedIndex + 1];
+      }
+      
+      // If all are completed, return the last video
+      return vids[vids.length - 1];
+    }
+
+    // 3. Fallback: First video of batch if no progress started yet
     return vids[0]
   }, [items])
 
