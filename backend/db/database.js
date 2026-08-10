@@ -165,6 +165,8 @@ db.exec(`
   );
 `);
 
+try { db.exec('ALTER TABLE progress ADD COLUMN dismissed INTEGER DEFAULT 0'); } catch (_) {}
+
 
 // Seed initial settings from environment if not present
 const seedSetting = (key, val) => {

@@ -30,6 +30,23 @@ router.get('/:videoId', (req, res) => {
   res.json(progress);
 });
 
+// ─── POST /api/progress/:videoId/dismiss ───────────────────────────────────
+router.post('/:videoId/dismiss', (req, res) => {
+  const videoId = parseInt(req.params.videoId, 10);
+  if (isNaN(videoId)) return res.status(400).json({ error: 'Invalid video ID' });
+
+  // Update or insert with dismissed = 1
+  run(
+    `INSERT INTO progress (video_id, dismissed, updated_at)
+     VALUES (?, 1, ?)
+     ON CONFLICT(video_id) DO UPDATE SET
+       dismissed = 1,
+       updated_at = excluded.updated_at`,
+    [videoId, new Date().toISOString()]
+  );
+  res.json({ success: true });
+});
+
 // ─── POST /api/progress ────────────────────────────────────────────────────
 router.post('/', (req, res) => {
   const { videoId, currentTime, duration } = req.body;
@@ -50,17 +67,18 @@ router.post('/', (req, res) => {
   const completed  = percentage >= 90 ? 1 : 0;
 
   run(
-    `INSERT INTO progress (video_id, watched_percentage, last_timestamp, completed, updated_at)
-     VALUES (?, ?, ?, ?, ?)
+    `INSERT INTO progress (video_id, watched_percentage, last_timestamp, completed, dismissed, updated_at)
+     VALUES (?, ?, ?, ?, 0, ?)
      ON CONFLICT(video_id) DO UPDATE SET
        watched_percentage = excluded.watched_percentage,
        last_timestamp     = excluded.last_timestamp,
        completed          = excluded.completed,
+       dismissed          = 0,
        updated_at         = excluded.updated_at`,
     [videoIdInt, percentage, current, completed, new Date().toISOString()]
   );
 
-  res.json({ success: true, watched_percentage: percentage, completed });
+  res.json({ success: true, percentage, completed });
 });
 
 module.exports = router;

@@ -144,16 +144,23 @@ router.post('/', async (req, res) => {
             c.fileId, c.accessHash, c.fileRef, c.mimeType, c.size, c.dcId, ts);
           
           // Better-sqlite3 run returns { changes: 1, lastInsertRowid: xyz } if inserted
-          // If IGNORE matches, changes will be 0. We need to find the video ID.
+          // If IGNORE matches, changes will be 0. We need to find the video ID and update its batch_id.
           if (info.changes === 1) {
             lastVideoId = info.lastInsertRowid;
           } else {
             const existing = getOne('SELECT id FROM videos WHERE channel_id = ? AND message_id = ?', [channelId, message.id]);
-            if (existing) lastVideoId = existing.id;
+            if (existing) {
+              lastVideoId = existing.id;
+              run('UPDATE videos SET batch_id = ? WHERE id = ?', [batchId, lastVideoId]);
+            }
           }
         } else {
-          insertFile.run(channelId, batchId, lastVideoId, message.id, c.fileName, c.mimeType,
+          const info = insertFile.run(channelId, batchId, lastVideoId, message.id, c.fileName, c.mimeType,
             c.size, c.fileId, c.accessHash, c.fileRef, c.dcId, ts);
+          if (info.changes === 0) {
+            run('UPDATE files SET batch_id = ?, parent_video_id = ? WHERE channel_id = ? AND message_id = ?', 
+                [batchId, lastVideoId, channelId, message.id]);
+          }
         }
       }
     });
@@ -232,6 +239,7 @@ router.get('/:id/videos', (req, res) => {
        COALESCE(p.watched_percentage, 0) AS watched_percentage,
        COALESCE(p.last_timestamp, 0)     AS last_timestamp,
        COALESCE(p.completed, 0)          AS completed,
+       COALESCE(p.dismissed, 0)          AS dismissed,
        p.updated_at                      AS progress_updated_at,
        c.username AS channel_username,
        c.title    AS channel_title
@@ -271,6 +279,7 @@ router.get('/:id/sequence', (req, res) => {
        COALESCE(p.watched_percentage, 0) AS watched_percentage,
        COALESCE(p.last_timestamp, 0)     AS last_timestamp,
        COALESCE(p.completed, 0)          AS completed,
+       COALESCE(p.dismissed, 0)          AS dismissed,
        p.updated_at                      AS progress_updated_at,
        c.username AS channel_username,
        c.title    AS channel_title

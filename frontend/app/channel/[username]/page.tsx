@@ -7,7 +7,7 @@ import {
   ArrowLeft, Video as VideoIcon, FileText, Folder, RefreshCw, Loader2, AlertCircle, 
   Layers, LayoutDashboard, Settings, Menu, X, Play, ChevronRight, BookOpen, Lock
 } from 'lucide-react'
-import { getChannel, getVideos, getFiles, scanChannel, getBatches, getBatchVideos, saveProgress, type Channel, type Video, type TelegramFile, type Batch } from '@/lib/api'
+import { getChannel, getVideos, getFiles, scanChannel, getBatches, getBatchVideos, saveProgress, dismissProgress, type Channel, type Video, type TelegramFile, type Batch } from '@/lib/api'
 import LectureList from '@/components/LectureList'
 import FileLibrary from '@/components/FileLibrary'
 import BatchManager from '@/components/BatchManager'
@@ -278,19 +278,19 @@ export default function ChannelPage() {
                 </h2>
                 
                 {/* 1. All Channel Videos in-progress fallback */}
-                {videos.filter(v => ((v.watched_percentage || 0) > 0 || (v.last_timestamp || 0) > 0) && !v.completed && !dismissedChannelVideos.has(v.id)).length > 0 && (
+                {videos.filter(v => ((v.watched_percentage || 0) > 0 || (v.last_timestamp || 0) > 0) && !v.completed && !v.dismissed && !dismissedChannelVideos.has(v.id)).length > 0 && (
                   <div className="mb-6">
                     <p className="text-xs font-semibold text-[#a1a1aa] uppercase tracking-wider mb-3">Recent Channel Progress</p>
                     <div className="flex gap-4 overflow-x-auto pb-4 snap-x hide-scrollbar">
-                      {videos.filter(v => ((v.watched_percentage || 0) > 0 || (v.last_timestamp || 0) > 0) && !v.completed && !dismissedChannelVideos.has(v.id)).map(vid => (
+                      {videos.filter(v => ((v.watched_percentage || 0) > 0 || (v.last_timestamp || 0) > 0) && !v.completed && !v.dismissed && !dismissedChannelVideos.has(v.id)).map(vid => (
                         <Card key={vid.id} className="group/card relative flex-shrink-0 w-[300px] p-4 bg-[#111113] border-[#27272a] rounded-xl flex flex-col justify-between gap-3 shadow-none hover:border-[#52525b] transition-colors snap-start">
                           <button
                             onClick={async (e) => { 
                               e.stopPropagation(); 
                               setDismissedChannelVideos(prev => new Set(Array.from(prev).concat(vid.id)));
                               try {
-                                await saveProgress(vid.id, 0, vid.duration || 1);
-                              } catch(err) { console.error('Failed to clear progress', err) }
+                                await dismissProgress(vid.id);
+                              } catch(err) { console.error('Failed to dismiss', err) }
                             }}
                             className="absolute top-3 right-3 z-10 size-6 rounded-full bg-zinc-900/80 border border-[#27272a] text-[#a1a1aa] hover:text-[#fafafa] hover:bg-[#18181b] flex items-center justify-center transition-all opacity-0 group-hover/card:opacity-100"
                             title="Remove from continue watching"
@@ -321,19 +321,19 @@ export default function ChannelPage() {
                 {/* 2. Batch Continue Watching */}
                 {batches.length > 0 && batches.some(b => {
                   const vids = batchVideos[b.id] || []
-                  return vids.filter(v => (v.watched_percentage || 0) > 0 && !v.completed).length > 0
+                  return vids.filter(v => (v.watched_percentage || 0) > 0 && !v.completed && !v.dismissed).length > 0
                 }) && (
                   <div className="flex gap-4 overflow-x-auto pb-4 snap-x hide-scrollbar">
                     {batches.map(batch => {
                       const vids = batchVideos[batch.id] || []
-                      const inProgress = vids.filter(v => (v.watched_percentage || 0) > 0 && !v.completed)
+                      const inProgress = vids.filter(v => (v.watched_percentage || 0) > 0 && !v.completed && !v.dismissed)
                       
                       if (inProgress.length === 0) return null
                       
                       // Sort by progress_updated_at to find the truly lastly watched video
                       const sortedInProgress = [...inProgress].sort((a, b) => {
-                        const dateA = a.progress_updated_at ? new Date(a.progress_updated_at).getTime() : 0;
-                        const dateB = b.progress_updated_at ? new Date(b.progress_updated_at).getTime() : 0;
+                        const dateA = a.updated_at ? new Date(a.updated_at).getTime() : (a.progress_updated_at ? new Date(a.progress_updated_at).getTime() : 0);
+                        const dateB = b.updated_at ? new Date(b.updated_at).getTime() : (b.progress_updated_at ? new Date(b.progress_updated_at).getTime() : 0);
                         return dateA - dateB;
                       });
                       

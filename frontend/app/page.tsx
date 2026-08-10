@@ -27,6 +27,7 @@ import {
   getTelegramStatus,
   getPasscodeStatus,
   saveProgress,
+  dismissProgress,
   Channel, 
   Video, 
   TelegramStatus 
@@ -339,11 +340,8 @@ export default function HomePage() {
                   const currentIds = inProgressVideos.filter(v => !dismissedVideoIds.has(v.id)).map(v => v.id);
                   setDismissedVideoIds(prev => new Set([...Array.from(prev), ...currentIds]));
                   try {
-                    await Promise.all(currentIds.map(id => {
-                      const v = inProgressVideos.find(vid => vid.id === id);
-                      return saveProgress(id, 0, v?.duration || 1);
-                    }));
-                  } catch(err) { console.error('Failed to clear all progress', err) }
+                    await Promise.all(currentIds.map(id => dismissProgress(id)));
+                  } catch(err) { console.error('Failed to dismiss all', err) }
                 }}
                 className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors font-medium"
               >
@@ -362,8 +360,8 @@ export default function HomePage() {
                       e.stopPropagation(); 
                       setDismissedVideoIds(prev => new Set(Array.from(prev).concat(video.id)));
                       try {
-                        await saveProgress(video.id, 0, video.duration || 1);
-                      } catch(err) { console.error('Failed to clear progress', err) }
+                        await dismissProgress(video.id);
+                      } catch(err) { console.error('Failed to dismiss', err) }
                     }}
                     className="absolute top-3 right-3 z-10 size-6 rounded-full bg-zinc-900/80 border border-zinc-700 text-zinc-500 hover:text-white hover:bg-zinc-800 flex items-center justify-center transition-all opacity-0 group-hover/card:opacity-100"
                     title="Remove from continue watching"

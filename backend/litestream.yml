@@ -17,3 +17,7 @@ dbs:
         # effectively keeps the last 3 snapshots and deletes the rest.
         snapshot-interval: 8h
         retention: 24h
+        
+        # Optimize for Backblaze B2 Class B transaction limits
+        # Reduces the frequency of syncing/checking to save API calls
+        sync-interval: 10s

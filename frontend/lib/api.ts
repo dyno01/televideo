@@ -77,9 +77,11 @@ export interface Video {
   watched_percentage: number
   last_timestamp: number
   completed: number
+  dismissed?: number
+  updated_at?: string
   progress_updated_at?: string
-  batch_id?: number
-  batch_name?: string
+  batch_id?: number | null
+  batch_name?: string | null
 }
 
 export interface TelegramFile {
@@ -298,3 +300,6 @@ export const removeAppPasscode = (currentPasscode: string): Promise<{ success: b
   api.post<{ success: boolean }>('/api/telegram/remove-passcode', { currentPasscode }).then(d)
 
 export default api
+
+export const dismissProgress = (videoId: number): Promise<{ success: boolean }> =>
+  api.post(`/api/progress/${videoId}/dismiss`, {}).then(d)

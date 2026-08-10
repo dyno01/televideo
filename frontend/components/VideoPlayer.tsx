@@ -17,7 +17,9 @@ import {
   Tv,
   Type,
   Loader2,
-  X
+  X,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 import { cn, getMediaTokenQuery } from '@/lib/utils'
 import { Video, getApiBase } from '@/lib/api'
@@ -38,6 +40,10 @@ interface VideoPlayerProps {
   onPrev?: () => void
   onNext?: () => void
   onOpenTelegramAuth?: () => void
+  sidebarContent?: React.ReactNode
+  isSidebarOpen?: boolean
+  onCloseSidebar?: () => void
+  onOpenSidebar?: () => void
 }
 
 const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ 
@@ -50,7 +56,11 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   onEnded, 
   onPrev, 
   onNext, 
-  onOpenTelegramAuth 
+  onOpenTelegramAuth,
+  sidebarContent,
+  isSidebarOpen = false,
+  onCloseSidebar,
+  onOpenSidebar
 }, ref) => {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -468,6 +478,26 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     }
   }
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    // Store touch start X via data attribute
+    const touch = e.touches[0]
+    if (e.currentTarget) {
+      e.currentTarget.setAttribute('data-touch-x', touch.clientX.toString())
+    }
+  }
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const startXStr = e.currentTarget.getAttribute('data-touch-x')
+    if (!startXStr) return
+    const startX = parseFloat(startXStr)
+    const endX = e.changedTouches[0].clientX
+    
+    // Swipe right to close
+    if (endX - startX > 50 && onCloseSidebar) {
+      onCloseSidebar()
+    }
+  }
+
   return (
 
     <div 
@@ -712,6 +742,45 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
           </div>
         </div>
       </div>
+      
+      {/* SIDEBAR OVERLAY */}
+      {sidebarContent && (
+        <>
+          <div 
+            className={cn(
+              "absolute top-0 right-0 h-full bg-[#111113]/95 backdrop-blur-xl border-l border-zinc-800/50 transition-transform duration-300 z-50 flex flex-col w-full sm:w-[400px]",
+              isSidebarOpen ? "translate-x-0" : "translate-x-full"
+            )}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          >
+            <div className="flex items-center justify-between p-3 border-b border-zinc-800/50 bg-[#18181b]/50">
+              <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider pl-2">Menu</span>
+              <button 
+                onClick={onCloseSidebar} 
+                className="p-1.5 bg-zinc-800/50 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-lg transition-colors"
+                title="Close sidebar (Swipe right on mobile)"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              {sidebarContent}
+            </div>
+          </div>
+
+          {/* TOGGLE BUTTON (when closed) */}
+          {!isSidebarOpen && (
+            <button 
+              onClick={onOpenSidebar}
+              className="absolute top-1/2 right-0 -translate-y-1/2 bg-[#111113]/80 backdrop-blur border border-r-0 border-zinc-800 p-2 rounded-l-xl text-zinc-400 hover:text-white hover:bg-zinc-800 z-40 transition-all shadow-lg"
+              title="Open Sidebar"
+            >
+              <ChevronLeft size={24} />
+            </button>
+          )}
+        </>
+      )}
     </div>
   )
 })
