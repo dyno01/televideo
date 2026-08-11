@@ -45,6 +45,11 @@ app.get('/api/health', (_req, res) => {
 });
 
 // ─── Routes ────────────────────────────────────────────────────────────────
+// Files and stream and auth can be public or handle their own auth
+app.use('/api', filesRoutes);              // /api/channel/:u/files
+app.use('/api/stream', streamRoutes);       
+app.use('/api/telegram', authRoutes);         
+
 // Protect these with authMiddleware
 app.use('/api/channel', authMiddleware, channelRoutes);
 app.use('/api/channels', authMiddleware, channelRoutes); // some use /api/channels
@@ -53,11 +58,6 @@ app.use('/api/progress', authMiddleware, progressRoutes);
 app.use('/api/notes', authMiddleware, notesRoutes);
 app.use('/api/batches', authMiddleware, batchRoutes);
 app.use('/api/tags', authMiddleware, tagsRoutes);
-
-// Files and stream can be public or handle their own auth
-app.use('/api', filesRoutes);              // /api/channel/:u/files
-app.use('/api/stream', streamRoutes);       
-app.use('/api/telegram', authRoutes);         
 
 // ─── 404 catch-all ─────────────────────────────────────────────────────────
 app.use((_req, res) => {
