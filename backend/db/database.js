@@ -109,6 +109,61 @@ try { db.exec('ALTER TABLE videos ADD COLUMN batch_id INTEGER REFERENCES batches
 try { db.exec('ALTER TABLE files  ADD COLUMN batch_id INTEGER REFERENCES batches(id)'); } catch (_) {}
 try { db.exec('ALTER TABLE files  ADD COLUMN parent_video_id INTEGER REFERENCES videos(id)'); } catch (_) {}
 
+// Tags feature
+db.exec(`
+  CREATE TABLE IF NOT EXISTS video_tags (
+    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    video_id INTEGER NOT NULL,
+    tag      TEXT    NOT NULL,
+    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE
+  );
+`);
+
+// ─── Auto-Migration to Multi-User ───────────────────────────────────────────
+const hasUserId = db.pragma('table_info(progress)').some(c => c.name === 'user_id');
+if (!hasUserId) {
+  console.log('Migrating progress table to support multiple users...');
+  const crypto = require('crypto');
+  const hash = crypto.createHash('sha256').update('admin').digest('hex');
+  db.prepare("INSERT OR IGNORE INTO users (id, username, password_hash) VALUES (1, 'admin', ?)").run(hash);
+
+  db.exec('ALTER TABLE progress RENAME TO old_progress;');
+  
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS progress (
+      id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id             INTEGER NOT NULL,
+      video_id            INTEGER NOT NULL,
+      watched_percentage  REAL    DEFAULT 0,
+      last_timestamp      REAL    DEFAULT 0,
+      completed           INTEGER DEFAULT 0,
+      dismissed           INTEGER DEFAULT 0,
+      updated_at          TEXT,
+      FOREIGN KEY (video_id) REFERENCES videos(id),
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      UNIQUE(user_id, video_id)
+    );
+  `);
+
+  db.exec(`
+    INSERT INTO progress (user_id, video_id, watched_percentage, last_timestamp, completed, dismissed, updated_at)
+    SELECT 1, video_id, watched_percentage, last_timestamp, completed, dismissed, updated_at FROM old_progress;
+  `);
+  db.exec('DROP TABLE old_progress;');
+}
+
+const notesHasUserId = db.pragma('table_info(notes)').some(c => c.name === 'user_id');
+if (!notesHasUserId) {
+  db.exec('ALTER TABLE notes ADD COLUMN user_id INTEGER;');
+  db.exec('UPDATE notes SET user_id = 1;');
+}
+
+const batchesHasUserId = db.pragma('table_info(batches)').some(c => c.name === 'user_id');
+if (!batchesHasUserId) {
+  db.exec('ALTER TABLE batches ADD COLUMN user_id INTEGER;');
+  db.exec('UPDATE batches SET user_id = 1;');
+}
+
 // --- MIGRATION: Deduplicate videos and files before applying unique constraints ---
 try {
   db.transaction(() => {
