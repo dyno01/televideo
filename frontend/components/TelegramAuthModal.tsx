@@ -32,9 +32,8 @@ import {
   loginTelegram,
   saveTelegramSession,
   logoutTelegram,
-  getPasscodeStatus,
-  setAppPasscode,
-  removeAppPasscode,
+  getCurrentUser,
+  changePassword,
   TelegramStatus,
 } from '@/lib/api'
 
@@ -49,11 +48,11 @@ export default function TelegramAuthModal({
   onClose,
   onStatusChange,
 }: TelegramAuthModalProps) {
-  const [activeTab, setActiveTab] = useState<'telegram' | 'passcode'>('telegram')
+  const [activeTab, setActiveTab] = useState<'telegram' | 'account'>('telegram')
   const [showManualSession, setShowManualSession] = useState(false)
   
   const [status, setStatus] = useState<TelegramStatus | null>(null)
-  const [passcodeSet, setPasscodeSet] = useState(false)
+  const [currentUser, setCurrentUser] = useState<{ id: number, username: string } | null>(null)
   const [loading, setLoading] = useState(true)
 
   // Phone auth state
@@ -83,16 +82,16 @@ export default function TelegramAuthModal({
     setLoading(true)
     setErrorMsg('')
     try {
-      const [data, passSt] = await Promise.all([
+      const [data, userRes] = await Promise.all([
         getTelegramStatus(),
-        getPasscodeStatus().catch(() => ({ passcodeSet: false }))
+        getCurrentUser().catch(() => ({ user: null }))
       ])
       setStatus(data)
-      setPasscodeSet(passSt.passcodeSet)
+      setCurrentUser(userRes.user)
       if (data.apiId) setApiId(String(data.apiId))
       onStatusChange?.(data)
     } catch (err: any) {
-      setErrorMsg('Failed to check Telegram status.')
+      setErrorMsg('Failed to check status.')
     } finally {
       setLoading(false)
     }
@@ -191,42 +190,21 @@ export default function TelegramAuthModal({
     }
   }
 
-  const handleSetPasscode = async (e: React.FormEvent) => {
+  const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newPasscode || newPasscode.trim().length < 4) {
-      setErrorMsg('Passcode must be at least 4 characters long.')
+      setErrorMsg('New password must be at least 4 characters long.')
       return
     }
     setSubmitting(true)
     setErrorMsg('')
     try {
-      const res = await setAppPasscode(newPasscode, currentPasscode)
-      if (res.token) {
-        localStorage.setItem('app_passcode_token', res.token)
-      }
-      setPasscodeSet(true)
+      await changePassword(currentPasscode, newPasscode)
       setNewPasscode('')
       setCurrentPasscode('')
-      setSuccessMsg('App Passcode security enabled successfully!')
+      setSuccessMsg('Password updated successfully!')
     } catch (err: any) {
-      setErrorMsg(err?.response?.data?.error || 'Failed to update passcode.')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  const handleRemovePasscode = async () => {
-    if (!confirm('Are you sure you want to disable Passcode Protection? Anyone with your app URL will be able to view channels and streams.')) return
-    setSubmitting(true)
-    setErrorMsg('')
-    try {
-      await removeAppPasscode(currentPasscode)
-      localStorage.removeItem('app_passcode_token')
-      setPasscodeSet(false)
-      setCurrentPasscode('')
-      setSuccessMsg('Passcode protection disabled.')
-    } catch (err: any) {
-      setErrorMsg(err?.response?.data?.error || 'Failed to disable passcode. Double check current passcode.')
+      setErrorMsg(err?.response?.data?.error || 'Failed to update password.')
     } finally {
       setSubmitting(false)
     }
@@ -316,16 +294,16 @@ export default function TelegramAuthModal({
                 <button
                   type="button"
                   className={`flex-1 py-2.5 rounded-lg font-bold transition-all flex items-center justify-center gap-1.5 ${
-                    activeTab === 'passcode'
+                    activeTab === 'account'
                       ? 'bg-zinc-800 text-indigo-400 shadow-sm'
                       : 'text-zinc-500 hover:text-zinc-300'
                   }`}
                   onClick={() => {
-                    setActiveTab('passcode')
+                    setActiveTab('account')
                     setErrorMsg('')
                   }}
                 >
-                  <Lock size={12} /> App Passcode Lock
+                  <Lock size={12} /> Account Settings
                 </button>
               </div>
 
@@ -467,8 +445,8 @@ export default function TelegramAuthModal({
                 )
               )}
 
-              {/* TAB 2: PASSCODE LOCK SECURITY */}
-              {activeTab === 'passcode' && (
+              {/* TAB 2: ACCOUNT SETTINGS */}
+              {activeTab === 'account' && (
                 <div className="space-y-6">
                   <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -476,38 +454,31 @@ export default function TelegramAuthModal({
                         <Lock size={20} />
                       </div>
                       <div>
-                        <h4 className="text-white font-bold text-sm">App Security Passcode</h4>
+                        <h4 className="text-white font-bold text-sm">Account Security</h4>
                         <p className="text-xs text-zinc-400">
-                          {passcodeSet ? 'Passcode protection is ENABLED.' : 'Passcode protection is currently DISABLED.'}
+                          Logged in as <strong className="text-indigo-400">{currentUser?.username || 'Unknown'}</strong>
                         </p>
                       </div>
                     </div>
-                    <Badge variant="outline" className={passcodeSet ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' : 'border-zinc-700 text-zinc-500'}>
-                      {passcodeSet ? 'Protected' : 'Off'}
-                    </Badge>
                   </div>
 
-                  <form onSubmit={handleSetPasscode} className="space-y-4">
-                    {passcodeSet && (
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-zinc-400">Current Passcode</label>
-                        <Input
-                          type="password"
-                          placeholder="Enter current passcode..."
-                          value={currentPasscode}
-                          onChange={(e) => setCurrentPasscode(e.target.value)}
-                          className="bg-zinc-900 border-zinc-800 text-xs h-10"
-                        />
-                      </div>
-                    )}
-
+                  <form onSubmit={handleChangePassword} className="space-y-4">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-zinc-400">
-                        {passcodeSet ? 'New Passcode' : 'Create Admin Passcode'}
-                      </label>
+                      <label className="text-xs font-semibold text-zinc-400">Current Password</label>
                       <Input
                         type="password"
-                        placeholder="Min 4 characters (PIN or password)"
+                        placeholder="Enter current password..."
+                        value={currentPasscode}
+                        onChange={(e) => setCurrentPasscode(e.target.value)}
+                        className="bg-zinc-900 border-zinc-800 text-xs h-10"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-zinc-400">New Password</label>
+                      <Input
+                        type="password"
+                        placeholder="Min 4 characters"
                         value={newPasscode}
                         onChange={(e) => setNewPasscode(e.target.value)}
                         className="bg-zinc-900 border-zinc-800 text-xs h-10"
@@ -515,15 +486,9 @@ export default function TelegramAuthModal({
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <Button type="submit" disabled={submitting || !newPasscode.trim()} className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold h-10 rounded-xl">
-                        {submitting ? <Loader2 className="animate-spin size-4" /> : passcodeSet ? 'Update Passcode' : 'Enable Passcode Lock'}
+                      <Button type="submit" disabled={submitting || !newPasscode.trim() || !currentPasscode.trim()} className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold h-10 rounded-xl">
+                        {submitting ? <Loader2 className="animate-spin size-4" /> : 'Update Password'}
                       </Button>
-
-                      {passcodeSet && (
-                        <Button type="button" variant="destructive" onClick={handleRemovePasscode} disabled={submitting} className="h-10 rounded-xl">
-                          Disable Lock
-                        </Button>
-                      )}
                     </div>
                   </form>
                 </div>

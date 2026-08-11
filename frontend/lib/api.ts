@@ -293,6 +293,13 @@ export const registerUser = (username: string, password: string): Promise<{ succ
 export const loginUser = (username: string, password: string): Promise<{ success: boolean; token: string }> =>
   api.post<{ success: boolean; token: string }>('/api/telegram/user-login', { username, password }).then(d)
 
+export const getCurrentUser = (): Promise<{ success: boolean; user: { id: number; username: string } }> =>
+  api.get<{ success: boolean; user: { id: number; username: string } }>('/api/telegram/me').then(d)
+
+export const changePassword = (currentPassword: string, newPassword: string): Promise<{ success: boolean }> =>
+  api.post<{ success: boolean }>('/api/telegram/change-password', { currentPassword, newPassword }).then(d)
+
+// Legacy passcode endpoints for backwards compatibility
 export const getPasscodeStatus = (): Promise<{ passcodeSet: boolean, userCount?: number }> =>
   api.get<{ passcodeSet: boolean, userCount?: number }>('/api/telegram/passcode-status').then(d)
 

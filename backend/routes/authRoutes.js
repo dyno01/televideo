@@ -101,6 +101,7 @@ router.post('/user-login', (req, res) => {
   res.json({ success: true, token, user: { id: user.id, username: user.username } });
 });
 
+// ─── GET /api/telegram/me ────────────────────────────────────────────────────
 router.get('/me', (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -113,6 +114,35 @@ router.get('/me', (req, res) => {
   } catch (err) {
     res.status(401).json({ error: 'Invalid token', passcodeRequired: true });
   }
+});
+
+// ─── POST /api/telegram/change-password ────────────────────────────────────
+router.post('/change-password', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  const token = authHeader.split(' ')[1];
+  let decoded;
+  try {
+    decoded = jwt.verify(token, JWT_SECRET);
+  } catch (err) {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+  
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Current and new password required' });
+  if (newPassword.length < 4) return res.status(400).json({ error: 'New password too short' });
+
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.id);
+  if (!user || user.password_hash !== hashPassword(currentPassword)) {
+    return res.status(401).json({ error: 'Incorrect current password' });
+  }
+
+  const newHash = hashPassword(newPassword);
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(newHash, decoded.id);
+  
+  res.json({ success: true });
 });
 
 // Legacy passcode endpoints for backwards compatibility during transition
