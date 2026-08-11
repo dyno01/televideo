@@ -248,11 +248,11 @@ export default function HomePage() {
                 localStorage.removeItem('app_passcode_token')
                 window.dispatchEvent(new Event('app_passcode_required'))
               }}
-              className="hidden sm:flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-lg text-xs font-semibold bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-800 hover:text-white transition-all shrink-0"
               title="Log Out"
+              className="flex items-center justify-center sm:px-3 sm:py-1.5 size-8 sm:size-auto rounded-full sm:rounded-full text-[11px] font-bold border bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20 transition-all shrink-0"
             >
               <LogOut size={14} className="text-red-400" />
-              <span>Log Out</span>
+              <span className="hidden sm:inline sm:ml-1.5">Log Out</span>
             </button>
             <button
               onClick={() => setIsAuthModalOpen(true)}
