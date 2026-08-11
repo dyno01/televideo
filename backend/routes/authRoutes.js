@@ -2,13 +2,9 @@ const express = require('express');
 const telegramClient = require('../telegramClient');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
-const Database = require('better-sqlite3');
-const path = require('path');
-const { getSetting } = require('../db/database');
+const { getSetting, db } = require('../db/database');
 
 const router = express.Router();
-const DB_PATH = process.env.DATABASE_PATH || path.join(__dirname, '../db/app.db');
-const db = new Database(DB_PATH);
 const JWT_SECRET = getSetting('JWT_SECRET', 'super_secret_televideo_key_2026');
 
 function hashPassword(password) {

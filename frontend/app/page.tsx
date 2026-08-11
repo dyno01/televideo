@@ -131,8 +131,10 @@ export default function HomePage() {
         setOverallCompletion(0)
       }
       
-    } catch (err) {
-      setFetchError('Failed to connect to the server. It might be restarting or asleep.')
+    } catch (err: any) {
+      console.error('getChannels error:', err)
+      const errorMsg = err?.response?.data?.error || err?.message || String(err)
+      setFetchError(`Failed to connect to the server: ${errorMsg}. It might be restarting or asleep.`)
     } finally {
       setLoadingChannels(false)
     }

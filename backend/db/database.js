@@ -1,8 +1,16 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 
+const fs = require('fs');
+
 // Database file lives in the backend/db/ folder (or custom DATABASE_PATH env)
 const DB_PATH = process.env.DATABASE_PATH || path.join(__dirname, 'app.db');
+
+// Ensure the directory exists
+const dbDir = path.dirname(DB_PATH);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
 
 // Open (or create) the SQLite database
 const db = new Database(DB_PATH);
