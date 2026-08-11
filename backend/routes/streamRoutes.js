@@ -15,7 +15,7 @@ const { getClient } = require('../telegramClient');
 
 const router = express.Router();
 
-const CHUNK_SIZE = 512 * 1024; // 512KB chunks
+const CHUNK_SIZE = 1024 * 1024; // 1MB chunks (Maximum Telegram chunk size for faster streaming)
 
 /** Re-fetch a fresh InputDocumentFileLocation from the original message */
 async function getFreshMediaLocation(client, media) {

@@ -285,10 +285,16 @@ export const addVideoTag = (videoId: number, tag: string): Promise<VideoTag> =>
 export const removeVideoTag = (id: number): Promise<{ success: boolean }> =>
   api.delete<{ success: boolean }>(`/api/tags/${id}`).then(d)
 
-// ── Passcode Security API ───────────────────────────────────────────────────
+// ── Auth API ───────────────────────────────────────────────────────────────
 
-export const getPasscodeStatus = (): Promise<{ passcodeSet: boolean }> =>
-  api.get<{ passcodeSet: boolean }>('/api/telegram/passcode-status').then(d)
+export const registerUser = (username: string, password: string): Promise<{ success: boolean; token: string }> =>
+  api.post<{ success: boolean; token: string }>('/api/telegram/register', { username, password }).then(d)
+
+export const loginUser = (username: string, password: string): Promise<{ success: boolean; token: string }> =>
+  api.post<{ success: boolean; token: string }>('/api/telegram/user-login', { username, password }).then(d)
+
+export const getPasscodeStatus = (): Promise<{ passcodeSet: boolean, userCount?: number }> =>
+  api.get<{ passcodeSet: boolean, userCount?: number }>('/api/telegram/passcode-status').then(d)
 
 export const verifyPasscode = (passcode: string): Promise<{ success: boolean; token: string }> =>
   api.post<{ success: boolean; token: string }>('/api/telegram/verify-passcode', { passcode }).then(d)

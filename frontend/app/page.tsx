@@ -16,7 +16,7 @@ import {
   BookOpen, 
   TrendingUp, 
   Play,
-  Lock,
+  LogOut,
   X
 } from 'lucide-react'
 import { 
@@ -114,7 +114,11 @@ export default function HomePage() {
       const inProgress = allFetchedVideos.filter(v => {
         if (seenIds.has(v.id)) return false
         seenIds.add(v.id)
-        return ((v.watched_percentage || 0) > 0 || (v.last_timestamp || 0) > 0) && v.completed === 0
+        return ((v.watched_percentage || 0) > 0 || (v.last_timestamp || 0) > 0) && v.completed === 0 && v.dismissed !== 1
+      }).sort((a, b) => {
+        const dateA = a.progress_updated_at ? new Date(a.progress_updated_at).getTime() : 0;
+        const dateB = b.progress_updated_at ? new Date(b.progress_updated_at).getTime() : 0;
+        return dateB - dateA;
       })
       setInProgressVideos(inProgress)
       
@@ -245,10 +249,10 @@ export default function HomePage() {
                 window.dispatchEvent(new Event('app_passcode_required'))
               }}
               className="hidden sm:flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-lg text-xs font-semibold bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-800 hover:text-white transition-all shrink-0"
-              title="Lock Dashboard / Passcode Auth"
+              title="Log Out"
             >
-              <Lock size={14} className="text-indigo-400" />
-              <span>Lock App</span>
+              <LogOut size={14} className="text-red-400" />
+              <span>Log Out</span>
             </button>
             <button
               onClick={() => setIsAuthModalOpen(true)}

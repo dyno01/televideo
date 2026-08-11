@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { 
   ArrowLeft, Video as VideoIcon, FileText, Folder, RefreshCw, Loader2, AlertCircle, 
-  Layers, LayoutDashboard, Settings, Menu, X, Play, ChevronRight, BookOpen, Lock
+  Layers, LayoutDashboard, Settings, Menu, X, Play, ChevronRight, BookOpen, LogOut
 } from 'lucide-react'
 import { getChannel, getVideos, getFiles, scanChannel, getBatches, getBatchVideos, saveProgress, dismissProgress, type Channel, type Video, type TelegramFile, type Batch } from '@/lib/api'
 import LectureList from '@/components/LectureList'
@@ -200,14 +200,14 @@ export default function ChannelPage() {
         </Button>
         <Button 
           variant="ghost" 
-          className="w-full justify-start gap-2 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10"
+          className="w-full justify-start gap-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 mt-auto"
           onClick={() => {
             localStorage.removeItem('app_passcode_token')
             window.dispatchEvent(new Event('app_passcode_required'))
           }}
         >
-          <Lock size={16} />
-          Lock App
+          <LogOut size={16} />
+          Log Out
         </Button>
       </div>
     </div>
@@ -332,8 +332,8 @@ export default function ChannelPage() {
                       
                       // Sort by progress_updated_at to find the truly lastly watched video
                       const sortedInProgress = [...inProgress].sort((a, b) => {
-                        const dateA = a.updated_at ? new Date(a.updated_at).getTime() : (a.progress_updated_at ? new Date(a.progress_updated_at).getTime() : 0);
-                        const dateB = b.updated_at ? new Date(b.updated_at).getTime() : (b.progress_updated_at ? new Date(b.progress_updated_at).getTime() : 0);
+                        const dateA = a.progress_updated_at ? new Date(a.progress_updated_at).getTime() : 0;
+                        const dateB = b.progress_updated_at ? new Date(b.progress_updated_at).getTime() : 0;
                         return dateA - dateB;
                       });
                       
@@ -348,7 +348,7 @@ export default function ChannelPage() {
                               e.stopPropagation(); 
                               setDismissedBatches(prev => new Set(Array.from(prev).concat(batch.id)));
                               try {
-                                await saveProgress(lastVideo.id, 0, lastVideo.duration || 1);
+                                await dismissProgress(lastVideo.id);
                               } catch(err) { console.error('Failed to clear progress', err) }
                             }}
                             className="absolute top-4 right-4 z-10 size-6 rounded-full bg-zinc-900/80 border border-[#27272a] text-[#a1a1aa] hover:text-[#fafafa] hover:bg-[#18181b] flex items-center justify-center transition-all opacity-0 group-hover/card:opacity-100"

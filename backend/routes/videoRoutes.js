@@ -28,11 +28,11 @@ router.get('/channel/:username/videos', (req, res) => {
        COALESCE(p.dismissed, 0)          AS dismissed,
        p.updated_at                      AS progress_updated_at
      FROM videos v
-     LEFT JOIN progress p ON p.video_id = v.id
+     LEFT JOIN progress p ON p.video_id = v.id AND p.user_id = ?
      WHERE v.channel_id = ?
      GROUP BY v.id
      ORDER BY v.created_at ASC`,
-    [channel.id]
+    [req.user.id, channel.id]
   );
 
   res.json(videos);
@@ -56,9 +56,9 @@ router.get('/video/:id', (req, res) => {
      FROM videos v
      JOIN channels c ON c.id = v.channel_id
      LEFT JOIN batches b ON b.id = v.batch_id
-     LEFT JOIN progress p ON p.video_id = v.id
+     LEFT JOIN progress p ON p.video_id = v.id AND p.user_id = ?
      WHERE v.id = ?`,
-    [videoId]
+    [req.user.id, videoId]
   );
 
   if (!video) return res.status(404).json({ error: 'Video not found' });

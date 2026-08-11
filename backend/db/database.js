@@ -50,18 +50,30 @@ db.exec(`
     FOREIGN KEY (channel_id) REFERENCES channels(id)
   );
 
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+
   CREATE TABLE IF NOT EXISTS progress (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-    video_id            INTEGER UNIQUE NOT NULL,
+    user_id             INTEGER NOT NULL,
+    video_id            INTEGER NOT NULL,
     watched_percentage  REAL    DEFAULT 0,
     last_timestamp      REAL    DEFAULT 0,
     completed           INTEGER DEFAULT 0,
+    dismissed           INTEGER DEFAULT 0,
     updated_at          TEXT,
-    FOREIGN KEY (video_id) REFERENCES videos(id)
+    FOREIGN KEY (video_id) REFERENCES videos(id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    UNIQUE(user_id, video_id)
   );
 
   CREATE TABLE IF NOT EXISTS notes (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id       INTEGER,
     video_id      INTEGER NOT NULL,
     timestamp_sec REAL    NOT NULL,
     note_text     TEXT    NOT NULL,
@@ -83,6 +95,7 @@ try { db.exec('ALTER TABLE files  ADD COLUMN dc_id INTEGER DEFAULT 0'); } catch 
 db.exec(`
   CREATE TABLE IF NOT EXISTS batches (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id      INTEGER,
     channel_id   INTEGER NOT NULL,
     name         TEXT    NOT NULL,
     tg_link      TEXT,

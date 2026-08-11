@@ -14,8 +14,9 @@ const router = express.Router();
 router.get('/:videoId', (req, res) => {
   const videoId = parseInt(req.params.videoId, 10);
   if (isNaN(videoId)) return res.status(400).json({ error: 'Invalid video ID' });
+  const userId = req.user.id;
 
-  const progress = getOne('SELECT * FROM progress WHERE video_id = ?', [videoId]);
+  const progress = getOne('SELECT * FROM progress WHERE video_id = ? AND user_id = ?', [videoId, userId]);
 
   if (!progress) {
     // Return a default zero-progress object if none saved yet
@@ -34,15 +35,16 @@ router.get('/:videoId', (req, res) => {
 router.post('/:videoId/dismiss', (req, res) => {
   const videoId = parseInt(req.params.videoId, 10);
   if (isNaN(videoId)) return res.status(400).json({ error: 'Invalid video ID' });
+  const userId = req.user.id;
 
   // Update or insert with dismissed = 1
   run(
-    `INSERT INTO progress (video_id, dismissed, updated_at)
-     VALUES (?, 1, ?)
-     ON CONFLICT(video_id) DO UPDATE SET
+    `INSERT INTO progress (user_id, video_id, dismissed, updated_at)
+     VALUES (?, ?, 1, ?)
+     ON CONFLICT(user_id, video_id) DO UPDATE SET
        dismissed = 1,
        updated_at = excluded.updated_at`,
-    [videoId, new Date().toISOString()]
+    [userId, videoId, new Date().toISOString()]
   );
   res.json({ success: true });
 });
@@ -65,17 +67,18 @@ router.post('/', (req, res) => {
 
   const percentage = Math.min(100, (current / dur) * 100);
   const completed  = percentage >= 90 ? 1 : 0;
+  const userId = req.user.id;
 
   run(
-    `INSERT INTO progress (video_id, watched_percentage, last_timestamp, completed, dismissed, updated_at)
-     VALUES (?, ?, ?, ?, 0, ?)
-     ON CONFLICT(video_id) DO UPDATE SET
+    `INSERT INTO progress (user_id, video_id, watched_percentage, last_timestamp, completed, dismissed, updated_at)
+     VALUES (?, ?, ?, ?, ?, 0, ?)
+     ON CONFLICT(user_id, video_id) DO UPDATE SET
        watched_percentage = excluded.watched_percentage,
        last_timestamp     = excluded.last_timestamp,
        completed          = excluded.completed,
        dismissed          = 0,
        updated_at         = excluded.updated_at`,
-    [videoIdInt, percentage, current, completed, new Date().toISOString()]
+    [userId, videoIdInt, percentage, current, completed, new Date().toISOString()]
   );
 
   res.json({ success: true, percentage, completed });

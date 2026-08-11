@@ -651,7 +651,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
         {/* Thick Progress Bar */}
         <div 
           id="video-progress-bar"
-          className="relative h-1.5 w-full bg-white/10 rounded-full cursor-pointer mb-6 pointer-events-auto group/progress"
+          className="relative h-1.5 w-full bg-white/10 rounded-full cursor-pointer mb-3 sm:mb-6 pointer-events-auto group/progress"
           onMouseDown={handleMouseDown}
           onTouchStart={handleMouseDown}
         >
@@ -670,8 +670,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
         </div>
 
         {/* Main Controls Rack */}
-        <div className="flex items-center justify-between pointer-events-auto mt-2 lg:mt-0">
-          <div className="flex items-center gap-4 lg:gap-6">
+        <div className="flex items-center justify-between pointer-events-auto mt-1 sm:mt-2 lg:mt-0">
+          <div className="flex items-center gap-2 sm:gap-4 lg:gap-6">
              <button onClick={(e) => { e.stopPropagation(); onPrev?.(); }} className="text-white/60 hover:text-white transition-colors drop-shadow-md">
                <SkipBack size={20} fill="currentColor" />
              </button>
@@ -691,7 +691,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
              <button onClick={(e) => { e.stopPropagation(); onNext?.(); }} className="text-white/60 hover:text-white transition-colors drop-shadow-md">
                <SkipForward size={20} fill="currentColor" />
              </button>
-             <div className="flex items-center gap-3 ml-2 group/vol">
+             <div className="hidden sm:flex items-center gap-3 ml-2 group/vol">
                 <button onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }} className="text-white/60 hover:text-white drop-shadow-md">
                   {isMuted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
                 </button>
@@ -701,7 +701,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
              </div>
           </div>
 
-          <div className="relative flex items-center gap-3 lg:gap-5">
+          <div className="relative flex items-center gap-2 sm:gap-3 lg:gap-5">
              {/* Floating Speed Selection Popover Menu */}
              {showSpeedMenu && (
                <div className="absolute right-0 bottom-12 z-40 p-2.5 rounded-xl bg-zinc-950/95 border border-zinc-800 shadow-2xl backdrop-blur-md flex flex-col gap-1.5 w-48 animate-in fade-in zoom-in-95">
@@ -744,10 +744,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
              {sidebarContent && (
                <button 
                   onClick={(e) => { e.stopPropagation(); if (onOpenSidebar) onOpenSidebar(); }}
-                  className={cn(
-                    "text-white/40 hover:text-white transition-colors drop-shadow-md",
-                    isFullscreen ? "flex" : "flex xl:hidden"
-                  )}
+                  className="flex text-white/40 hover:text-white transition-colors drop-shadow-md"
                   title="Playlist & Notes"
                >
                   <ListVideo size={18} />

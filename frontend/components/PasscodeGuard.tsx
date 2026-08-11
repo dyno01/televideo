@@ -6,10 +6,14 @@ import PasscodeLock from '@/components/PasscodeLock'
 
 export default function PasscodeGuard({ children }: { children: React.ReactNode }) {
   const [isLocked, setIsLocked] = useState(false)
+  const [userCount, setUserCount] = useState(0)
 
   const checkPasscode = async () => {
     try {
       const res = await getPasscodeStatus()
+      if (res.userCount !== undefined) {
+        setUserCount(res.userCount)
+      }
       if (res.passcodeSet) {
         const token = localStorage.getItem('app_passcode_token')
         if (!token) {
@@ -37,6 +41,7 @@ export default function PasscodeGuard({ children }: { children: React.ReactNode 
       {children}
       {isLocked && (
         <PasscodeLock
+          defaultIsRegister={userCount === 0}
           onUnlocked={() => {
             setIsLocked(false)
             window.location.reload()

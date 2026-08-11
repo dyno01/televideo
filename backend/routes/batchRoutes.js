@@ -109,12 +109,12 @@ router.post('/', async (req, res) => {
 
     // Create the batch record
     run(
-      `INSERT INTO batches (channel_id, name, tg_link, start_msg_id, end_msg_id, scanned_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [channelId, name.trim().slice(0, 120), tgLink, parsed.startId, parsed.endId,
+      `INSERT INTO batches (user_id, channel_id, name, tg_link, start_msg_id, end_msg_id, scanned_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [req.user.id, channelId, name.trim().slice(0, 120), tgLink, parsed.startId, parsed.endId,
        new Date().toISOString()]
     );
-    const batch    = getOne('SELECT * FROM batches WHERE channel_id=? AND name=? ORDER BY id DESC LIMIT 1', [channelId, name.trim().slice(0, 120)]);
+    const batch    = getOne('SELECT * FROM batches WHERE user_id=? AND channel_id=? AND name=? ORDER BY id DESC LIMIT 1', [req.user.id, channelId, name.trim().slice(0, 120)]);
     const batchId  = batch.id;
 
     // Prepare inserts
@@ -211,8 +211,8 @@ router.get('/channel/:channelId', (req, res) => {
     `SELECT b.*,
        (SELECT COUNT(*) FROM videos v WHERE v.batch_id = b.id OR (v.channel_id = b.channel_id AND v.message_id >= b.start_msg_id AND v.message_id <= b.end_msg_id)) AS videoCount,
        (SELECT COUNT(*) FROM files  f WHERE f.batch_id = b.id OR (f.channel_id = b.channel_id AND f.message_id >= b.start_msg_id AND f.message_id <= b.end_msg_id)) AS fileCount
-     FROM batches b WHERE b.channel_id = ? ORDER BY b.id ASC`,
-    [channelId]
+     FROM batches b WHERE b.channel_id = ? AND b.user_id = ? ORDER BY b.id ASC`,
+    [channelId, req.user.id]
   );
   res.json(batches);
 });
@@ -224,8 +224,8 @@ router.get('/:id', (req, res) => {
     `SELECT b.*,
        (SELECT COUNT(*) FROM videos v WHERE v.batch_id = b.id) AS videoCount,
        (SELECT COUNT(*) FROM files  f WHERE f.batch_id = b.id) AS fileCount
-     FROM batches b WHERE b.id = ?`,
-    [id]
+     FROM batches b WHERE b.id = ? AND b.user_id = ?`,
+    [id, req.user.id]
   );
   if (!batch) return res.status(404).json({ error: 'Batch not found' });
   res.json(batch);
@@ -245,10 +245,11 @@ router.get('/:id/videos', (req, res) => {
        c.title    AS channel_title
      FROM videos v
      JOIN channels c ON c.id = v.channel_id
-     LEFT JOIN progress p ON p.video_id = v.id
-     WHERE v.batch_id = ?
+     JOIN batches b ON b.id = v.batch_id
+     LEFT JOIN progress p ON p.video_id = v.id AND p.user_id = ?
+     WHERE v.batch_id = ? AND b.user_id = ?
      ORDER BY v.message_id ASC`,
-    [id]
+    [req.user.id, id, req.user.id]
   );
   res.json(videos);
 });
@@ -259,9 +260,10 @@ router.get('/:id/files', (req, res) => {
   const files = getAll(
     `SELECT f.*, c.username AS channel_username
      FROM files f JOIN channels c ON c.id = f.channel_id
-     WHERE f.batch_id = ?
+     JOIN batches b ON b.id = f.batch_id
+     WHERE f.batch_id = ? AND b.user_id = ?
      ORDER BY f.parent_video_id ASC, f.mime_type DESC, f.message_id ASC`,
-    [id]
+    [id, req.user.id]
   );
   res.json(files);
 });
@@ -269,7 +271,7 @@ router.get('/:id/files', (req, res) => {
 // ── GET /api/batches/:id/sequence ──────────────────────────────────────────
 router.get('/:id/sequence', (req, res) => {
   const id = parseInt(req.params.id, 10);
-  const batch = getOne('SELECT * FROM batches WHERE id = ?', [id]);
+  const batch = getOne('SELECT * FROM batches WHERE id = ? AND user_id = ?', [id, req.user.id]);
   if (!batch) return res.status(404).json({ error: 'Batch not found' });
   
   // Use a subquery to deduplicate videos BEFORE joining progress,
@@ -290,8 +292,8 @@ router.get('/:id/sequence', (req, res) => {
           OR (v.channel_id = ? AND v.message_id >= ? AND v.message_id <= ?)
      ) vd
      JOIN channels c ON c.id = vd.channel_id
-     LEFT JOIN progress p ON p.video_id = vd.id`,
-    [id, batch.channel_id, batch.start_msg_id, batch.end_msg_id]
+     LEFT JOIN progress p ON p.video_id = vd.id AND p.user_id = ?`,
+    [id, batch.channel_id, batch.start_msg_id, batch.end_msg_id, req.user.id]
   );
 
   const files = getAll(
@@ -322,7 +324,7 @@ router.get('/:id/sequence', (req, res) => {
 // ── DELETE /api/batches/:id ────────────────────────────────────────────────
 router.delete('/:id', (req, res) => {
   const id = parseInt(req.params.id, 10);
-  const batch = getOne('SELECT * FROM batches WHERE id = ?', [id]);
+  const batch = getOne('SELECT * FROM batches WHERE id = ? AND user_id = ?', [id, req.user.id]);
   if (!batch) return res.status(404).json({ error: 'Batch not found' });
 
   try {
@@ -350,7 +352,7 @@ router.put('/:id', async (req, res) => {
   const { name, link } = req.body;
 
   try {
-    const oldBatch = getOne('SELECT * FROM batches WHERE id = ?', [id]);
+    const oldBatch = getOne('SELECT * FROM batches WHERE id = ? AND user_id = ?', [id, req.user.id]);
     if (!oldBatch) return res.status(404).json({ error: 'Batch not found' });
 
     // Update basic info

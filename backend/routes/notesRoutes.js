@@ -17,8 +17,8 @@ router.get('/:videoId', (req, res) => {
   if (isNaN(videoId)) return res.status(400).json({ error: 'Invalid video ID' });
 
   const notes = getAll(
-    'SELECT * FROM notes WHERE video_id = ? ORDER BY timestamp_sec ASC',
-    [videoId]
+    'SELECT * FROM notes WHERE video_id = ? AND user_id = ? ORDER BY timestamp_sec ASC',
+    [videoId, req.user.id]
   );
   res.json(notes);
 });
@@ -32,9 +32,9 @@ router.post('/', (req, res) => {
   }
 
   const result = run(
-    `INSERT INTO notes (video_id, timestamp_sec, note_text, created_at)
-     VALUES (?, ?, ?, ?)`,
-    [parseInt(videoId, 10), parseFloat(timestampSec), noteText.trim(), new Date().toISOString()]
+    `INSERT INTO notes (user_id, video_id, timestamp_sec, note_text, created_at)
+     VALUES (?, ?, ?, ?, ?)`,
+    [req.user.id, parseInt(videoId, 10), parseFloat(timestampSec), noteText.trim(), new Date().toISOString()]
   );
 
   const note = getOne('SELECT * FROM notes WHERE id = ?', [result.lastInsertRowid]);
@@ -49,7 +49,7 @@ router.delete('/:id', (req, res) => {
   const existing = getOne('SELECT id FROM notes WHERE id = ?', [id]);
   if (!existing) return res.status(404).json({ error: 'Note not found' });
 
-  run('DELETE FROM notes WHERE id = ?', [id]);
+  run('DELETE FROM notes WHERE id = ? AND user_id = ?', [id, req.user.id]);
   res.json({ success: true });
 });
 

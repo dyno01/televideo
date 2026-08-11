@@ -18,6 +18,6 @@ dbs:
         snapshot-interval: 8h
         retention: 24h
         
-        # Optimize for Backblaze B2 Class B transaction limits
-        # Reduces the frequency of syncing/checking to save API calls
-        sync-interval: 10s
+        # Optimize for Backblaze B2 Class B/C transaction limits
+        # Reduces the frequency of syncing to save API calls (5 minutes = ~288 syncs/day)
+        sync-interval: 5m
