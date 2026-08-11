@@ -127,6 +127,8 @@ if (!hasUserId) {
   const hash = crypto.createHash('sha256').update('admin').digest('hex');
   db.prepare("INSERT OR IGNORE INTO users (id, username, password_hash) VALUES (1, 'admin', ?)").run(hash);
 
+  try { db.exec('ALTER TABLE progress ADD COLUMN dismissed INTEGER DEFAULT 0'); } catch(e) {}
+
   db.exec('ALTER TABLE progress RENAME TO old_progress;');
   
   db.exec(`
