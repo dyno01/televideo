@@ -12,7 +12,6 @@ const { Api }  = require('telegram');
 const bigInt   = require('big-integer');
 const { getOne, run } = require('../db/database');
 const { getClient } = require('../telegramClient');
-const { isR2Configured, triggerR2Cache } = require('../r2Upload');
 const { isStreamtapeConfigured, triggerStreamtapeUpload, getDirectStreamLink } = require('../streamtapeUpload');
 
 const router = express.Router();
@@ -90,12 +89,6 @@ router.get('/:videoId', async (req, res) => {
     }
   }
 
-  // 2. R2 Caching Check
-  if (isR2Configured() && video.r2_status === 'cached' && video.r2_key) {
-    const publicUrl = process.env.R2_PUBLIC_URL.replace(/\/$/, ''); // remove trailing slash
-    return res.redirect(`${publicUrl}/${video.r2_key}`);
-  }
-
   try {
     let client;
     try {
@@ -141,13 +134,6 @@ router.get('/:videoId', async (req, res) => {
     if (isStreamtapeConfigured() && (!video.streamtape_status || video.streamtape_status === 'none' || video.streamtape_status === 'failed')) {
       triggerStreamtapeUpload('video', video.id, req.user.id, fileLocation, video.title, client).catch(err =>
         console.error('[Streamtape Trigger Error]', err)
-      );
-    }
-
-    // 4. Trigger R2 background cache if not already cached
-    if (isR2Configured() && video.r2_status !== 'cached') {
-      triggerR2Cache('video', video.id, req.user.id, fileLocation).catch(err => 
-        console.error('[R2 Trigger Error]', err)
       );
     }
 
@@ -276,13 +262,6 @@ router.get('/file/:fileId', async (req, res) => {
     const totalSize = mediaLoc.size;
     const mimeType  = mediaLoc.mimeType || 'application/octet-stream';
     const dcId      = mediaLoc.dcId;
-
-    // 2. Trigger R2 background cache if not already cached
-    if (isR2Configured() && file.r2_status !== 'cached') {
-      triggerR2Cache('file', file.id, req.user.id, mediaLoc).catch(err => 
-        console.error('[R2 Trigger Error]', err)
-      );
-    }
 
     res.writeHead(200, {
       'Content-Length': totalSize,
