@@ -65,6 +65,7 @@ export default function TelegramAuthModal({
   const [step, setStep] = useState<'phone' | 'code' | '2fa'>('phone')
   const [isAppCode, setIsAppCode] = useState(true)
   const [passwordHint, setPasswordHint] = useState('')
+  const [showAdvancedConfig, setShowAdvancedConfig] = useState(false)
 
   // Manual Session auth state
   const [sessionString, setSessionString] = useState('')
@@ -105,15 +106,15 @@ export default function TelegramAuthModal({
 
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!apiId || !apiHash || !phoneNumber) {
-      setErrorMsg('Please fill in API ID, API Hash, and Phone Number.')
+    if (!phoneNumber.trim()) {
+      setErrorMsg('Please enter your phone number.')
       return
     }
 
     setSubmitting(true)
     setErrorMsg('')
     try {
-      const res = await sendTelegramCode(apiId, apiHash, phoneNumber)
+      const res = await sendTelegramCode(phoneNumber, apiId, apiHash)
       setPhoneCodeHash(res.phoneCodeHash)
       setIsAppCode(res.isCodeViaApp)
       setStep('code')
@@ -125,7 +126,7 @@ export default function TelegramAuthModal({
     } catch (err: any) {
       setErrorMsg(
         err?.response?.data?.error ||
-          'Failed to send verification code. Double-check your API credentials and phone format (e.g. +1234567890).'
+          'Failed to send verification code. Double-check your phone format (e.g. +919876543210).'
       )
     } finally {
       setSubmitting(false)
@@ -356,42 +357,61 @@ export default function TelegramAuthModal({
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {/* Guide link */}
-                    <div className="p-3 rounded-xl bg-blue-500/5 border border-blue-500/15 text-xs text-blue-300 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Sparkles size={14} className="text-blue-400 shrink-0" />
-                        <span>Need Telegram API ID & Hash?</span>
-                      </div>
-                      <a
-                        href="https://my.telegram.org"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="font-bold underline hover:text-white flex items-center gap-1"
-                      >
-                        Get at my.telegram.org <ExternalLink size={12} />
-                      </a>
-                    </div>
-
                     <form onSubmit={step === 'phone' ? handleSendCode : handleLogin} className="space-y-4">
                       {step === 'phone' && (
                         <>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                              <label className="text-xs font-semibold text-zinc-400">API ID</label>
-                              <Input placeholder="e.g. 12345678" value={apiId} onChange={(e) => setApiId(e.target.value)} className="bg-zinc-900 border-zinc-800 text-xs h-10" />
-                            </div>
-                            <div className="space-y-1.5">
-                              <label className="text-xs font-semibold text-zinc-400">API Hash</label>
-                              <Input placeholder="32-char string" value={apiHash} onChange={(e) => setApiHash(e.target.value)} className="bg-zinc-900 border-zinc-800 text-xs h-10 font-mono" />
-                            </div>
-                          </div>
-
                           <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-zinc-400">Phone Number (International Format)</label>
-                            <Input placeholder="+1234567890" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className="bg-zinc-900 border-zinc-800 text-xs h-10" />
+                            <label className="text-xs font-semibold text-zinc-300">
+                              Phone Number (International Format)
+                            </label>
+                            <Input 
+                              placeholder="e.g. +91 9876543210" 
+                              value={phoneNumber} 
+                              onChange={(e) => setPhoneNumber(e.target.value)} 
+                              className="bg-zinc-900 border-zinc-800 text-sm h-11 rounded-xl"
+                              autoFocus
+                            />
+                            <p className="text-[11px] text-zinc-500">
+                              Enter your mobile number with country code. Telegram will send a verification code to your Telegram app.
+                            </p>
                           </div>
 
-                          <Button type="submit" disabled={submitting} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold h-10 rounded-xl">
+                          {/* Optional Custom API Credentials Collapsible */}
+                          <div className="pt-1">
+                            <button
+                              type="button"
+                              onClick={() => setShowAdvancedConfig(!showAdvancedConfig)}
+                              className="text-[11px] text-zinc-500 hover:text-zinc-400 flex items-center gap-1 transition-colors"
+                            >
+                              {showAdvancedConfig ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                              {showAdvancedConfig ? 'Hide custom API credentials' : 'Custom Telegram API ID & Hash (Optional)'}
+                            </button>
+
+                            {showAdvancedConfig && (
+                              <div className="grid grid-cols-2 gap-3 mt-2.5 p-3 rounded-xl bg-zinc-900/50 border border-zinc-800/80">
+                                <div className="space-y-1">
+                                  <label className="text-[11px] font-medium text-zinc-400">Custom API ID</label>
+                                  <Input 
+                                    placeholder="Optional" 
+                                    value={apiId} 
+                                    onChange={(e) => setApiId(e.target.value)} 
+                                    className="bg-zinc-900 border-zinc-800 text-xs h-9" 
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[11px] font-medium text-zinc-400">Custom API Hash</label>
+                                  <Input 
+                                    placeholder="Optional" 
+                                    value={apiHash} 
+                                    onChange={(e) => setApiHash(e.target.value)} 
+                                    className="bg-zinc-900 border-zinc-800 text-xs h-9 font-mono" 
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          <Button type="submit" disabled={submitting} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold h-11 rounded-xl shadow-lg transition-all">
                             {submitting ? <Loader2 className="animate-spin size-4" /> : 'Send Login Code'}
                           </Button>
                         </>

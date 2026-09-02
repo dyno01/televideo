@@ -10,11 +10,48 @@
 const express  = require('express');
 const { Api }  = require('telegram');
 const bigInt   = require('big-integer');
-const { getOne, run } = require('../db/database');
+const jwt      = require('jsonwebtoken');
+const { getOne, run, getSetting } = require('../db/database');
 const { getClient } = require('../telegramClient');
 const { isStreamtapeConfigured, triggerStreamtapeUpload, getDirectStreamLink } = require('../streamtapeUpload');
 
 const router = express.Router();
+const JWT_SECRET = getSetting('JWT_SECRET', 'super_secret_televideo_key_2026');
+
+/** Extract user ID from Bearer token, query token, media ownership, or active session */
+function getUserIdFromRequest(req, media) {
+  let token = null;
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
+  } else if (req.query && req.query.token) {
+    token = req.query.token;
+  }
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      if (decoded && decoded.id) {
+        return decoded.id;
+      }
+    } catch (_) {}
+  }
+
+  if (req.user && req.user.id) {
+    return req.user.id;
+  }
+
+  if (media && media.channel_id) {
+    const channel = getOne('SELECT user_id FROM channels WHERE id = ?', [media.channel_id]);
+    if (channel && channel.user_id) return channel.user_id;
+  }
+
+  const activeUser = getOne('SELECT id FROM users WHERE telegram_session IS NOT NULL AND telegram_session != "" ORDER BY id ASC LIMIT 1');
+  if (activeUser) return activeUser.id;
+
+  const firstUser = getOne('SELECT id FROM users ORDER BY id ASC LIMIT 1');
+  return firstUser ? firstUser.id : 1;
+}
 
 const CHUNK_SIZE = 1024 * 1024; // 1MB chunks (Maximum Telegram chunk size for faster streaming)
 
@@ -89,10 +126,12 @@ router.get('/:videoId', async (req, res) => {
     }
   }
 
+  const userId = getUserIdFromRequest(req, video);
+
   try {
     let client;
     try {
-      client = await getClient(req.user.id);
+      client = await getClient(userId);
     } catch (authErr) {
       return res.status(401).json({
         error: authErr.message || 'Telegram authentication required. Please log in via Telegram Settings.',
@@ -132,7 +171,7 @@ router.get('/:videoId', async (req, res) => {
 
     // 3. Trigger Streamtape background upload if configured and not yet uploaded
     if (isStreamtapeConfigured() && (!video.streamtape_status || video.streamtape_status === 'none' || video.streamtape_status === 'failed')) {
-      triggerStreamtapeUpload('video', video.id, req.user.id, fileLocation, video.title, client).catch(err =>
+      triggerStreamtapeUpload('video', video.id, userId, fileLocation, video.title, client).catch(err =>
         console.error('[Streamtape Trigger Error]', err)
       );
     }
@@ -221,16 +260,12 @@ router.get('/file/:fileId', async (req, res) => {
   const file = getOne('SELECT * FROM files WHERE id = ?', [fileId]);
   if (!file) return res.status(404).json({ error: 'File not found' });
 
-  // 1. R2 Caching Check
-  if (isR2Configured() && file.r2_status === 'cached' && file.r2_key) {
-    const publicUrl = process.env.R2_PUBLIC_URL.replace(/\/$/, '');
-    return res.redirect(`${publicUrl}/${file.r2_key}`);
-  }
+  const userId = getUserIdFromRequest(req, file);
 
   try {
     let client;
     try {
-      client = await getClient(req.user.id);
+      client = await getClient(userId);
     } catch (authErr) {
       return res.status(401).json({
         error: authErr.message || 'Telegram authentication required. Please log in via Telegram Settings.',

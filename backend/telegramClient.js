@@ -7,15 +7,18 @@ const clients = new Map();
 const connectionPromises = new Map();
 
 function getConfig(userId) {
-  const apiIdStr = getSetting('TELEGRAM_API_ID', process.env.TELEGRAM_API_ID || '');
-  const apiHash = getSetting('TELEGRAM_API_HASH', process.env.TELEGRAM_API_HASH || '');
+  const envApiId = (process.env.TELEGRAM_API_ID || '').trim();
+  const envApiHash = (process.env.TELEGRAM_API_HASH || '').trim();
+
+  const apiIdStr = envApiId || getSetting('TELEGRAM_API_ID', '');
+  const apiHash = envApiHash || getSetting('TELEGRAM_API_HASH', '');
   const apiId = parseInt(apiIdStr, 10) || 0;
 
   let sessionString = '';
   if (userId) {
     const userRow = db.prepare('SELECT telegram_session FROM users WHERE id = ?').get(userId);
     if (userRow && userRow.telegram_session) {
-      sessionString = userRow.telegram_session;
+      sessionString = userRow.telegram_session.trim();
     }
   }
 
@@ -324,6 +327,7 @@ async function logout(userId) {
 }
 
 module.exports = {
+  getConfig,
   getClient,
   getStatus,
   sendPhoneCode,

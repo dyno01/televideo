@@ -253,11 +253,15 @@ export const getTelegramStatus = (): Promise<TelegramStatus> =>
   api.get<TelegramStatus>('/api/telegram/status').then(d)
 
 export const sendTelegramCode = (
-  apiId: string | number,
-  apiHash: string,
-  phoneNumber: string
+  phoneNumber: string,
+  apiId?: string | number,
+  apiHash?: string
 ): Promise<{ phoneCodeHash: string; isCodeViaApp: boolean }> =>
-  api.post('/api/telegram/send-code', { apiId, apiHash, phoneNumber }).then(d)
+  api.post('/api/telegram/send-code', {
+    phoneNumber: phoneNumber.trim(),
+    apiId: apiId ? String(apiId).trim() : undefined,
+    apiHash: apiHash ? String(apiHash).trim() : undefined,
+  }).then(d)
 
 export const loginTelegram = (data: {
   phoneNumber: string

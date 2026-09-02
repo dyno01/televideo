@@ -60,15 +60,33 @@ router.use(authMiddleware);
 router.get('/status', async (req, res) => {
   try {
     const status = await telegramClient.getStatus(req.user.id);
-    res.json(status);
+    const config = telegramClient.getConfig(req.user.id);
+    res.json({
+      ...status,
+      hasServerConfig: Boolean(config.apiId && config.apiHash),
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 router.post('/send-code', async (req, res) => {
-  const { apiId, apiHash, phoneNumber } = req.body;
-  if (!apiId || !apiHash || !phoneNumber) return res.status(400).json({ error: 'Missing fields' });
+  let { apiId, apiHash, phoneNumber } = req.body;
+
+  if (!apiId || !apiHash) {
+    const config = telegramClient.getConfig(req.user.id);
+    apiId = config.apiId;
+    apiHash = config.apiHash;
+  }
+
+  if (!apiId || !apiHash) {
+    return res.status(400).json({ 
+      error: 'TELEGRAM_API_ID and TELEGRAM_API_HASH are not configured. Please set them in Render Environment.' 
+    });
+  }
+
+  if (!phoneNumber) return res.status(400).json({ error: 'Phone number is required' });
+
   try {
     const result = await telegramClient.sendPhoneCode(req.user.id, apiId, apiHash, phoneNumber);
     res.json(result);
@@ -89,7 +107,13 @@ router.post('/login', async (req, res) => {
 });
 
 router.post('/save-session', async (req, res) => {
-  const { apiId, apiHash, sessionString } = req.body;
+  let { apiId, apiHash, sessionString } = req.body;
+  if (!apiId || !apiHash) {
+    const config = telegramClient.getConfig(req.user.id);
+    apiId = config.apiId;
+    apiHash = config.apiHash;
+  }
+  if (!sessionString) return res.status(400).json({ error: 'Session string is required' });
   try {
     const result = await telegramClient.saveSessionString(req.user.id, apiId, apiHash, sessionString);
     res.json(result);
