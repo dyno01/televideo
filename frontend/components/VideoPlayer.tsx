@@ -710,6 +710,17 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
         </div>
       ) : (
         <>
+          {/* Streamtape Uploading Status Badge */}
+          {video.streamtape_status === 'uploading' && (
+            <div className="absolute top-3 left-3 z-30 flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[11px] font-semibold backdrop-blur-md shadow-lg pointer-events-none">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+              </span>
+              <span>Uploading to Server (Streamtape CDN)</span>
+            </div>
+          )}
+
           {/* Streamtape Fast CDN Badge */}
           {isStreamtapeReady && (
             <div className="absolute top-3 left-3 z-30 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[11px] font-semibold backdrop-blur-md shadow-lg pointer-events-none">

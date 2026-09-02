@@ -15,7 +15,8 @@ import {
   ExternalLink,
   Play,
   CheckCircle2,
-  ListOrdered
+  ListOrdered,
+  Video as VideoIcon
 } from 'lucide-react'
 import { 
   getVideo, 
@@ -65,6 +66,7 @@ export default function VideoPage() {
   const [isTagging, setIsTagging] = useState(false)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [selectedDoc, setSelectedDoc] = useState<TelegramFile | null>(null)
+  const [seqFilter, setSeqFilter] = useState<'all' | 'videos' | 'files'>('all')
 
   const playerRef = useRef<VideoPlayerHandle>(null)
   const lastSavedRef = useRef<{ time: number; ts: number }>({ time: 0, ts: 0 })
@@ -165,13 +167,25 @@ export default function VideoPage() {
           // Load batch sequence (contains both videos & files in order)
           getBatchSequence(v.batch_id).then(seq => {
             setBatchSequence(seq)
-            // Do NOT set channelVideos here — avoid duplication
+            const vids = seq.filter(i => i.item_type === 'video') as Video[]
+            if (vids.length > 0) {
+              setChannelVideos(vids)
+            }
           }).catch(() => [])
-        } else if (v.channel_username) {
-          // No batch — load all channel videos as playlist
-          getVideos(v.channel_username).then(setChannelVideos).catch(() => [])
         }
+
+        // Always fetch channel videos so next/prev and video sequence are never empty
         if (v.channel_username) {
+          getVideos(v.channel_username).then(allVids => {
+            setChannelVideos(prev => {
+              if (prev.length > 0) return prev
+              if (v.batch_id) {
+                const bVids = allVids.filter(x => x.batch_id === v.batch_id)
+                return bVids.length > 0 ? bVids : allVids
+              }
+              return allVids
+            })
+          }).catch(() => [])
           getFiles(v.channel_username).then(setChannelFiles).catch(() => [])
         }
         getVideoFiles(videoId).then(setVideoFiles).catch(() => [])
@@ -293,225 +307,203 @@ export default function VideoPage() {
 
           <div className="flex-1 overflow-hidden relative min-h-[400px]">
             <div className={cn("absolute inset-0 flex-col bg-[#111113]", activeTab === 'playlist' ? 'flex' : 'hidden')}>
-              {video.batch_id && video.batch_name ? (
-                <div className="p-4 border-b border-zinc-800 bg-[#18181b] flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Serial Batch Curriculum</p>
-                    <p className="text-xs font-bold text-zinc-50 truncate max-w-[220px]">{video.batch_name}</p>
-                  </div>
-                  <Badge variant="outline" className="border-zinc-700 text-zinc-400 text-[10px]">
-                    {batchSequence.filter(i => i.item_type === 'video' && (i as Video).completed).length} / {batchSequence.filter(i => i.item_type === 'video').length} Done
-                  </Badge>
-                </div>
-              ) : null}
-              
-              <ScrollArea className="h-full flex-1">
-                <div className="p-3 pb-16 space-y-2">
-                  {(() => {
-                    // If we have a batch sequence, render items in their original order (videos + files mixed)
-                    // Otherwise fall back to channelVideos + channelFiles
-                    const hasBatchSeq = batchSequence.length > 0
+              {(() => {
+                // Deduplicate and extract all videos
+                const seqVids = (batchSequence.filter(i => i.item_type === 'video') as Video[])
+                const vidListRaw = seqVids.length > 0 ? seqVids : channelVideos
+                const seenVid = new Set<number>()
+                const allVideos = vidListRaw.filter(v => {
+                  if (seenVid.has(v.id)) return false
+                  seenVid.add(v.id)
+                  return true
+                })
 
-                    if (hasBatchSeq) {
-                      // Deduplicate batch sequence items by id+type
-                      const seenKeys = new Set<string>()
-                      const deduped = batchSequence.filter(item => {
-                        const key = `${item.item_type}-${item.id}`
-                        if (seenKeys.has(key)) return false
-                        seenKeys.add(key)
-                        return true
-                      })
-                      let videoIdx = 0
-                      return (
-                        <div className="space-y-1.5">
-                          {deduped.map((item) => {
-                            if (item.item_type === 'video') {
-                              const vid = item as Video
-                              const isCurrent = vid.id === videoId
-                              const isCompleted = vid.completed === 1 || (vid.watched_percentage || 0) >= 90
-                              videoIdx++
-                              const vIdx = videoIdx
-                              return (
-                                <div
-                                  key={`bseq-v-${vid.id}`}
-                                  onClick={() => { if (!isCurrent) handleNavigateToVideo(vid.id) }}
-                                  className={cn(
-                                    "group flex items-center justify-between p-1.5 rounded-lg border transition-all cursor-pointer",
-                                    isCurrent
-                                      ? "bg-indigo-500/10 border-indigo-500/30 text-white"
-                                      : "bg-[#18181b]/40 border-zinc-800/60 hover:bg-[#18181b] hover:border-zinc-700"
-                                  )}
-                                >
-                                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                                    <div className={cn(
-                                      "size-6 rounded flex items-center justify-center shrink-0 font-bold text-[10px]",
-                                      isCurrent ? "bg-indigo-600 text-white" : isCompleted ? "bg-emerald-500/20 text-emerald-400" : "bg-zinc-800 text-zinc-400"
-                                    )}>
-                                      {isCurrent ? (
-                                        <Play size={12} fill="currentColor" />
-                                      ) : isCompleted ? (
-                                        <CheckCircle2 size={12} />
-                                      ) : (
-                                        <span>{vIdx}</span>
-                                      )}
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                      <h5 className={cn(
-                                        "text-xs font-semibold truncate leading-tight",
-                                        isCurrent ? "text-indigo-200" : "text-zinc-300 group-hover:text-white"
-                                      )}>
-                                        {cleanTitle(vid.title)}
-                                      </h5>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-mono shrink-0 pl-2">
-                                      <span>{formatDuration(vid.duration || 0)}</span>
-                                      {vid.watched_percentage > 0 && !isCompleted && (
-                                        <span className="text-indigo-400 font-bold">({Math.round(vid.watched_percentage)}%)</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              )
-                            } else {
-                              // file item
-                              const file = item as TelegramFile
-                              const ext = (file.file_name?.split('.').pop() || '').toUpperCase()
-                              return (
-                                <div
-                                  key={`bseq-f-${file.id}`}
-                                  onClick={() => setSelectedDoc(file)}
-                                  className="group flex items-center justify-between p-1.5 rounded-lg bg-indigo-500/5 border border-indigo-500/15 hover:bg-indigo-500/10 hover:border-indigo-500/30 transition-all cursor-pointer"
-                                >
-                                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                                    <div className="size-6 rounded bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
-                                      <FileText size={13} />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                      <h5 className="text-xs font-medium text-zinc-200 group-hover:text-white truncate" title={file.file_name}>
-                                        {file.file_name}
-                                      </h5>
-                                      <p className="text-[10px] text-zinc-500">
-                                        {ext || 'FILE'} • {file.file_size ? (file.file_size / 1024 / 1024).toFixed(1) + ' MB' : ''}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px] text-indigo-300 hover:text-white hover:bg-indigo-600/20">
-                                    View <ExternalLink size={12} className="ml-1" />
-                                  </Button>
-                                </div>
-                              )
-                            }
-                          })}
+                // Deduplicate and extract all files
+                const seqFiles = (batchSequence.filter(i => i.item_type === 'file') as TelegramFile[])
+                const fileListRaw = seqFiles.length > 0 ? seqFiles : (channelFiles.length > 0 ? channelFiles : videoFiles)
+                const seenFile = new Set<number>()
+                const allFiles = fileListRaw.filter(f => {
+                  if (seenFile.has(f.id)) return false
+                  seenFile.add(f.id)
+                  return true
+                })
+
+                const completedCount = allVideos.filter(v => v.completed === 1 || (v.watched_percentage || 0) >= 90).length
+
+                return (
+                  <>
+                    {video.batch_id && video.batch_name ? (
+                      <div className="p-3.5 border-b border-zinc-800 bg-[#18181b] flex items-center justify-between shrink-0">
+                        <div>
+                          <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Batch Curriculum</p>
+                          <p className="text-xs font-bold text-zinc-50 truncate max-w-[220px]">{video.batch_name}</p>
                         </div>
-                      )
-                    }
+                        <Badge variant="outline" className="border-zinc-700 text-zinc-400 text-[10px]">
+                          {completedCount} / {allVideos.length} Done
+                        </Badge>
+                      </div>
+                    ) : null}
 
-                    // Fallback: no batch — show channel videos then channel+video files
-                    const vidMap = new Map<number, Video>()
-                    channelVideos.forEach(v => vidMap.set(v.id, v))
-                    const uniquePlaylistVideos = Array.from(vidMap.values())
+                    {/* Sub-filter tabs */}
+                    <div className="flex items-center gap-1.5 p-2 bg-[#18181b]/70 border-b border-zinc-800/80 text-[11px] shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setSeqFilter('all')}
+                        className={cn(
+                          "px-2.5 py-1 rounded-md font-medium transition-all",
+                          seqFilter === 'all' ? "bg-zinc-800 text-white font-bold" : "text-zinc-400 hover:text-zinc-200"
+                        )}
+                      >
+                        All ({allVideos.length + allFiles.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSeqFilter('videos')}
+                        className={cn(
+                          "px-2.5 py-1 rounded-md font-medium transition-all flex items-center gap-1",
+                          seqFilter === 'videos' ? "bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 font-bold" : "text-zinc-400 hover:text-zinc-200"
+                        )}
+                      >
+                        <Play size={10} fill="currentColor" />
+                        Videos ({allVideos.length})
+                      </button>
+                      {allFiles.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setSeqFilter('files')}
+                          className={cn(
+                            "px-2.5 py-1 rounded-md font-medium transition-all flex items-center gap-1",
+                            seqFilter === 'files' ? "bg-zinc-800 text-white font-bold" : "text-zinc-400 hover:text-zinc-200"
+                          )}
+                        >
+                          <FileText size={10} />
+                          Docs ({allFiles.length})
+                        </button>
+                      )}
+                    </div>
 
-                    const fileMap = new Map<number, TelegramFile>()
-                    videoFiles.forEach(f => fileMap.set(f.id, f))
-                    channelFiles.forEach(f => fileMap.set(f.id, f))
-                    const uniquePlaylistFiles = Array.from(fileMap.values())
-
-                    return (
-                      <div className="space-y-4">
-                        {/* Videos Section */}
-                        <div className="space-y-1.5">
-                          {uniquePlaylistVideos.map((vid, idx) => {
-                            const isCurrent = vid.id === videoId
-                            const isCompleted = vid.completed === 1 || (vid.watched_percentage || 0) >= 90
-                            return (
-                              <div
-                                key={`seq-vid-${vid.id}`}
-                                onClick={() => {
-                                  if (!isCurrent) handleNavigateToVideo(vid.id)
-                                }}
-                                className={cn(
-                                  "group flex items-center justify-between p-1.5 rounded-lg border transition-all cursor-pointer",
-                                  isCurrent
-                                    ? "bg-indigo-500/10 border-indigo-500/30 text-white"
-                                    : "bg-[#18181b]/40 border-zinc-800/60 hover:bg-[#18181b] hover:border-zinc-700"
-                                )}
-                              >
-                                <div className="flex items-center gap-2 min-w-0 flex-1">
-                                  <div className={cn(
-                                    "size-6 rounded flex items-center justify-center shrink-0 font-bold text-[10px]",
-                                    isCurrent ? "bg-indigo-600 text-white" : isCompleted ? "bg-emerald-500/20 text-emerald-400" : "bg-zinc-800 text-zinc-400"
-                                  )}>
-                                    {isCurrent ? (
-                                      <Play size={12} fill="currentColor" />
-                                    ) : isCompleted ? (
-                                      <CheckCircle2 size={12} />
-                                    ) : (
-                                      <span>{idx + 1}</span>
-                                    )}
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <h5 className={cn(
-                                      "text-xs font-semibold truncate leading-tight",
-                                      isCurrent ? "text-indigo-200" : "text-zinc-300 group-hover:text-white"
-                                    )}>
-                                      {cleanTitle(vid.title)}
-                                    </h5>
-                                  </div>
-                                  <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-mono shrink-0 pl-2">
-                                    <span>{formatDuration(vid.duration || 0)}</span>
-                                    {vid.watched_percentage > 0 && !isCompleted && (
-                                      <span className="text-indigo-400 font-bold">({Math.round(vid.watched_percentage)}%)</span>
-                                    )}
-                                  </div>
-                                </div>
+                    <ScrollArea className="h-full flex-1">
+                      <div className="p-3 pb-16 space-y-4">
+                        {/* Videos List (Shown when 'videos' or 'all') */}
+                        {(seqFilter === 'videos' || seqFilter === 'all') && (
+                          <div className="space-y-1.5">
+                            {seqFilter === 'all' && (
+                              <div className="flex items-center justify-between px-1 pb-1">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
+                                  <VideoIcon size={12} /> Batch Videos & Lectures
+                                </span>
+                                <Badge variant="secondary" className="text-[10px] bg-zinc-800 text-zinc-300">
+                                  {allVideos.length} Video{allVideos.length === 1 ? '' : 's'}
+                                </Badge>
                               </div>
-                            )
-                          })}
-                        </div>
+                            )}
 
-                        {/* PDFs & Course Resources Section */}
-                        {uniquePlaylistFiles.length > 0 && (
-                          <div className="pt-3 border-t border-zinc-800/80 space-y-2">
-                            <div className="flex items-center justify-between px-1">
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">PDFs & Documents</span>
-                              <Badge variant="secondary" className="text-[10px] bg-zinc-800 text-zinc-300">
-                                {uniquePlaylistFiles.length} File{uniquePlaylistFiles.length === 1 ? '' : 's'}
-                              </Badge>
-                            </div>
-                            {uniquePlaylistFiles.map((file) => {
-                              const ext = (file.file_name?.split('.').pop() || '').toUpperCase()
-                              return (
-                                <div
-                                  key={`seq-file-${file.id}`}
-                                  onClick={() => setSelectedDoc(file)}
-                                  className="group flex items-center justify-between p-1.5 rounded-lg bg-[#18181b]/50 border border-zinc-800/60 hover:bg-[#18181b] hover:border-zinc-700 transition-all cursor-pointer"
-                                >
-                                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                                    <div className="size-6 rounded bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
-                                      <FileText size={13} />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                      <h5 className="text-xs font-medium text-zinc-200 group-hover:text-white truncate" title={file.file_name}>
-                                        {file.file_name}
-                                      </h5>
-                                      <p className="text-[10px] text-zinc-500">
-                                        {ext || 'PDF'} • {file.file_size ? (file.file_size / 1024 / 1024).toFixed(1) + ' MB' : ''}
-                                      </p>
+                            {allVideos.length === 0 ? (
+                              <p className="text-xs text-zinc-500 py-4 text-center">No videos found in this curriculum.</p>
+                            ) : (
+                              allVideos.map((vid, idx) => {
+                                const isCurrent = vid.id === videoId
+                                const isCompleted = vid.completed === 1 || (vid.watched_percentage || 0) >= 90
+                                return (
+                                  <div
+                                    key={`bseq-vid-${vid.id}`}
+                                    onClick={() => {
+                                      if (!isCurrent) handleNavigateToVideo(vid.id)
+                                    }}
+                                    className={cn(
+                                      "group flex items-center justify-between p-1.5 rounded-lg border transition-all cursor-pointer",
+                                      isCurrent
+                                        ? "bg-indigo-500/15 border-indigo-500/40 text-white shadow-sm"
+                                        : "bg-[#18181b]/50 border-zinc-800/60 hover:bg-[#18181b] hover:border-zinc-700"
+                                    )}
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                                      <div className={cn(
+                                        "size-6 rounded flex items-center justify-center shrink-0 font-bold text-[10px]",
+                                        isCurrent ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/40" : isCompleted ? "bg-emerald-500/20 text-emerald-400" : "bg-zinc-800 text-zinc-400"
+                                      )}>
+                                        {isCurrent ? (
+                                          <Play size={11} fill="currentColor" />
+                                        ) : isCompleted ? (
+                                          <CheckCircle2 size={12} />
+                                        ) : (
+                                          <span>{idx + 1}</span>
+                                        )}
+                                      </div>
+                                      <div className="min-w-0 flex-1">
+                                        <h5 className={cn(
+                                          "text-xs font-semibold truncate leading-tight",
+                                          isCurrent ? "text-indigo-200" : "text-zinc-300 group-hover:text-white"
+                                        )}>
+                                          {cleanTitle(vid.title)}
+                                        </h5>
+                                      </div>
+                                      <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-mono shrink-0 pl-2">
+                                        <span>{formatDuration(vid.duration || 0)}</span>
+                                        {vid.watched_percentage > 0 && !isCompleted && (
+                                          <span className="text-indigo-400 font-bold">({Math.round(vid.watched_percentage)}%)</span>
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
-                                  <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px] text-indigo-300 hover:text-white hover:bg-indigo-600/20">
-                                    View <ExternalLink size={12} className="ml-1" />
-                                  </Button>
-                                </div>
-                              )
-                            })}
+                                )
+                              })
+                            )}
+                          </div>
+                        )}
+
+                        {/* Files List (Shown when 'files' or 'all') */}
+                        {(seqFilter === 'files' || seqFilter === 'all') && (
+                          <div className={cn("space-y-1.5", seqFilter === 'all' && allVideos.length > 0 && "pt-3 border-t border-zinc-800/80")}>
+                            {seqFilter === 'all' && (
+                              <div className="flex items-center justify-between px-1 pb-1">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
+                                  <FileText size={12} /> PDFs & Documents
+                                </span>
+                                <Badge variant="secondary" className="text-[10px] bg-zinc-800 text-zinc-300">
+                                  {allFiles.length} File{allFiles.length === 1 ? '' : 's'}
+                                </Badge>
+                              </div>
+                            )}
+
+                            {allFiles.length === 0 ? (
+                              <p className="text-xs text-zinc-500 py-4 text-center">No documents in this batch.</p>
+                            ) : (
+                              allFiles.map((file) => {
+                                const ext = (file.file_name?.split('.').pop() || '').toUpperCase()
+                                return (
+                                  <div
+                                    key={`bseq-file-${file.id}`}
+                                    onClick={() => setSelectedDoc(file)}
+                                    className="group flex items-center justify-between p-1.5 rounded-lg bg-[#18181b]/50 border border-zinc-800/60 hover:bg-[#18181b] hover:border-zinc-700 transition-all cursor-pointer"
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                                      <div className="size-6 rounded bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
+                                        <FileText size={13} />
+                                      </div>
+                                      <div className="min-w-0 flex-1">
+                                        <h5 className="text-xs font-medium text-zinc-200 group-hover:text-white truncate" title={file.file_name}>
+                                          {file.file_name}
+                                        </h5>
+                                        <p className="text-[10px] text-zinc-500">
+                                          {ext || 'PDF'} • {file.file_size ? (file.file_size / 1024 / 1024).toFixed(1) + ' MB' : ''}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px] text-indigo-300 hover:text-white hover:bg-indigo-600/20">
+                                      View <ExternalLink size={12} className="ml-1" />
+                                    </Button>
+                                  </div>
+                                )
+                              })
+                            )}
                           </div>
                         )}
                       </div>
-                    )
-                  })()}
-                </div>
-              </ScrollArea>
+                    </ScrollArea>
+                  </>
+                )
+              })()}
             </div>
 
             <div className={cn("absolute inset-0 flex-col bg-[#111113]", activeTab === 'notes' ? 'flex' : 'hidden')}>
@@ -573,21 +565,24 @@ return (
               if (video.duration) {
                 persistProgress(video.duration, video.duration, true)
               }
-              const idx = channelVideos.findIndex(v => v.id === videoId)
-              if (idx !== -1 && idx < channelVideos.length - 1) {
-                handleNavigateToVideo(channelVideos[idx + 1].id)
+              const playlist = channelVideos.length > 0 ? channelVideos : (batchSequence.filter(i => i.item_type === 'video') as Video[])
+              const idx = playlist.findIndex(v => v.id === videoId)
+              if (idx !== -1 && idx < playlist.length - 1) {
+                handleNavigateToVideo(playlist[idx + 1].id)
               }
             }}
             onPrev={() => {
-              const idx = channelVideos.findIndex(v => v.id === videoId)
+              const playlist = channelVideos.length > 0 ? channelVideos : (batchSequence.filter(i => i.item_type === 'video') as Video[])
+              const idx = playlist.findIndex(v => v.id === videoId)
               if (idx > 0) {
-                handleNavigateToVideo(channelVideos[idx - 1].id)
+                handleNavigateToVideo(playlist[idx - 1].id)
               }
             }}
             onNext={() => {
-              const idx = channelVideos.findIndex(v => v.id === videoId)
-              if (idx !== -1 && idx < channelVideos.length - 1) {
-                handleNavigateToVideo(channelVideos[idx + 1].id)
+              const playlist = channelVideos.length > 0 ? channelVideos : (batchSequence.filter(i => i.item_type === 'video') as Video[])
+              const idx = playlist.findIndex(v => v.id === videoId)
+              if (idx !== -1 && idx < playlist.length - 1) {
+                handleNavigateToVideo(playlist[idx + 1].id)
               }
             }}
           />
@@ -598,12 +593,25 @@ return (
                 {cleanTitle(video.title)}
               </h1>
 
-              <div className="flex items-center gap-3 text-xs text-zinc-400 font-medium">
+              <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-400 font-medium">
                 <span className="bg-zinc-900 border border-zinc-800 px-3 py-1 rounded-lg text-indigo-300 font-semibold">
                   {formatDuration(video.duration)}
                 </span>
                 {video.watched_percentage > 0 && (
                   <span className="text-zinc-400">• {Math.round(video.watched_percentage)}% Watched</span>
+                )}
+
+                {/* Server Upload Status Badge */}
+                {video.streamtape_status === 'uploading' && (
+                  <Badge variant="outline" className="bg-amber-500/10 border-amber-500/30 text-amber-300 gap-1.5 py-1 animate-pulse">
+                    <Loader2 size={12} className="animate-spin text-amber-400" />
+                    Uploading to Server (Streamtape CDN)
+                  </Badge>
+                )}
+                {video.streamtape_status === 'ready' && (
+                  <Badge variant="outline" className="bg-emerald-500/10 border-emerald-500/30 text-emerald-400 gap-1.5 py-1">
+                    🟢 Streamtape CDN (Ready)
+                  </Badge>
                 )}
               </div>
               

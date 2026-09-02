@@ -123,8 +123,21 @@ async function getClient(userId) {
   if (!userId) throw new Error("userId is required to get Telegram client");
   
   const clientObj = clients.get(userId);
-  if (clientObj && clientObj.isConnected && clientObj.client) {
-    return clientObj.client;
+  if (clientObj && clientObj.client) {
+    if (!clientObj.client.connected) {
+      console.log(`[Telegram] Reconnecting dropped client for user ${userId}...`);
+      try {
+        await clientObj.client.connect();
+        clientObj.isConnected = true;
+        return clientObj.client;
+      } catch (reconnectErr) {
+        console.warn(`[Telegram] Quick reconnect failed for user ${userId}: ${reconnectErr.message}. Re-initializing.`);
+        clients.delete(userId);
+        connectionPromises.delete(userId);
+      }
+    } else {
+      return clientObj.client;
+    }
   }
   
   let promise = connectionPromises.get(userId);

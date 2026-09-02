@@ -71,6 +71,15 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: err.message || 'Internal server error' });
 });
 
+// ─── Process Crash Guards (Prevent Render Restarts) ────────────────────────
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[Unhandled Rejection]', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('[Uncaught Exception]', err);
+});
+
 // ─── Start server ──────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`[TeleVideo] Backend server running on http://localhost:${PORT}`);

@@ -234,8 +234,12 @@ router.get('/:id', (req, res) => {
 // ── GET /api/batches/:id/videos ────────────────────────────────────────────
 router.get('/:id/videos', (req, res) => {
   const id = parseInt(req.params.id, 10);
+  const batch = getOne('SELECT * FROM batches WHERE id = ?', [id]);
+  if (!batch) return res.status(404).json({ error: 'Batch not found' });
+
+  const userId = req.user ? req.user.id : 0;
   const videos = getAll(
-    `SELECT v.*,
+    `SELECT vd.*,
        COALESCE(p.watched_percentage, 0) AS watched_percentage,
        COALESCE(p.last_timestamp, 0)     AS last_timestamp,
        COALESCE(p.completed, 0)          AS completed,
@@ -243,13 +247,22 @@ router.get('/:id/videos', (req, res) => {
        p.updated_at                      AS progress_updated_at,
        c.username AS channel_username,
        c.title    AS channel_title
-     FROM videos v
-     JOIN channels c ON c.id = v.channel_id
-     JOIN batches b ON b.id = v.batch_id
-     LEFT JOIN progress p ON p.video_id = v.id AND p.user_id = ?
-     WHERE v.batch_id = ? AND b.user_id = ?
-     ORDER BY v.message_id ASC`,
-    [req.user.id, id, req.user.id]
+     FROM (
+       SELECT DISTINCT v.*
+       FROM videos v
+       WHERE v.batch_id = ?
+          OR (v.channel_id = ? AND ? IS NOT NULL AND ? IS NOT NULL AND ? > 0 AND ? > 0 AND v.message_id >= ? AND v.message_id <= ?)
+     ) vd
+     LEFT JOIN channels c ON c.id = vd.channel_id
+     LEFT JOIN progress p ON p.video_id = vd.id AND p.user_id = ?
+     ORDER BY vd.message_id ASC`,
+    [
+      id,
+      batch.channel_id,
+      batch.start_msg_id, batch.end_msg_id, batch.start_msg_id, batch.end_msg_id,
+      batch.start_msg_id, batch.end_msg_id,
+      userId
+    ]
   );
   res.json(videos);
 });
@@ -257,13 +270,25 @@ router.get('/:id/videos', (req, res) => {
 // ── GET /api/batches/:id/files ─────────────────────────────────────────────
 router.get('/:id/files', (req, res) => {
   const id = parseInt(req.params.id, 10);
+  const batch = getOne('SELECT * FROM batches WHERE id = ?', [id]);
+  if (!batch) return res.status(404).json({ error: 'Batch not found' });
+
   const files = getAll(
-    `SELECT f.*, c.username AS channel_username
-     FROM files f JOIN channels c ON c.id = f.channel_id
-     JOIN batches b ON b.id = f.batch_id
-     WHERE f.batch_id = ? AND b.user_id = ?
-     ORDER BY f.parent_video_id ASC, f.mime_type DESC, f.message_id ASC`,
-    [id, req.user.id]
+    `SELECT fd.*, c.username AS channel_username
+     FROM (
+       SELECT DISTINCT f.*
+       FROM files f
+       WHERE f.batch_id = ?
+          OR (f.channel_id = ? AND ? IS NOT NULL AND ? IS NOT NULL AND ? > 0 AND ? > 0 AND f.message_id >= ? AND f.message_id <= ?)
+     ) fd
+     LEFT JOIN channels c ON c.id = fd.channel_id
+     ORDER BY fd.parent_video_id ASC, fd.mime_type DESC, fd.message_id ASC`,
+    [
+      id,
+      batch.channel_id,
+      batch.start_msg_id, batch.end_msg_id, batch.start_msg_id, batch.end_msg_id,
+      batch.start_msg_id, batch.end_msg_id
+    ]
   );
   res.json(files);
 });
@@ -271,11 +296,11 @@ router.get('/:id/files', (req, res) => {
 // ── GET /api/batches/:id/sequence ──────────────────────────────────────────
 router.get('/:id/sequence', (req, res) => {
   const id = parseInt(req.params.id, 10);
-  const batch = getOne('SELECT * FROM batches WHERE id = ? AND user_id = ?', [id, req.user.id]);
+  const batch = getOne('SELECT * FROM batches WHERE id = ?', [id]);
   if (!batch) return res.status(404).json({ error: 'Batch not found' });
   
-  // Use a subquery to deduplicate videos BEFORE joining progress,
-  // avoiding duplicate rows from OR condition or multiple progress entries
+  const userId = req.user ? req.user.id : 0;
+
   const videos = getAll(
     `SELECT vd.*, 'video' as item_type,
        COALESCE(p.watched_percentage, 0) AS watched_percentage,
@@ -289,11 +314,17 @@ router.get('/:id/sequence', (req, res) => {
        SELECT DISTINCT v.*
        FROM videos v
        WHERE v.batch_id = ?
-          OR (v.channel_id = ? AND v.message_id >= ? AND v.message_id <= ?)
+          OR (v.channel_id = ? AND ? IS NOT NULL AND ? IS NOT NULL AND ? > 0 AND ? > 0 AND v.message_id >= ? AND v.message_id <= ?)
      ) vd
-     JOIN channels c ON c.id = vd.channel_id
+     LEFT JOIN channels c ON c.id = vd.channel_id
      LEFT JOIN progress p ON p.video_id = vd.id AND p.user_id = ?`,
-    [id, batch.channel_id, batch.start_msg_id, batch.end_msg_id, req.user.id]
+    [
+      id,
+      batch.channel_id,
+      batch.start_msg_id, batch.end_msg_id, batch.start_msg_id, batch.end_msg_id,
+      batch.start_msg_id, batch.end_msg_id,
+      userId
+    ]
   );
 
   const files = getAll(
@@ -302,17 +333,23 @@ router.get('/:id/sequence', (req, res) => {
        SELECT DISTINCT f.*
        FROM files f
        WHERE f.batch_id = ?
-          OR (f.channel_id = ? AND f.message_id >= ? AND f.message_id <= ?)
+          OR (f.channel_id = ? AND ? IS NOT NULL AND ? IS NOT NULL AND ? > 0 AND ? > 0 AND f.message_id >= ? AND f.message_id <= ?)
           OR f.parent_video_id IN (
               SELECT id FROM videos v 
               WHERE v.batch_id = ? 
-                 OR (v.channel_id = ? AND v.message_id >= ? AND v.message_id <= ?)
+                 OR (v.channel_id = ? AND ? IS NOT NULL AND ? IS NOT NULL AND ? > 0 AND ? > 0 AND v.message_id >= ? AND v.message_id <= ?)
           )
      ) fd
-     JOIN channels c ON c.id = fd.channel_id`,
+     LEFT JOIN channels c ON c.id = fd.channel_id`,
     [
-      id, batch.channel_id, batch.start_msg_id, batch.end_msg_id,
-      id, batch.channel_id, batch.start_msg_id, batch.end_msg_id
+      id,
+      batch.channel_id,
+      batch.start_msg_id, batch.end_msg_id, batch.start_msg_id, batch.end_msg_id,
+      batch.start_msg_id, batch.end_msg_id,
+      id,
+      batch.channel_id,
+      batch.start_msg_id, batch.end_msg_id, batch.start_msg_id, batch.end_msg_id,
+      batch.start_msg_id, batch.end_msg_id
     ]
   );
 
