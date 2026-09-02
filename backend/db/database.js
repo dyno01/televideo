@@ -269,6 +269,38 @@ db.exec(`
 try { db.exec('ALTER TABLE progress ADD COLUMN dismissed INTEGER DEFAULT 0'); } catch (_) {}
 
 
+
+// Safe migration: add telegram_session to users table
+try { db.exec('ALTER TABLE users ADD COLUMN telegram_session TEXT'); } catch (_) {}
+
+// Safe migration: add r2 caching status columns to videos and files
+try {
+  db.exec("ALTER TABLE videos ADD COLUMN r2_status TEXT DEFAULT 'none'");
+  db.exec('ALTER TABLE videos ADD COLUMN r2_key TEXT');
+} catch (_) {}
+
+try {
+  db.exec("ALTER TABLE files ADD COLUMN r2_status TEXT DEFAULT 'none'");
+  db.exec('ALTER TABLE files ADD COLUMN r2_key TEXT');
+} catch (_) {}
+
+// Safe migration: add Streamtape columns
+try {
+  db.exec("ALTER TABLE videos ADD COLUMN streamtape_status TEXT DEFAULT 'none'");
+  db.exec('ALTER TABLE videos ADD COLUMN streamtape_id TEXT');
+  db.exec('ALTER TABLE videos ADD COLUMN streamtape_url TEXT');
+} catch (_) {}
+
+try {
+  db.exec("ALTER TABLE files ADD COLUMN streamtape_status TEXT DEFAULT 'none'");
+  db.exec('ALTER TABLE files ADD COLUMN streamtape_id TEXT');
+  db.exec('ALTER TABLE files ADD COLUMN streamtape_url TEXT');
+} catch (_) {}
+
+try {
+  db.exec("ALTER TABLE batches ADD COLUMN streamtape_folder_id TEXT");
+} catch (_) {}
+
 // Seed initial settings from environment if not present
 const seedSetting = (key, val) => {
   if (val && !db.prepare('SELECT value FROM settings WHERE key = ?').get(key)) {

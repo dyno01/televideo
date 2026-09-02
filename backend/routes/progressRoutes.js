@@ -51,7 +51,11 @@ router.post('/:videoId/dismiss', (req, res) => {
 
 // ─── POST /api/progress ────────────────────────────────────────────────────
 router.post('/', (req, res) => {
-  const { videoId, currentTime, duration } = req.body;
+  let data = req.body;
+  if (typeof data === 'string') {
+    try { data = JSON.parse(data); } catch (_) {}
+  }
+  const { videoId, currentTime, duration } = data || {};
 
   if (!videoId || currentTime === undefined || !duration) {
     return res.status(400).json({ error: 'videoId, currentTime, and duration are required' });

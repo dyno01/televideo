@@ -1,5 +1,6 @@
 'use client'
 
+import Hls from 'hls.js'
 import React, { useRef, useEffect, useState, useImperativeHandle, forwardRef } from 'react'
 import { 
   Play, 
@@ -64,10 +65,11 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   onOpenSidebar
 }, ref) => {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [progress, setProgress] = useState(initialPercentage)
   const [duration, setDuration] = useState(0)
-  const [currentTime, setCurrentTime] = useState(0)
+  const [currentTime, setCurrentTime] = useState(initialTimestamp || 0)
   const [isMuted, setIsMuted] = useState(false)
   const [volume, setVolume] = useState(1)
   const [showControls, setShowControls] = useState(true)
@@ -78,16 +80,89 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   const [streamErrorDetails, setStreamErrorDetails] = useState('')
   const hasSeekedInitialRef = useRef(false)
 
-  // Seek ripple: { side: 'left'|'right'|'center', icon: 'ccw'|'cw'|'play'|'pause', key: number }
-  const [seekRipple, setSeekRipple] = useState<{ side: 'left' | 'right' | 'center'; icon: 'ccw'|'cw'|'play'|'pause'; key: number } | null>(null)
-
-  const triggerSeekRipple = (side: 'left' | 'right' | 'center', icon: 'ccw'|'cw'|'play'|'pause') => {
-    setSeekRipple({ side, icon, key: Date.now() })
-    setTimeout(() => setSeekRipple(null), 700)
-  }
-
   const [showSpeedMenu, setShowSpeedMenu] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [preferNative, setPreferNative] = useState(false)
+  const isStreamtapeReady = !!(video.streamtape_id && video.streamtape_status === 'ready')
+  const useStreamtape = isStreamtapeReady && !preferNative
+
+  // Bidirectional Player.js Message Sync for Streamtape embed
+  useEffect(() => {
+    const handleWindowMessage = (e: MessageEvent) => {
+      try {
+        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data
+        if (data && (data.context === 'player.js' || data.event)) {
+          if (data.event === 'ready') {
+            const startSec = currentTime || initialTimestamp || 0
+            if (startSec > 0 && iframeRef.current?.contentWindow) {
+              iframeRef.current.contentWindow.postMessage(JSON.stringify({
+                method: 'setCurrentTime',
+                value: startSec
+              }), '*')
+            }
+          } else if (data.event === 'timeupdate' && data.value) {
+            const sec = typeof data.value.seconds === 'number' ? data.value.seconds : data.value.currentTime
+            const dur = typeof data.value.duration === 'number' ? data.value.duration : duration
+            if (typeof sec === 'number' && sec >= 0) {
+              setCurrentTime(sec)
+              if (dur > 0) {
+                setDuration(dur)
+                setProgress((sec / dur) * 100)
+              }
+              onTimeUpdate?.(sec, dur)
+              onProgress?.((sec / (dur || 1)) * 100)
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    window.addEventListener('message', handleWindowMessage)
+    return () => window.removeEventListener('message', handleWindowMessage)
+  }, [currentTime, duration, initialTimestamp, onTimeUpdate, onProgress])
+
+  const switchToNative = () => {
+    setPreferNative(true)
+    setTimeout(() => {
+      if (videoRef.current && currentTime > 0) {
+        videoRef.current.currentTime = currentTime
+      }
+    }, 100)
+  }
+
+  const switchToStreamtape = () => {
+    setPreferNative(false)
+    setTimeout(() => {
+      if (iframeRef.current?.contentWindow && currentTime > 0) {
+        iframeRef.current.contentWindow.postMessage(JSON.stringify({
+          method: 'setCurrentTime',
+          value: currentTime
+        }), '*')
+      }
+    }, 500)
+  }
+
+  const handleIframeLoad = () => {
+    const startSec = currentTime || initialTimestamp || 0
+    if (startSec > 0 && iframeRef.current?.contentWindow) {
+      setTimeout(() => {
+        iframeRef.current?.contentWindow?.postMessage(JSON.stringify({
+          method: 'setCurrentTime',
+          value: startSec
+        }), '*')
+      }, 700)
+    }
+  }
+
+  // Seek ripple: { side: 'left'|'right'|'center', icon: 'ccw'|'cw'|'play'|'pause', key: number }
+  const [seekRipple, setSeekRipple] = useState<{ side: 'left' | 'right' | 'center'; icon: 'ccw'|'cw'|'play'|'pause'; key: number; text?: string } | null>(null)
+
+  const consecutiveSkipsRef = useRef<{ count: number; side: 'left' | 'right'; lastTapTime: number }>({ count: 0, side: 'left', lastTapTime: 0 })
+
+  const triggerSeekRipple = (side: 'left' | 'right' | 'center', icon: 'ccw'|'cw'|'play'|'pause', text?: string) => {
+    setSeekRipple({ side, icon, key: Date.now(), text })
+    setTimeout(() => setSeekRipple(null), 700)
+  }
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -122,8 +197,15 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
 
   useImperativeHandle(ref, () => ({
     seekTo: (seconds: number) => {
+      setCurrentTime(seconds)
       if (videoRef.current) {
         videoRef.current.currentTime = seconds
+      }
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage(JSON.stringify({
+          method: 'setCurrentTime',
+          value: seconds
+        }), '*')
       }
     },
     play: () => {
@@ -131,15 +213,25 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
         videoRef.current.play().catch(() => {})
         setIsPlaying(true)
       }
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage(JSON.stringify({
+          method: 'play'
+        }), '*')
+      }
     },
     pause: () => {
       if (videoRef.current) {
         videoRef.current.pause()
         setIsPlaying(false)
       }
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage(JSON.stringify({
+          method: 'pause'
+        }), '*')
+      }
     },
     getCurrentTime: () => {
-      return videoRef.current?.currentTime ?? 0
+      return videoRef.current?.currentTime ?? currentTime
     }
   }))
 
@@ -237,6 +329,58 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
       videoRef.current.playbackRate = playbackSpeed
     }
   }, [playbackSpeed, video.id])
+  // Video stream source URL
+  const videoSourceUrl = `${getApiBase()}/api/stream/${video.id}${getMediaTokenQuery()}`
+
+  useEffect(() => {
+    const videoEl = videoRef.current
+    if (!videoEl || !videoSourceUrl) return
+
+    let hls: Hls | null = null
+
+    if (videoSourceUrl.includes('.m3u8')) {
+      if (Hls.isSupported()) {
+        hls = new Hls({
+          maxBufferLength: 30,
+        })
+        hls.loadSource(videoSourceUrl)
+        hls.attachMedia(videoEl)
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          setIsWaiting(false)
+        })
+        hls.on(Hls.Events.ERROR, (_event, data) => {
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                console.warn('[HLS] Network error, attempting recovery...')
+                hls?.startLoad()
+                break
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                console.warn('[HLS] Media error, attempting recovery...')
+                hls?.recoverMediaError()
+                break
+              default:
+                hls?.destroy()
+                break
+            }
+          }
+        })
+      } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
+        // Native HLS for Safari / iOS
+        videoEl.src = videoSourceUrl
+      }
+    } else {
+      videoEl.src = videoSourceUrl
+    }
+
+    return () => {
+      if (hls) {
+        hls.destroy()
+      }
+    }
+  }, [videoSourceUrl, video.id])
+
+
 
   const togglePlay = () => {
     if (videoRef.current?.paused) {
@@ -352,7 +496,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
 
   const handleVideoClick = (e: React.MouseEvent) => {
     const now = Date.now()
-    const DOUBLE_TAP_DELAY = 300
+    const DOUBLE_TAP_DELAY = 400
     const rect = e.currentTarget.getBoundingClientRect()
     const x = e.clientX - rect.left
     const width = rect.width
@@ -367,11 +511,25 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
 
       // Double tap logic
       if (x < width * 0.35) {
+        if (now - consecutiveSkipsRef.current.lastTapTime < DOUBLE_TAP_DELAY * 2 && consecutiveSkipsRef.current.side === 'left') {
+          consecutiveSkipsRef.current.count += 1
+        } else {
+          consecutiveSkipsRef.current = { count: 1, side: 'left', lastTapTime: now }
+        }
+        consecutiveSkipsRef.current.lastTapTime = now
+        const totalSkip = consecutiveSkipsRef.current.count * 10
         skip(-10)
-        triggerSeekRipple('left', 'ccw')
+        triggerSeekRipple('left', 'ccw', `-${totalSkip}s`)
       } else if (x > width * 0.65) {
+        if (now - consecutiveSkipsRef.current.lastTapTime < DOUBLE_TAP_DELAY * 2 && consecutiveSkipsRef.current.side === 'right') {
+          consecutiveSkipsRef.current.count += 1
+        } else {
+          consecutiveSkipsRef.current = { count: 1, side: 'right', lastTapTime: now }
+        }
+        consecutiveSkipsRef.current.lastTapTime = now
+        const totalSkip = consecutiveSkipsRef.current.count * 10
         skip(10)
-        triggerSeekRipple('right', 'cw')
+        triggerSeekRipple('right', 'cw', `+${totalSkip}s`)
       } else {
         toggleFullscreen()
       }
@@ -511,14 +669,76 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
       onMouseMove={handleMouseMove}
       onMouseLeave={() => !isDragging && setShowControls(false)}
     >
-      <video
-        ref={videoRef}
-        src={`${getApiBase()}/api/stream/${video.id}${getMediaTokenQuery()}`}
-        className="w-full h-full object-contain"
-        onClick={handleVideoClick}
-        onError={handleVideoError}
-        playsInline
-      />
+      {useStreamtape ? (
+        <div className="relative w-full h-full">
+          <iframe
+            ref={iframeRef}
+            src={`https://streamtape.com/e/${video.streamtape_id}`}
+            className="w-full h-full border-0"
+            allowFullScreen
+            allow="autoplay; encrypted-media"
+            onLoad={handleIframeLoad}
+          />
+          {/* Streamtape Fast CDN Badge */}
+          <div className="absolute top-3 left-3 z-40 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[11px] font-semibold backdrop-blur-md shadow-lg pointer-events-none">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span>Streamtape CDN (0 Bandwidth)</span>
+          </div>
+
+          {/* Controls bar over iframe for sidebar & source toggle */}
+          <div className="absolute top-3 right-3 z-40 flex items-center gap-2">
+            <button
+              onClick={switchToNative}
+              className="px-2.5 py-1 text-[11px] font-medium bg-zinc-900/90 text-zinc-300 hover:text-white rounded-lg border border-zinc-700/60 shadow backdrop-blur transition-all"
+              title="Switch to our custom HTML5 player with notes and custom scrubber"
+            >
+              Switch to Our Player
+            </button>
+            {sidebarContent && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); if (onOpenSidebar) onOpenSidebar(); }}
+                className="p-1.5 rounded-lg bg-zinc-900/90 text-zinc-300 hover:text-white border border-zinc-700/60 shadow backdrop-blur transition-all"
+                title="Playlist & Notes"
+              >
+                <ListVideo size={16} />
+              </button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Streamtape Fast CDN Badge */}
+          {isStreamtapeReady && (
+            <div className="absolute top-3 left-3 z-30 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[11px] font-semibold backdrop-blur-md shadow-lg pointer-events-none">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span>Streamtape CDN (0 Bandwidth)</span>
+            </div>
+          )}
+
+          {isStreamtapeReady && (
+            <div className="absolute top-3 right-3 z-30">
+              <button
+                onClick={switchToStreamtape}
+                className="px-2.5 py-1 text-[11px] font-medium bg-zinc-900/90 text-zinc-300 hover:text-white rounded-lg border border-zinc-700/60 shadow backdrop-blur transition-all"
+                title="Switch to Streamtape embed player"
+              >
+                Switch to Streamtape Player
+              </button>
+            </div>
+          )}
+          <video
+            ref={videoRef}
+            className="w-full h-full object-contain"
+            onClick={handleVideoClick}
+            onError={handleVideoError}
+            playsInline
+          />
 
       {/* --- Seek Ripple Animation --- */}
       {seekRipple && (
@@ -543,7 +763,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
             </div>
             {seekRipple.side !== 'center' && (
               <span className="text-white/80 text-xs font-bold drop-shadow">
-                {seekRipple.side === 'left' ? '-10s' : '+10s'}
+                {seekRipple.text || (seekRipple.side === 'left' ? '-10s' : '+10s')}
               </span>
             )}
           </div>
@@ -651,22 +871,24 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
         {/* Thick Progress Bar */}
         <div 
           id="video-progress-bar"
-          className="relative h-1.5 w-full bg-white/10 rounded-full cursor-pointer mb-3 sm:mb-6 pointer-events-auto group/progress"
+          className="relative py-4 -my-4 w-full cursor-pointer mb-3 sm:mb-6 pointer-events-auto group/progress"
           onMouseDown={handleMouseDown}
           onTouchStart={handleMouseDown}
         >
-          <div 
-            className="absolute h-full bg-white transition-all duration-150 rounded-full"
-            style={{ width: `${progress}%` }}
-          />
-          {/* Draggable Knob */}
-          <div 
-            className={cn(
-              "absolute top-1/2 -translate-y-1/2 size-3 bg-white rounded-full shadow-lg transition-transform scale-0 group-hover/progress:scale-100",
-              isDragging && "scale-125"
-            )}
-            style={{ left: `calc(${progress}% - 6px)` }}
-          />
+          <div className="relative h-1.5 w-full bg-white/10 rounded-full">
+            <div 
+              className="absolute h-full bg-white transition-all duration-150 rounded-full"
+              style={{ width: `${progress}%` }}
+            />
+            {/* Draggable Knob */}
+            <div 
+              className={cn(
+                "absolute top-1/2 -translate-y-1/2 size-3 bg-white rounded-full shadow-lg transition-transform scale-0 group-hover/progress:scale-100",
+                isDragging && "scale-125"
+              )}
+              style={{ left: `calc(${progress}% - 6px)` }}
+            />
+          </div>
         </div>
 
         {/* Main Controls Rack */}
@@ -760,6 +982,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
           </div>
         </div>
       </div>
+      </>
+      )}
       
       {/* SIDEBAR OVERLAY */}
       {sidebarContent && (

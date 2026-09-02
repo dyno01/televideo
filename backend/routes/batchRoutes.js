@@ -94,7 +94,7 @@ router.post('/', async (req, res) => {
   if (!channel) return res.status(404).json({ error: 'Channel not found. Scan it first.' });
 
   try {
-    const client = await getClient();
+    const client = await getClient(req.user.id);
 
     // Resolve the peer
     let peer;
@@ -381,7 +381,7 @@ router.put('/:id', async (req, res) => {
           [link, parsed.startId, parsed.endId, id]);
 
       // Trigger re-scan asynchronously
-      scanBatchRange(id, parsed).catch(err => console.error('[Batch Re-scan Error]', err));
+      scanBatchRange(id, parsed, req.user.id).catch(err => console.error('[Batch Re-scan Error]', err));
       
       return res.json({ success: true, message: 'Batch range updated and re-scan started' });
     }
@@ -394,9 +394,9 @@ router.put('/:id', async (req, res) => {
 });
 
 /** Helper to re-scan a batch range (used when link change) */
-async function scanBatchRange(batchId, parsed) {
+async function scanBatchRange(batchId, parsed, userId) {
   const { getClient } = require('../telegramClient');
-  const client = await getClient();
+  const client = await getClient(userId);
   const channelId = getOne('SELECT channel_id FROM batches WHERE id = ?', [batchId])?.channel_id;
   if (!channelId) return;
   const channel = getOne('SELECT * FROM channels WHERE id = ?', [channelId]);

@@ -84,4 +84,32 @@ router.get('/video/:id/files', (req, res) => {
   res.json(files);
 });
 
+// ─── DELETE /api/video/:id ──────────────────────────────────────────────────
+router.delete('/video/:id', async (req, res) => {
+  const videoId = parseInt(req.params.id, 10);
+  if (isNaN(videoId)) return res.status(400).json({ error: 'Invalid video ID' });
+
+  const video = getOne('SELECT * FROM videos WHERE id = ?', [videoId]);
+  if (!video) return res.status(404).json({ error: 'Video not found' });
+
+  try {
+    const { deleteStreamtapeVideo } = require('../streamtapeUpload');
+    if (video.streamtape_id) {
+      await deleteStreamtapeVideo(video.streamtape_id);
+    }
+
+    const { run } = require('../db/database');
+    run('DELETE FROM progress WHERE video_id = ?', [videoId]);
+    run('DELETE FROM notes WHERE video_id = ?', [videoId]);
+    run('DELETE FROM video_tags WHERE video_id = ?', [videoId]);
+    run('UPDATE files SET parent_video_id = NULL WHERE parent_video_id = ?', [videoId]);
+    run('DELETE FROM videos WHERE id = ?', [videoId]);
+
+    res.json({ success: true, message: 'Video deleted' });
+  } catch (err) {
+    console.error('[Delete Video Error]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

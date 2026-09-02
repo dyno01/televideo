@@ -37,6 +37,7 @@ app.use(cors({
   exposedHeaders: ['Content-Range', 'Accept-Ranges', 'Content-Length'],
 }));
 app.use(express.json());
+app.use(express.text({ type: ['text/plain', 'application/json'] }));
 app.use(express.urlencoded({ extended: true }));
 
 // ─── Health check ──────────────────────────────────────────────────────────

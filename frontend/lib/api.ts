@@ -77,6 +77,9 @@ export interface Video {
   watched_percentage: number
   last_timestamp: number
   completed: number
+  streamtape_status?: string
+  streamtape_id?: string
+  streamtape_url?: string
   dismissed?: number
   updated_at?: string
   progress_updated_at?: string
@@ -102,6 +105,9 @@ export interface Progress {
   watched_percentage: number
   last_timestamp: number
   completed: number
+  vcdn_status?: string
+  vcdn_id?: string
+  vcdn_playback_url?: string
 }
 
 export interface Note {
@@ -154,7 +160,10 @@ export const saveProgress = (
   videoId: number,
   currentTime: number,
   duration: number
-): Promise<{ success: boolean; watched_percentage: number; completed: number }> =>
+): Promise<{ success: boolean; watched_percentage: number; completed: number
+  vcdn_status?: string
+  vcdn_id?: string
+  vcdn_playback_url?: string }> =>
   api.post('/api/progress', { videoId, currentTime, duration }).then(d)
 
 export const getNotes = (videoId: number): Promise<Note[]> =>

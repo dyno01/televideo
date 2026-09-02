@@ -105,7 +105,7 @@ router.post('/scan', async (req, res) => {
   }
 
   const parsed = parseChannelInput(channelUsername);
-  const client = await getClient();
+  const client = await getClient(req.user.id);
 
   let entity;
   let dbUsername;   // what we store as the channel's unique key
@@ -278,7 +278,7 @@ router.get('/:username', (req, res) => {
 });
 
 // ─── DELETE /api/channel/:id (Delete channel/vault) ──────────────────────
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   const channelId = parseInt(req.params.id, 10);
   if (isNaN(channelId)) return res.status(400).json({ error: 'Invalid channel ID' });
 
@@ -286,6 +286,15 @@ router.delete('/:id', (req, res) => {
   if (!channel) return res.status(404).json({ error: 'Channel not found' });
 
   try {
+    // Delete any Streamtape videos associated with this channel
+    try {
+      const streamtapeVideos = getAll('SELECT streamtape_id FROM videos WHERE channel_id = ? AND streamtape_id IS NOT NULL', [channelId]);
+      const { deleteStreamtapeVideo } = require('../streamtapeUpload');
+      for (const v of streamtapeVideos) {
+        if (v.streamtape_id) deleteStreamtapeVideo(v.streamtape_id).catch(() => {});
+      }
+    } catch (_) {}
+
     run(`DELETE FROM progress WHERE video_id IN (SELECT id FROM videos WHERE channel_id = ?)`, [channelId]);
     run(`DELETE FROM notes WHERE video_id IN (SELECT id FROM videos WHERE channel_id = ?)`, [channelId]);
     run('UPDATE files SET parent_video_id = NULL WHERE channel_id = ?', [channelId]);

@@ -183,6 +183,23 @@ export default function VideoPage() {
       .finally(() => setLoading(false))
   }, [videoId])
 
+  // Automatically poll and switch when Streamtape upload completes
+  useEffect(() => {
+    if (!video || video.streamtape_status === 'ready') return
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const fresh = await getVideo(videoId)
+        if (fresh && fresh.streamtape_status === 'ready') {
+          setVideo(prev => prev ? { ...prev, ...fresh } : fresh)
+          clearInterval(pollInterval)
+        }
+      } catch (_) {}
+    }, 4000)
+
+    return () => clearInterval(pollInterval)
+  }, [videoId, video?.streamtape_status])
+
   const handleAddTag = async () => {
     const t = newTag.trim().toLowerCase()
     if (!t) return

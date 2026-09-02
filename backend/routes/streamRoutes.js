@@ -12,6 +12,8 @@ const { Api }  = require('telegram');
 const bigInt   = require('big-integer');
 const { getOne, run } = require('../db/database');
 const { getClient } = require('../telegramClient');
+const { isR2Configured, triggerR2Cache } = require('../r2Upload');
+const { isStreamtapeConfigured, triggerStreamtapeUpload, getDirectStreamLink } = require('../streamtapeUpload');
 
 const router = express.Router();
 
@@ -74,10 +76,30 @@ router.get('/:videoId', async (req, res) => {
   const video = getOne('SELECT * FROM videos WHERE id = ?', [videoId]);
   if (!video) return res.status(404).json({ error: 'Video not found' });
 
+  // 1. Streamtape Playback Redirect Check (Direct video CDN link for native player)
+  if (isStreamtapeConfigured() && video.streamtape_status === 'ready' && video.streamtape_id) {
+    try {
+      const directUrl = await getDirectStreamLink(video.streamtape_id);
+      if (directUrl) {
+        return res.redirect(directUrl);
+      }
+    } catch (_) {}
+
+    if (video.streamtape_url) {
+      return res.redirect(video.streamtape_url);
+    }
+  }
+
+  // 2. R2 Caching Check
+  if (isR2Configured() && video.r2_status === 'cached' && video.r2_key) {
+    const publicUrl = process.env.R2_PUBLIC_URL.replace(/\/$/, ''); // remove trailing slash
+    return res.redirect(`${publicUrl}/${video.r2_key}`);
+  }
+
   try {
     let client;
     try {
-      client = await getClient();
+      client = await getClient(req.user.id);
     } catch (authErr) {
       return res.status(401).json({
         error: authErr.message || 'Telegram authentication required. Please log in via Telegram Settings.',
@@ -114,6 +136,20 @@ router.get('/:videoId', async (req, res) => {
     const totalSize = fileLocation.size || video.size || 0;
     const mimeType  = video.mime_type || 'video/mp4';
     const dcId      = fileLocation.dcId || video.dc_id || 0;
+
+    // 3. Trigger Streamtape background upload if configured and not yet uploaded
+    if (isStreamtapeConfigured() && (!video.streamtape_status || video.streamtape_status === 'none' || video.streamtape_status === 'failed')) {
+      triggerStreamtapeUpload('video', video.id, req.user.id, fileLocation, video.title, client).catch(err =>
+        console.error('[Streamtape Trigger Error]', err)
+      );
+    }
+
+    // 4. Trigger R2 background cache if not already cached
+    if (isR2Configured() && video.r2_status !== 'cached') {
+      triggerR2Cache('video', video.id, req.user.id, fileLocation).catch(err => 
+        console.error('[R2 Trigger Error]', err)
+      );
+    }
 
     // Parse Range header
     const rangeHeader = req.headers.range;
@@ -199,10 +235,16 @@ router.get('/file/:fileId', async (req, res) => {
   const file = getOne('SELECT * FROM files WHERE id = ?', [fileId]);
   if (!file) return res.status(404).json({ error: 'File not found' });
 
+  // 1. R2 Caching Check
+  if (isR2Configured() && file.r2_status === 'cached' && file.r2_key) {
+    const publicUrl = process.env.R2_PUBLIC_URL.replace(/\/$/, '');
+    return res.redirect(`${publicUrl}/${file.r2_key}`);
+  }
+
   try {
     let client;
     try {
-      client = await getClient();
+      client = await getClient(req.user.id);
     } catch (authErr) {
       return res.status(401).json({
         error: authErr.message || 'Telegram authentication required. Please log in via Telegram Settings.',
@@ -234,6 +276,13 @@ router.get('/file/:fileId', async (req, res) => {
     const totalSize = mediaLoc.size;
     const mimeType  = mediaLoc.mimeType || 'application/octet-stream';
     const dcId      = mediaLoc.dcId;
+
+    // 2. Trigger R2 background cache if not already cached
+    if (isR2Configured() && file.r2_status !== 'cached') {
+      triggerR2Cache('file', file.id, req.user.id, mediaLoc).catch(err => 
+        console.error('[R2 Trigger Error]', err)
+      );
+    }
 
     res.writeHead(200, {
       'Content-Length': totalSize,

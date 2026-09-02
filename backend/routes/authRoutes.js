@@ -3,6 +3,7 @@ const telegramClient = require('../telegramClient');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { getSetting, db } = require('../db/database');
+const authMiddleware = require('../middleware/authMiddleware');
 
 const router = express.Router();
 const JWT_SECRET = getSetting('JWT_SECRET', 'super_secret_televideo_key_2026');
@@ -11,60 +12,7 @@ function hashPassword(password) {
   return crypto.createHash('sha256').update(String(password).trim()).digest('hex');
 }
 
-// ─── GET /api/telegram/status ───────────────────────────────────────────────
-router.get('/status', async (_req, res) => {
-  try {
-    const status = await telegramClient.getStatus();
-    res.json(status);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ─── POST /api/telegram/send-code ───────────────────────────────────────────
-router.post('/send-code', async (req, res) => {
-  const { apiId, apiHash, phoneNumber } = req.body;
-  if (!apiId || !apiHash || !phoneNumber) return res.status(400).json({ error: 'Missing fields' });
-  try {
-    const result = await telegramClient.sendPhoneCode(apiId, apiHash, phoneNumber);
-    res.json(result);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
-// ─── POST /api/telegram/login ───────────────────────────────────────────────
-router.post('/login', async (req, res) => {
-  const { phoneNumber, phoneCode, phoneCodeHash, password } = req.body;
-  if (!phoneNumber || !phoneCode || !phoneCodeHash) return res.status(400).json({ error: 'Missing fields' });
-  try {
-    const result = await telegramClient.signInUser({ phoneNumber, phoneCode, phoneCodeHash, password });
-    res.json(result);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
-router.post('/save-session', async (req, res) => {
-  const { apiId, apiHash, sessionString } = req.body;
-  try {
-    const result = await telegramClient.saveSessionString(apiId, apiHash, sessionString);
-    res.json(result);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
-router.post('/logout', async (req, res) => {
-  try {
-    const result = await telegramClient.logoutUser();
-    res.json(result);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
-// ─── MULTI-USER AUTH ROUTES ────────────────────────────────────────────────
+// ─── MULTI-USER AUTH ROUTES (Public) ───────────────────────────────────────
 router.get('/users/count', (req, res) => {
   const count = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
   res.json({ count });
@@ -101,55 +49,82 @@ router.post('/user-login', (req, res) => {
   res.json({ success: true, token, user: { id: user.id, username: user.username } });
 });
 
-// ─── GET /api/telegram/me ────────────────────────────────────────────────────
-router.get('/me', (req, res) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Unauthorized', passcodeRequired: true });
-  }
-  const token = authHeader.split(' ')[1];
+router.get('/passcode-status', (req, res) => {
+  const count = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
+  res.json({ passcodeSet: true, userCount: count });
+});
+
+// ─── PROTECTED TELEGRAM ROUTES ──────────────────────────────────────────────
+router.use(authMiddleware);
+
+router.get('/status', async (req, res) => {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    res.json({ success: true, user: decoded });
+    const status = await telegramClient.getStatus(req.user.id);
+    res.json(status);
   } catch (err) {
-    res.status(401).json({ error: 'Invalid token', passcodeRequired: true });
+    res.status(500).json({ error: err.message });
   }
 });
 
-// ─── POST /api/telegram/change-password ────────────────────────────────────
-router.post('/change-password', (req, res) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-  const token = authHeader.split(' ')[1];
-  let decoded;
+router.post('/send-code', async (req, res) => {
+  const { apiId, apiHash, phoneNumber } = req.body;
+  if (!apiId || !apiHash || !phoneNumber) return res.status(400).json({ error: 'Missing fields' });
   try {
-    decoded = jwt.verify(token, JWT_SECRET);
+    const result = await telegramClient.sendPhoneCode(req.user.id, apiId, apiHash, phoneNumber);
+    res.json(result);
   } catch (err) {
-    return res.status(401).json({ error: 'Invalid token' });
+    res.status(400).json({ error: err.message });
   }
-  
+});
+
+router.post('/login', async (req, res) => {
+  const { phoneNumber, phoneCode, phoneCodeHash, password } = req.body;
+  if (!phoneNumber || !phoneCode || !phoneCodeHash) return res.status(400).json({ error: 'Missing fields' });
+  try {
+    const result = await telegramClient.signInUser(req.user.id, { phoneNumber, phoneCode, phoneCodeHash, password });
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.post('/save-session', async (req, res) => {
+  const { apiId, apiHash, sessionString } = req.body;
+  try {
+    const result = await telegramClient.saveSessionString(req.user.id, apiId, apiHash, sessionString);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.post('/logout', async (req, res) => {
+  try {
+    const result = await telegramClient.logout(req.user.id);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.get('/me', (req, res) => {
+  res.json({ success: true, user: req.user });
+});
+
+router.post('/change-password', (req, res) => {
   const { currentPassword, newPassword } = req.body;
   if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Current and new password required' });
   if (newPassword.length < 4) return res.status(400).json({ error: 'New password too short' });
 
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.id);
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
   if (!user || user.password_hash !== hashPassword(currentPassword)) {
     return res.status(401).json({ error: 'Incorrect current password' });
   }
 
   const newHash = hashPassword(newPassword);
-  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(newHash, decoded.id);
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(newHash, req.user.id);
   
   res.json({ success: true });
-});
-
-// Legacy passcode endpoints for backwards compatibility during transition
-router.get('/passcode-status', (req, res) => {
-  const count = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
-  // Always return true to enforce multi-user auth on the frontend
-  res.json({ passcodeSet: true, userCount: count });
 });
 
 module.exports = router;
