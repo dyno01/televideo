@@ -7,6 +7,7 @@
 
 const express = require('express');
 const { getAll, getOne } = require('../db/database');
+const { getUploadProgress } = require('../streamtapeUpload');
 
 const router = express.Router();
 
@@ -35,7 +36,36 @@ router.get('/channel/:username/videos', (req, res) => {
     [req.user.id, channel.id]
   );
 
-  res.json(videos);
+  const result = videos.map(v => {
+    const liveProgress = getUploadProgress('video', v.id);
+    return {
+      ...v,
+      upload_percentage: liveProgress !== null ? liveProgress : (v.upload_percentage || (v.streamtape_status === 'ready' ? 100 : 0)),
+    };
+  });
+
+  res.json(result);
+});
+
+// ─── GET /api/video/:id/upload-status ──────────────────────────────────────
+router.get('/video/:id/upload-status', (req, res) => {
+  const videoId = parseInt(req.params.id, 10);
+  if (isNaN(videoId)) return res.status(400).json({ error: 'Invalid video ID' });
+
+  const v = getOne('SELECT id, streamtape_status, streamtape_id, upload_percentage FROM videos WHERE id = ?', [videoId]);
+  if (!v) return res.status(404).json({ error: 'Video not found' });
+
+  const liveProgress = getUploadProgress('video', videoId);
+  const uploadPct = liveProgress !== null 
+    ? liveProgress 
+    : (v.upload_percentage || (v.streamtape_status === 'ready' ? 100 : 0));
+
+  res.json({
+    id: v.id,
+    streamtape_status: v.streamtape_status,
+    streamtape_id: v.streamtape_id,
+    upload_percentage: uploadPct,
+  });
 });
 
 // ─── GET /api/video/:id ────────────────────────────────────────────────────
@@ -63,8 +93,15 @@ router.get('/video/:id', (req, res) => {
 
   if (!video) return res.status(404).json({ error: 'Video not found' });
 
-  // Return video metadata — file_reference and access_hash are for streaming proxy use
-  res.json(video);
+  const liveProgress = getUploadProgress('video', videoId);
+  const uploadPct = liveProgress !== null 
+    ? liveProgress 
+    : (video.upload_percentage || (video.streamtape_status === 'ready' ? 100 : 0));
+
+  res.json({
+    ...video,
+    upload_percentage: uploadPct,
+  });
 });
 
 // ─── GET /api/video/:id/files ─────────────────────────────────────────────

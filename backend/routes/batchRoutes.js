@@ -17,6 +17,7 @@ const { Api }    = require('telegram');
 const bigInt     = require('big-integer');
 const { db, getOne, getAll, run } = require('../db/database');
 const { getClient } = require('../telegramClient');
+const { getUploadProgress } = require('../streamtapeUpload');
 
 const router = express.Router();
 
@@ -264,7 +265,14 @@ router.get('/:id/videos', (req, res) => {
       userId
     ]
   );
-  res.json(videos);
+  const enrichedVideos = videos.map(v => {
+    const liveProgress = getUploadProgress('video', v.id);
+    return {
+      ...v,
+      upload_percentage: liveProgress !== null ? liveProgress : (v.upload_percentage || (v.streamtape_status === 'ready' ? 100 : 0))
+    };
+  });
+  res.json(enrichedVideos);
 });
 
 // ── GET /api/batches/:id/files ─────────────────────────────────────────────
@@ -327,6 +335,14 @@ router.get('/:id/sequence', (req, res) => {
     ]
   );
 
+  const enrichedVideos = videos.map(v => {
+    const liveProgress = getUploadProgress('video', v.id);
+    return {
+      ...v,
+      upload_percentage: liveProgress !== null ? liveProgress : (v.upload_percentage || (v.streamtape_status === 'ready' ? 100 : 0))
+    };
+  });
+
   const files = getAll(
     `SELECT fd.*, 'file' as item_type, c.username AS channel_username
      FROM (
@@ -354,7 +370,7 @@ router.get('/:id/sequence', (req, res) => {
   );
 
   // Combine and sort by message_id
-  const sequence = [...videos, ...files].sort((a, b) => a.message_id - b.message_id);
+  const sequence = [...enrichedVideos, ...files].sort((a, b) => a.message_id - b.message_id);
   res.json(sequence);
 });
 

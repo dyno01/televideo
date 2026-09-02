@@ -197,19 +197,21 @@ export default function VideoPage() {
       .finally(() => setLoading(false))
   }, [videoId])
 
-  // Automatically poll and switch when Streamtape upload completes
+  // Automatically poll and switch when Streamtape upload completes or progress updates
   useEffect(() => {
     if (!video || video.streamtape_status === 'ready') return
 
     const pollInterval = setInterval(async () => {
       try {
         const fresh = await getVideo(videoId)
-        if (fresh && fresh.streamtape_status === 'ready') {
+        if (fresh) {
           setVideo(prev => prev ? { ...prev, ...fresh } : fresh)
-          clearInterval(pollInterval)
+          if (fresh.streamtape_status === 'ready') {
+            clearInterval(pollInterval)
+          }
         }
       } catch (_) {}
-    }, 4000)
+    }, 2000)
 
     return () => clearInterval(pollInterval)
   }, [videoId, video?.streamtape_status])
@@ -439,6 +441,12 @@ export default function VideoPage() {
                                         </h5>
                                       </div>
                                       <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-mono shrink-0 pl-2">
+                                        {vid.streamtape_status === 'uploading' && (
+                                          <span className="text-amber-400 font-semibold flex items-center gap-1">
+                                            <Loader2 size={10} className="animate-spin" />
+                                            {typeof vid.upload_percentage === 'number' && vid.upload_percentage > 0 ? `${vid.upload_percentage}%` : 'Uploading'}
+                                          </span>
+                                        )}
                                         <span>{formatDuration(vid.duration || 0)}</span>
                                         {vid.watched_percentage > 0 && !isCompleted && (
                                           <span className="text-indigo-400 font-bold">({Math.round(vid.watched_percentage)}%)</span>
@@ -605,7 +613,9 @@ return (
                 {video.streamtape_status === 'uploading' && (
                   <Badge variant="outline" className="bg-amber-500/10 border-amber-500/30 text-amber-300 gap-1.5 py-1 animate-pulse">
                     <Loader2 size={12} className="animate-spin text-amber-400" />
-                    Uploading to Server (Streamtape CDN)
+                    {typeof video.upload_percentage === 'number' && video.upload_percentage > 0
+                      ? `Uploading to Server: ${video.upload_percentage}% (Streamtape CDN)`
+                      : 'Uploading to Server (Streamtape CDN)'}
                   </Badge>
                 )}
                 {video.streamtape_status === 'ready' && (

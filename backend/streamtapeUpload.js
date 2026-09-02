@@ -196,11 +196,14 @@ async function getDirectStreamLink(fileId) {
   return null;
 }
 
-// ─── PRIORITY QUEUE FOR UPLOADS ─────────────────────────────────────────────
-// Priority levels:
-// 1 = High (Video user is currently watching)
-// 2 = Batch (Other videos in the active batch)
-// 3 = Low (Other videos in channel)
+const activeUploadProgress = new Map(); // `${type}_${id}` -> percentage (0..100)
+
+/**
+ * Get real-time upload progress for an item
+ */
+function getUploadProgress(type, id) {
+  return activeUploadProgress.has(`${type}_${id}`) ? activeUploadProgress.get(`${type}_${id}`) : null;
+}
 
 const uploadQueue = [];
 let isWorkerRunning = false;
@@ -259,7 +262,10 @@ async function executeUploadTask(task) {
   const row = getOne(`SELECT streamtape_status, streamtape_id FROM ${table} WHERE id = ?`, [id]);
   if (!row || row.streamtape_status === 'ready') return;
 
-  run(`UPDATE ${table} SET streamtape_status = 'uploading' WHERE id = ?`, [id]);
+  activeUploadProgress.set(`${type}_${id}`, 0);
+  try {
+    run(`UPDATE ${table} SET streamtape_status = 'uploading', upload_percentage = 0 WHERE id = ?`, [id]);
+  } catch (_) {}
 
   // Ensure Telegram client is available
   let tgClient = client;
@@ -271,6 +277,7 @@ async function executeUploadTask(task) {
   }
   if (!tgClient) {
     console.warn(`[Streamtape] Cannot upload ${type} #${id}: Telegram client unavailable.`);
+    activeUploadProgress.delete(`${type}_${id}`);
     run(`UPDATE ${table} SET streamtape_status = 'none' WHERE id = ?`, [id]);
     return;
   }
@@ -296,98 +303,116 @@ async function executeUploadTask(task) {
   }
   if (!mediaLoc) {
     console.warn(`[Streamtape] Cannot upload ${type} #${id}: missing file location.`);
+    activeUploadProgress.delete(`${type}_${id}`);
     run(`UPDATE ${table} SET streamtape_status = 'failed' WHERE id = ?`, [id]);
     return;
   }
 
-  // Step 1: Resolve batch folder on Streamtape
-  let folderId = null;
   try {
-    folderId = await getOrCreateBatchFolder(batchId, channelId);
-  } catch (fErr) {
-    console.warn(`[Streamtape] Folder creation warning for ${type} #${id}:`, fErr.message);
-  }
-
-  // Step 2: Get upload URL for this folder
-  const uploadUrl = await getUploadUrl(folderId);
-
-  // Step 3: Stream from Telegram into Streamtape multipart form
-  const totalSize = mediaLoc.size || 0;
-  console.log(`[Streamtape Queue] Starting upload: ${title || `${type} #${id}`} (Priority ${task.priority}, folder: ${folderId || 'root'})...`);
-
-  const form = new FormData();
-  const cleanFilename = `${(title || 'video').replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 50)}.mp4`;
-
-  async function* telegramChunkGenerator() {
-    let bytesRead = 0;
-    let lastPct = 0;
-
-    for await (const chunk of tgClient.iterDownload({
-      file: mediaLoc.location,
-      offset: bigInt(0),
-      requestSize: 1024 * 1024, // 1MB chunks
-      ...(mediaLoc.dcId ? { dcId: mediaLoc.dcId } : {}),
-    })) {
-      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-      bytesRead += buf.length;
-
-      if (totalSize > 0) {
-        const pct = Math.floor((bytesRead / totalSize) * 100);
-        if (pct - lastPct >= 20 || pct === 100) {
-          lastPct = pct;
-          console.log(`[Streamtape Progress] ${title || `${type} #${id}`}: ${pct}%`);
-        }
-      }
-      yield buf;
+    // Step 1: Resolve batch folder on Streamtape
+    let folderId = null;
+    try {
+      folderId = await getOrCreateBatchFolder(batchId, channelId);
+    } catch (fErr) {
+      console.warn(`[Streamtape] Folder creation warning for ${type} #${id}:`, fErr.message);
     }
-  }
 
-  const readable = Readable.from(telegramChunkGenerator());
-  form.append('file1', readable, {
-    filename: cleanFilename,
-    contentType: mediaLoc.mimeType || 'video/mp4',
-    ...(totalSize > 0 ? { knownLength: totalSize } : {}),
-  });
+    // Step 2: Get upload URL for this folder
+    const uploadUrl = await getUploadUrl(folderId);
 
-  const uploadRes = await new Promise((resolve, reject) => {
-    const parsedUrl = new URL(uploadUrl);
-    const isHttps = parsedUrl.protocol === 'https:';
-    const transport = isHttps ? https : http;
+    // Step 3: Stream from Telegram into Streamtape multipart form
+    const totalSize = mediaLoc.size || 0;
+    console.log(`[Streamtape Queue] Starting upload: ${title || `${type} #${id}`} (Priority ${task.priority}, folder: ${folderId || 'root'}, size: ${(totalSize / 1024 / 1024).toFixed(1)}MB)...`);
 
-    const req = transport.request(parsedUrl, {
-      method: 'POST',
-      headers: form.getHeaders(),
-    }, (res) => {
-      let resBody = '';
-      res.on('data', (c) => resBody += c);
-      res.on('end', () => {
-        try {
-          const json = JSON.parse(resBody);
-          if (json.status === 200 && json.result) {
-            resolve(json.result);
-          } else {
-            reject(new Error(`Streamtape upload failed: ${json.msg || resBody}`));
+    const form = new FormData();
+    const cleanFilename = `${(title || 'video').replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 50)}.mp4`;
+
+    async function* telegramChunkGenerator() {
+      let bytesRead = 0;
+      let lastPct = 0;
+
+      for await (const chunk of tgClient.iterDownload({
+        file: mediaLoc.location,
+        offset: bigInt(0),
+        requestSize: 1024 * 1024, // 1MB chunks
+        ...(mediaLoc.dcId ? { dcId: mediaLoc.dcId } : {}),
+      })) {
+        const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+        bytesRead += buf.length;
+
+        if (totalSize > 0) {
+          const pct = Math.min(99, Math.floor((bytesRead / totalSize) * 100));
+          activeUploadProgress.set(`${type}_${id}`, pct);
+          if (pct - lastPct >= 5 || pct >= 95) {
+            lastPct = pct;
+            try {
+              run(`UPDATE ${table} SET upload_percentage = ? WHERE id = ?`, [pct, id]);
+            } catch (_) {}
+            console.log(`[Streamtape Progress] ${title || `${type} #${id}`}: ${pct}%`);
           }
-        } catch (e) {
-          reject(new Error(`Failed to parse Streamtape upload response: ${resBody}`));
         }
-      });
+        yield buf;
+      }
+    }
+
+    const readable = Readable.from(telegramChunkGenerator());
+    form.append('file1', readable, {
+      filename: cleanFilename,
+      contentType: mediaLoc.mimeType || 'video/mp4',
+      ...(totalSize > 0 ? { knownLength: totalSize } : {}),
     });
 
-    req.on('error', reject);
-    form.pipe(req);
-  });
+    const uploadRes = await new Promise((resolve, reject) => {
+      const parsedUrl = new URL(uploadUrl);
+      const isHttps = parsedUrl.protocol === 'https:';
+      const transport = isHttps ? https : http;
 
-  const streamtapeId = uploadRes.id;
-  const streamtapeUrl = uploadRes.url || `https://streamtape.com/v/${streamtapeId}`;
+      const req = transport.request(parsedUrl, {
+        method: 'POST',
+        headers: form.getHeaders(),
+      }, (res) => {
+        let resBody = '';
+        res.on('data', (c) => resBody += c);
+        res.on('end', () => {
+          try {
+            const json = JSON.parse(resBody);
+            if (json.status === 200 && json.result) {
+              resolve(json.result);
+            } else {
+              reject(new Error(`Streamtape upload failed: ${json.msg || resBody}`));
+            }
+          } catch (e) {
+            reject(new Error(`Failed to parse Streamtape upload response: ${resBody}`));
+          }
+        });
+      });
 
-  run(`UPDATE ${table} SET streamtape_status = 'ready', streamtape_id = ?, streamtape_url = ? WHERE id = ?`, [
-    streamtapeId,
-    streamtapeUrl,
-    id,
-  ]);
+      req.on('error', reject);
+      form.pipe(req);
+    });
 
-  console.log(`[Streamtape Queue] Finished ${title || `${type} #${id}`} -> ID: ${streamtapeId}`);
+    const streamtapeId = uploadRes.id;
+    const streamtapeUrl = uploadRes.url || `https://streamtape.com/v/${streamtapeId}`;
+
+    activeUploadProgress.set(`${type}_${id}`, 100);
+    run(`UPDATE ${table} SET streamtape_status = 'ready', streamtape_id = ?, streamtape_url = ?, upload_percentage = 100 WHERE id = ?`, [
+      streamtapeId,
+      streamtapeUrl,
+      id,
+    ]);
+
+    setTimeout(() => {
+      activeUploadProgress.delete(`${type}_${id}`);
+    }, 10000);
+
+    console.log(`[Streamtape Queue] Finished ${title || `${type} #${id}`} -> ID: ${streamtapeId}`);
+  } catch (uploadErr) {
+    activeUploadProgress.delete(`${type}_${id}`);
+    try {
+      run(`UPDATE ${table} SET streamtape_status = 'failed' WHERE id = ?`, [id]);
+    } catch (_) {}
+    throw uploadErr;
+  }
 }
 
 let currentActiveBatchId = null;
@@ -514,4 +539,5 @@ module.exports = {
   getDirectStreamLink,
   triggerStreamtapeUpload,
   enqueueUpload,
+  getUploadProgress,
 };

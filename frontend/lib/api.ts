@@ -85,6 +85,7 @@ export interface Video {
   progress_updated_at?: string
   batch_id?: number | null
   batch_name?: string | null
+  upload_percentage?: number
 }
 
 export interface TelegramFile {

@@ -680,7 +680,10 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
             onLoad={handleIframeLoad}
           />
           {/* Streamtape Fast CDN Badge */}
-          <div className="absolute top-3 left-3 z-40 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[11px] font-semibold backdrop-blur-md shadow-lg pointer-events-none">
+          <div className={cn(
+            "absolute top-3 left-3 z-40 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[11px] font-semibold backdrop-blur-md shadow-lg pointer-events-none transition-all duration-300",
+            showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none"
+          )}>
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -689,7 +692,10 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
           </div>
 
           {/* Controls bar over iframe for sidebar & source toggle */}
-          <div className="absolute top-3 right-3 z-40 flex items-center gap-2">
+          <div className={cn(
+            "absolute top-3 right-3 z-40 flex items-center gap-2 transition-all duration-300",
+            showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none"
+          )}>
             <button
               onClick={switchToNative}
               className="px-2.5 py-1 text-[11px] font-medium bg-zinc-900/90 text-zinc-300 hover:text-white rounded-lg border border-zinc-700/60 shadow backdrop-blur transition-all"
@@ -712,18 +718,28 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
         <>
           {/* Streamtape Uploading Status Badge */}
           {video.streamtape_status === 'uploading' && (
-            <div className="absolute top-3 left-3 z-30 flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[11px] font-semibold backdrop-blur-md shadow-lg pointer-events-none">
+            <div className={cn(
+              "absolute top-3 left-3 z-30 flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[11px] font-semibold backdrop-blur-md shadow-lg pointer-events-none transition-all duration-300",
+              showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none"
+            )}>
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
               </span>
-              <span>Uploading to Server (Streamtape CDN)</span>
+              <span>
+                {typeof video.upload_percentage === 'number' && video.upload_percentage > 0
+                  ? `Uploading to Server: ${video.upload_percentage}% (Streamtape CDN)`
+                  : 'Uploading to Server (Streamtape CDN)'}
+              </span>
             </div>
           )}
 
           {/* Streamtape Fast CDN Badge */}
           {isStreamtapeReady && (
-            <div className="absolute top-3 left-3 z-30 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[11px] font-semibold backdrop-blur-md shadow-lg pointer-events-none">
+            <div className={cn(
+              "absolute top-3 left-3 z-30 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[11px] font-semibold backdrop-blur-md shadow-lg pointer-events-none transition-all duration-300",
+              showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none"
+            )}>
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -733,7 +749,10 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
           )}
 
           {isStreamtapeReady && (
-            <div className="absolute top-3 right-3 z-30">
+            <div className={cn(
+              "absolute top-3 right-3 z-30 transition-all duration-300",
+              showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none"
+            )}>
               <button
                 onClick={switchToStreamtape}
                 className="px-2.5 py-1 text-[11px] font-medium bg-zinc-900/90 text-zinc-300 hover:text-white rounded-lg border border-zinc-700/60 shadow backdrop-blur transition-all"
