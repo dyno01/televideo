@@ -609,7 +609,7 @@ async function monitorRemoteDownload(remoteDlId, type, id, title, totalSize, cle
   let consecutiveMissingCount = 0;
 
   while (Date.now() - startTime < maxTimeoutMs) {
-    await new Promise(r => setTimeout(r, 1500));
+    await new Promise(r => setTimeout(r, 2500));
 
     try {
       const statusRes = await streamtapeApiGet('/remotedl/status', { id: remoteDlId });
@@ -630,7 +630,8 @@ async function monitorRemoteDownload(remoteDlId, type, id, title, totalSize, cle
       if (item) {
         consecutiveMissingCount = 0;
         const bytesLoaded = Number(item.bytes_loaded) || 0;
-        const bytesTotal = Number(item.bytes_total) || totalSize || 0;
+        const rawTotal = Number(item.bytes_total) || 0;
+        const bytesTotal = rawTotal > 0 ? rawTotal : (totalSize > 0 ? totalSize : 1);
 
         if (item.status === 'new') {
           activeUploadProgress.set(`${type}_${id}`, {
@@ -643,7 +644,7 @@ async function monitorRemoteDownload(remoteDlId, type, id, title, totalSize, cle
             run(`UPDATE ${table} SET streamtape_status = 'uploading', upload_percentage = 1 WHERE id = ?`, [id]);
           } catch (_) {}
         } else if (bytesTotal > 0) {
-          const pct = Math.min(99, Math.floor((bytesLoaded / bytesTotal) * 100));
+          const pct = Math.min(99, Math.max(1, Math.floor((bytesLoaded / bytesTotal) * 100)));
           activeUploadProgress.set(`${type}_${id}`, {
             pct,
             bytesLoaded,
@@ -655,7 +656,7 @@ async function monitorRemoteDownload(remoteDlId, type, id, title, totalSize, cle
             try {
               run(`UPDATE ${table} SET upload_percentage = ? WHERE id = ?`, [pct, id]);
             } catch (_) {}
-            console.log(`[Streamtape Remote DL Progress] ${title || `${type} #${id}`}: ${pct}% (${(bytesLoaded / 1024 / 1024).toFixed(1)}MB / ${(bytesTotal / 1024 / 1024).toFixed(1)}MB)`);
+            console.log(`[Streamtape Remote DL Progress] ${title || `${type} #${id}`}: ${pct}% (${(bytesLoaded / 1024 / 1024).toFixed(1)}MB / ${(bytesTotal / 1024 / 1024).toFixed(1)}MB, status: ${item.status})`);
           }
         }
 

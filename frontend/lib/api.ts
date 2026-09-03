@@ -166,7 +166,7 @@ export const getVideos = (username: string): Promise<Video[]> =>
   api.get<Video[]>(`/api/channel/${username}/videos`).then(d)
 
 export const getVideo = (id: number): Promise<Video> =>
-  api.get<Video>(`/api/video/${id}`).then(d)
+  api.get<Video>(`/api/video/${id}?_t=${Date.now()}`).then(d)
 
 export const getFiles = (username: string): Promise<TelegramFile[]> =>
   api.get<TelegramFile[]>(`/api/channel/${username}/files`).then(d)
