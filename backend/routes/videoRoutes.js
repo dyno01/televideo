@@ -210,6 +210,13 @@ router.get('/video/:id', (req, res) => {
     }
   }
 
+  // Touch last accessed timestamp to keep cloud files active
+  if (video.streamtape_status === 'ready') {
+    try {
+      run("UPDATE videos SET streamtape_last_accessed_at = datetime('now') WHERE id = ?", [videoId]);
+    } catch (_) {}
+  }
+
   const liveProgress = getUploadProgress('video', videoId);
   const uploadPct = (liveProgress && typeof liveProgress.pct === 'number')
     ? liveProgress.pct

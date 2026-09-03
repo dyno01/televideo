@@ -275,13 +275,21 @@ export default function VideoPage() {
       try {
         const fresh = await getVideo(videoId)
         if (fresh) {
-          setVideo(prev => prev ? { ...prev, ...fresh } : fresh)
+          setVideo(prev => {
+            if (!prev) return fresh
+            return {
+              ...prev,
+              ...fresh,
+              upload_progress: fresh.upload_progress !== undefined ? fresh.upload_progress : prev.upload_progress,
+              upload_percentage: fresh.upload_percentage !== undefined ? fresh.upload_percentage : prev.upload_percentage,
+            }
+          })
           if (fresh.streamtape_status === 'ready') {
             clearInterval(pollInterval)
           }
         }
       } catch (_) {}
-    }, 2000)
+    }, 1200)
 
     return () => clearInterval(pollInterval)
   }, [videoId, video?.streamtape_status])
@@ -684,11 +692,26 @@ return (
                   <Badge variant="outline" className="bg-amber-500/10 border-amber-500/30 text-amber-300 gap-1.5 py-1 animate-pulse font-mono text-xs">
                     <Loader2 size={12} className="animate-spin text-amber-400" />
                     <span>
-                      {(video as any).upload_progress && (video as any).upload_progress.bytesTotal > 0
-                        ? `Streamtape Cloud: ${(video as any).upload_progress.pct}% (${((video as any).upload_progress.bytesLoaded / 1024 / 1024).toFixed(1)}MB / ${((video as any).upload_progress.bytesTotal / 1024 / 1024).toFixed(1)}MB)`
-                        : typeof video.upload_percentage === 'number' && video.upload_percentage > 1
-                        ? `Streamtape Cloud: ${video.upload_percentage}%`
-                        : 'Streamtape Cloud: Remote Download Queued...'}
+                      {(() => {
+                        const prog = (video as any).upload_progress;
+                        const total = (prog && prog.bytesTotal > 0) ? prog.bytesTotal : (video.size || 0);
+                        const loaded = (prog && prog.bytesLoaded > 0) ? prog.bytesLoaded : 0;
+                        const pct = (prog && typeof prog.pct === 'number')
+                          ? prog.pct
+                          : (typeof video.upload_percentage === 'number' ? video.upload_percentage : 0);
+
+                        if (loaded > 0 && total > 0) {
+                          return `Streamtape Cloud: ${pct}% (${(loaded / 1024 / 1024).toFixed(1)}MB / ${(total / 1024 / 1024).toFixed(1)}MB)`;
+                        }
+                        if (total > 0 && pct > 0) {
+                          const estimatedLoaded = (total * (pct / 100));
+                          return `Streamtape Cloud: ${pct}% (${(estimatedLoaded / 1024 / 1024).toFixed(1)}MB / ${(total / 1024 / 1024).toFixed(1)}MB)`;
+                        }
+                        if (pct > 0) {
+                          return `Streamtape Cloud: ${pct}% (Downloading...)`;
+                        }
+                        return 'Streamtape Cloud: Remote Download Queued...';
+                      })()}
                     </span>
                   </Badge>
                 )}

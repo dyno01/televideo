@@ -543,7 +543,7 @@ async function triggerRemoteDownload(streamUrl, folderId, cleanFilename) {
 function markUploadReady(table, type, id, streamtapeId, streamtapeUrl, title, folderId = null) {
   activeUploadProgress.set(`${type}_${id}`, 100);
   try {
-    run(`UPDATE ${table} SET streamtape_status = 'ready', streamtape_id = ?, streamtape_url = ?, upload_percentage = 100 WHERE id = ?`, [
+    run(`UPDATE ${table} SET streamtape_status = 'ready', streamtape_id = ?, streamtape_url = ?, upload_percentage = 100, streamtape_last_accessed_at = datetime('now') WHERE id = ?`, [
       streamtapeId,
       streamtapeUrl,
       id,
@@ -609,11 +609,23 @@ async function monitorRemoteDownload(remoteDlId, type, id, title, totalSize, cle
   let consecutiveMissingCount = 0;
 
   while (Date.now() - startTime < maxTimeoutMs) {
-    await new Promise(r => setTimeout(r, 4000));
+    await new Promise(r => setTimeout(r, 1500));
 
     try {
       const statusRes = await streamtapeApiGet('/remotedl/status', { id: remoteDlId });
-      const item = (statusRes && statusRes[remoteDlId]) ? statusRes[remoteDlId] : (statusRes && statusRes.id === remoteDlId ? statusRes : null);
+      let item = null;
+      if (statusRes) {
+        if (statusRes[remoteDlId]) {
+          item = statusRes[remoteDlId];
+        } else if (statusRes[String(remoteDlId)]) {
+          item = statusRes[String(remoteDlId)];
+        } else if (statusRes.id === remoteDlId || statusRes.id === String(remoteDlId)) {
+          item = statusRes;
+        } else if (typeof statusRes === 'object') {
+          const vals = Object.values(statusRes);
+          item = vals.find(v => v && (v.id === remoteDlId || v.id === String(remoteDlId))) || (vals.length > 0 && vals[0] && typeof vals[0] === 'object' ? vals[0] : null);
+        }
+      }
 
       if (item) {
         consecutiveMissingCount = 0;
@@ -621,14 +633,24 @@ async function monitorRemoteDownload(remoteDlId, type, id, title, totalSize, cle
         const bytesTotal = Number(item.bytes_total) || totalSize || 0;
 
         if (item.status === 'new') {
-          activeUploadProgress.set(`${type}_${id}`, 1);
+          activeUploadProgress.set(`${type}_${id}`, {
+            pct: 1,
+            bytesLoaded: 0,
+            bytesTotal: bytesTotal,
+            status: 'queued',
+          });
           try {
             run(`UPDATE ${table} SET streamtape_status = 'uploading', upload_percentage = 1 WHERE id = ?`, [id]);
           } catch (_) {}
         } else if (bytesTotal > 0) {
           const pct = Math.min(99, Math.floor((bytesLoaded / bytesTotal) * 100));
-          activeUploadProgress.set(`${type}_${id}`, pct);
-          if (pct - lastReportedPct >= 5 || pct >= 95) {
+          activeUploadProgress.set(`${type}_${id}`, {
+            pct,
+            bytesLoaded,
+            bytesTotal,
+            status: item.status || 'downloading',
+          });
+          if (pct !== lastReportedPct) {
             lastReportedPct = pct;
             try {
               run(`UPDATE ${table} SET upload_percentage = ? WHERE id = ?`, [pct, id]);
@@ -740,6 +762,17 @@ async function executeUploadTask(task) {
     folderId = await getOrCreateBatchFolder(batchId, channelId);
   } catch (fErr) {
     console.warn(`[Streamtape] Folder creation warning for ${type} #${id}:`, fErr.message);
+  }
+
+  // ── DUPLICATE DETECTION: Check if file already exists on Streamtape ───────
+  try {
+    const existingFile = await findStreamtapeFile(cleanFilename, folderId);
+    if (existingFile && existingFile.streamtapeId) {
+      console.log(`[Streamtape Duplicate Check] Found existing file on cloud: "${cleanFilename}" -> ID: ${existingFile.streamtapeId}. Skipping upload and marking ready!`);
+      return markUploadReady(table, type, id, existingFile.streamtapeId, existingFile.streamtapeUrl, title, folderId);
+    }
+  } catch (checkErr) {
+    console.warn(`[Streamtape Duplicate Check] Warning for ${type} #${id}:`, checkErr.message);
   }
 
   // ── METHOD A: Streamtape Remote Upload (Direct & 100% Reliable) ────────
@@ -1128,7 +1161,7 @@ function linkStreamtapeDirect(type, id, streamtapeUrlOrId) {
     cleanUrl = `https://streamtape.com/v/${cleanId}`;
   }
 
-  run(`UPDATE ${table} SET streamtape_id = ?, streamtape_url = ?, streamtape_status = 'ready', upload_percentage = 100 WHERE id = ?`, [
+  run(`UPDATE ${table} SET streamtape_id = ?, streamtape_url = ?, streamtape_status = 'ready', upload_percentage = 100, streamtape_last_accessed_at = datetime('now') WHERE id = ?`, [
     cleanId,
     cleanUrl,
     id
@@ -1136,6 +1169,92 @@ function linkStreamtapeDirect(type, id, streamtapeUrlOrId) {
 
   return { id, streamtape_id: cleanId, streamtape_url: cleanUrl, streamtape_status: 'ready' };
 }
+
+/**
+ * Ping Streamtape embed page to register access and reset the 60-day inactivity deletion countdown
+ */
+async function pingStreamtapeVideo(streamtapeId) {
+  if (!streamtapeId) return false;
+  return new Promise((resolve) => {
+    const https = require('https');
+    const url = `https://streamtape.com/e/${streamtapeId}`;
+    const req = https.get(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+      timeout: 10000,
+    }, (res) => {
+      res.resume();
+      resolve(res.statusCode >= 200 && res.statusCode < 400);
+    });
+
+    req.on('error', () => resolve(false));
+    req.on('timeout', () => { req.destroy(); resolve(false); });
+  });
+}
+
+/**
+ * Anti-Inactivity Keep-Alive Worker (Guarantees videos never expire)
+ * Streamtape prunes files that have zero views/access for 60 days.
+ * This runner checks every 25 days, sends a ping to reset the timer to 0,
+ * and auto-heals any purged videos by queueing them for re-upload from Telegram!
+ */
+async function keepAliveStreamtapeUploads() {
+  if (!isStreamtapeConfigured()) return { pinged: 0, healed: 0 };
+
+  const cutoffClause = "datetime('now', '-25 days')";
+  const videosToKeepAlive = getAll(
+    `SELECT id, title, streamtape_id FROM videos 
+     WHERE streamtape_status = 'ready' AND streamtape_id IS NOT NULL 
+     AND (streamtape_last_accessed_at IS NULL OR streamtape_last_accessed_at < ${cutoffClause})
+     LIMIT 30`
+  );
+
+  let pinged = 0;
+  let healed = 0;
+
+  for (const v of videosToKeepAlive) {
+    try {
+      // Check file status on Streamtape
+      const info = await streamtapeApiGet('/file/info', { file: v.streamtape_id }).catch(() => null);
+      if (!info || info.status === 404 || (info[v.streamtape_id] && info[v.streamtape_id].status === 404)) {
+        // Streamtape deleted this file -> Auto-heal by clearing ID so it seamlessly re-uploads
+        run("UPDATE videos SET streamtape_status = 'none', streamtape_id = NULL, upload_percentage = 0 WHERE id = ?", [v.id]);
+        healed++;
+        console.log(`[Streamtape Keep-Alive] File #${v.streamtape_id} was removed from cloud. Reset video #${v.id} for auto-healing re-upload.`);
+        continue;
+      }
+
+      const success = await pingStreamtapeVideo(v.streamtape_id);
+      if (success) {
+        run("UPDATE videos SET streamtape_last_accessed_at = datetime('now') WHERE id = ?", [v.id]);
+        pinged++;
+        console.log(`[Streamtape Keep-Alive] Pinged video #${v.id} ("${v.title}") -> 60-day inactivity timer reset to 0!`);
+      }
+      await new Promise(r => setTimeout(r, 1000));
+    } catch (err) {
+      console.warn(`[Streamtape Keep-Alive] Warning pinging video #${v.id}:`, err.message);
+    }
+  }
+
+  return { pinged, healed };
+}
+
+// Automatically run keep-alive once every 24 hours in background
+setInterval(() => {
+  try {
+    keepAliveStreamtapeUploads().catch(() => {});
+  } catch (_) {}
+}, 24 * 60 * 60 * 1000);
+
+// Run a check 30 seconds after server startup
+setTimeout(() => {
+  try {
+    keepAliveStreamtapeUploads().catch(() => {});
+  } catch (_) {}
+}, 30000);
 
 module.exports = {
   isStreamtapeConfigured,
@@ -1159,4 +1278,6 @@ module.exports = {
   canAutoUpload,
   moveFileToFolder,
   organizeExistingUploads,
+  pingStreamtapeVideo,
+  keepAliveStreamtapeUploads,
 };

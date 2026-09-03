@@ -100,6 +100,12 @@ export interface Video {
   batch_id?: number | null
   batch_name?: string | null
   upload_percentage?: number
+  upload_progress?: {
+    pct: number
+    bytesLoaded: number
+    bytesTotal: number
+    status: string
+  } | null
 }
 
 export interface TelegramFile {

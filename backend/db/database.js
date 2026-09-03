@@ -313,6 +313,14 @@ try {
   db.exec("ALTER TABLE files ADD COLUMN upload_percentage INTEGER DEFAULT 0");
 } catch (_) {}
 
+try {
+  db.exec("ALTER TABLE videos ADD COLUMN streamtape_last_accessed_at TEXT");
+} catch (_) {}
+
+try {
+  db.exec("ALTER TABLE files ADD COLUMN streamtape_last_accessed_at TEXT");
+} catch (_) {}
+
 // Seed initial settings from environment if not present
 const seedSetting = (key, val) => {
   if (val && !db.prepare('SELECT value FROM settings WHERE key = ?').get(key)) {
