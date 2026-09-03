@@ -40,6 +40,17 @@ app.use(express.json());
 app.use(express.text({ type: ['text/plain', 'application/json'] }));
 app.use(express.urlencoded({ extended: true }));
 
+// Detect external base URL for Streamtape Remote Uploads
+app.use((req, res, next) => {
+  try {
+    const { setDetectedBaseUrl } = require('./streamtapeUpload');
+    if (typeof setDetectedBaseUrl === 'function') {
+      setDetectedBaseUrl(req);
+    }
+  } catch (_) {}
+  next();
+});
+
 // ─── Health check ──────────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

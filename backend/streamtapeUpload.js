@@ -42,6 +42,31 @@ function isStreamtapeConfigured() {
   return login.length > 0 && key.length > 0;
 }
 
+let detectedBaseUrl = null;
+
+function setDetectedBaseUrl(req) {
+  if (!detectedBaseUrl && req) {
+    const host = req.get('x-forwarded-host') || req.get('host');
+    const proto = req.get('x-forwarded-proto') || req.protocol || 'https';
+    if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
+      detectedBaseUrl = `${proto}://${host}`;
+      console.log(`[Streamtape Base URL] Detected public server URL: ${detectedBaseUrl}`);
+    }
+  }
+}
+
+function getAppBaseUrl() {
+  const { getSetting } = require('./db/database');
+  const url = (
+    process.env.APP_URL ||
+    process.env.RENDER_EXTERNAL_URL ||
+    getSetting('APP_URL') ||
+    detectedBaseUrl ||
+    ''
+  ).trim();
+  return url.replace(/\/+$/, '');
+}
+
 /**
  * Make a GET request to Streamtape API
  */
@@ -271,6 +296,90 @@ async function processQueue() {
 }
 
 /**
+ * Initiate Streamtape Remote Download
+ */
+async function triggerRemoteDownload(streamUrl, folderId, cleanFilename) {
+  const params = {
+    url: streamUrl,
+    name: cleanFilename,
+  };
+  if (folderId) params.folder = folderId;
+
+  console.log(`[Streamtape Remote DL] POST /remotedl/add: URL=${streamUrl}, folder=${folderId || 'root'}, name=${cleanFilename}`);
+  const result = await streamtapeApiGet('/remotedl/add', params);
+  if (!result || !result.id) {
+    throw new Error(`Invalid response from /remotedl/add: ${JSON.stringify(result)}`);
+  }
+  return result.id;
+}
+
+/**
+ * Poll Streamtape Remote Download status until completion
+ */
+async function monitorRemoteDownload(remoteDlId, type, id, title, totalSize) {
+  const table = type === 'video' ? 'videos' : 'files';
+  const startTime = Date.now();
+  const maxTimeoutMs = 60 * 60 * 1000; // 60 minutes
+  let lastReportedPct = 0;
+
+  while (Date.now() - startTime < maxTimeoutMs) {
+    await new Promise(r => setTimeout(r, 4000));
+
+    try {
+      const statusRes = await streamtapeApiGet('/remotedl/status', { id: remoteDlId });
+      const item = (statusRes && statusRes[remoteDlId]) ? statusRes[remoteDlId] : statusRes;
+
+      if (!item) continue;
+
+      const bytesLoaded = Number(item.bytes_loaded) || 0;
+      const bytesTotal = Number(item.bytes_total) || totalSize || 0;
+
+      if (bytesTotal > 0) {
+        const pct = Math.min(99, Math.floor((bytesLoaded / bytesTotal) * 100));
+        activeUploadProgress.set(`${type}_${id}`, pct);
+        if (pct - lastReportedPct >= 5 || pct >= 95) {
+          lastReportedPct = pct;
+          try {
+            run(`UPDATE ${table} SET upload_percentage = ? WHERE id = ?`, [pct, id]);
+          } catch (_) {}
+          console.log(`[Streamtape Remote DL Progress] ${title || `${type} #${id}`}: ${pct}% (${(bytesLoaded / 1024 / 1024).toFixed(1)}MB / ${(bytesTotal / 1024 / 1024).toFixed(1)}MB)`);
+        }
+      }
+
+      // Check if finished
+      if (item.extid || item.status === 'finished') {
+        const streamtapeId = item.extid || item.id;
+        const streamtapeUrl = item.url || `https://streamtape.com/v/${streamtapeId}`;
+
+        if (streamtapeId) {
+          activeUploadProgress.set(`${type}_${id}`, 100);
+          run(`UPDATE ${table} SET streamtape_status = 'ready', streamtape_id = ?, streamtape_url = ?, upload_percentage = 100 WHERE id = ?`, [
+            streamtapeId,
+            streamtapeUrl,
+            id,
+          ]);
+
+          setTimeout(() => {
+            activeUploadProgress.delete(`${type}_${id}`);
+          }, 10000);
+
+          console.log(`[Streamtape Remote DL] Completed successfully: ${title || `${type} #${id}`} -> ID: ${streamtapeId}`);
+          return { streamtapeId, streamtapeUrl };
+        }
+      }
+
+      if (item.status === 'error') {
+        throw new Error(`Streamtape remote download reported error for task ${remoteDlId}`);
+      }
+    } catch (pollErr) {
+      console.warn(`[Streamtape Remote DL] Polling status warning for #${id}:`, pollErr.message);
+    }
+  }
+
+  throw new Error(`Remote download timed out after 60 minutes for task ${remoteDlId}`);
+}
+
+/**
  * Execute a single upload task to Streamtape
  */
 async function executeUploadTask(task) {
@@ -347,14 +456,30 @@ async function executeUploadTask(task) {
       console.warn(`[Streamtape] Folder creation warning for ${type} #${id}:`, fErr.message);
     }
 
+    const cleanFilename = `${(title || 'video').replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 50)}.mp4`;
+    const totalSize = mediaLoc.size || (mediaRow && (mediaRow.size || mediaRow.file_size)) || 0;
+
+    // ── METHOD A: Streamtape Remote Upload (Direct & 100% Reliable) ────────
+    // Streamtape's own CDN downloads directly from our streaming URL (/api/stream/:id).
+    // This is multi-threaded, resilient, and avoids all multipart connection timeouts!
+    const baseUrl = getAppBaseUrl();
+    if (baseUrl && !baseUrl.includes('localhost') && !baseUrl.includes('127.0.0.1')) {
+      const streamUrl = `${baseUrl}/api/stream/${id}`;
+      try {
+        console.log(`[Streamtape Remote DL] Requesting remote download for "${cleanFilename}" from ${streamUrl} into folder: ${folderId || 'root'}...`);
+        const remoteDlId = await triggerRemoteDownload(streamUrl, folderId, cleanFilename);
+        console.log(`[Streamtape Remote DL] Task #${remoteDlId} queued on Streamtape! Monitoring live progress...`);
+        return await monitorRemoteDownload(remoteDlId, type, id, title, totalSize);
+      } catch (remoteErr) {
+        console.warn(`[Streamtape Remote DL] Remote upload failed (${remoteErr.message}), falling back to direct multipart streaming...`);
+      }
+    }
+
+    // ── METHOD B: Direct Multipart Streaming Fallback ─────────────────────
+    console.log(`[Streamtape Queue] Starting direct multipart stream: ${title || `${type} #${id}`} (Priority ${task.priority}, folder: ${folderId || 'root'}, size: ${(totalSize / 1024 / 1024).toFixed(1)}MB)...`);
+
     // Step 2: Get upload URL for this folder
     const uploadUrl = await getUploadUrl(folderId);
-
-    // Step 3: Stream from Telegram into Streamtape multipart form
-    const totalSize = mediaLoc.size || (mediaRow && (mediaRow.size || mediaRow.file_size)) || 0;
-    console.log(`[Streamtape Queue] Starting upload: ${title || `${type} #${id}`} (Priority ${task.priority}, folder: ${folderId || 'root'}, size: ${(totalSize / 1024 / 1024).toFixed(1)}MB)...`);
-
-    const cleanFilename = `${(title || 'video').replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 50)}.mp4`;
 
     async function* telegramChunkGenerator() {
       let bytesRead = 0;
@@ -627,4 +752,6 @@ module.exports = {
   enqueueUpload,
   getUploadProgress,
   linkStreamtapeDirect,
+  setDetectedBaseUrl,
+  getAppBaseUrl,
 };
