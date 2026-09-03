@@ -302,6 +302,10 @@ try {
 } catch (_) {}
 
 try {
+  db.exec("ALTER TABLE channels ADD COLUMN streamtape_folder_id TEXT");
+} catch (_) {}
+
+try {
   db.exec("ALTER TABLE videos ADD COLUMN upload_percentage INTEGER DEFAULT 0");
 } catch (_) {}
 

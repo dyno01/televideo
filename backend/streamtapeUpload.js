@@ -264,11 +264,22 @@ async function getOrCreateBatchFolder(batchId, channelId) {
   if (channelId) {
     const channel = getOne('SELECT * FROM channels WHERE id = ?', [channelId]);
     if (channel) {
+      if (channel.streamtape_folder_id) {
+        return channel.streamtape_folder_id;
+      }
       try {
         const folderName = `${channel.title || channel.username || 'Channel'}`;
         const folderId = await createFolder(folderName);
-        return folderId;
-      } catch (_) {}
+        if (folderId) {
+          try {
+            run('UPDATE channels SET streamtape_folder_id = ? WHERE id = ?', [folderId, channelId]);
+          } catch (_) {}
+          console.log(`[Streamtape] Created folder for Channel "${channel.title || channel.username}": ${folderId}`);
+          return folderId;
+        }
+      } catch (err) {
+        console.warn(`[Streamtape] Failed to create folder for channel ${channelId}:`, err.message);
+      }
     }
   }
 
@@ -419,67 +430,158 @@ async function triggerRemoteDownload(streamUrl, folderId, cleanFilename) {
 }
 
 /**
+ * Mark a Streamtape upload as ready in the database and clear progress
+ */
+function markUploadReady(table, type, id, streamtapeId, streamtapeUrl, title) {
+  activeUploadProgress.set(`${type}_${id}`, 100);
+  try {
+    run(`UPDATE ${table} SET streamtape_status = 'ready', streamtape_id = ?, streamtape_url = ?, upload_percentage = 100 WHERE id = ?`, [
+      streamtapeId,
+      streamtapeUrl,
+      id,
+    ]);
+  } catch (_) {}
+
+  setTimeout(() => {
+    activeUploadProgress.delete(`${type}_${id}`);
+  }, 10000);
+
+  console.log(`[Streamtape Remote DL] Completed and verified ready: ${title || `${type} #${id}`} -> ID: ${streamtapeId} (${streamtapeUrl})`);
+  return { streamtapeId, streamtapeUrl };
+}
+
+/**
+ * Search Streamtape account file library for a file by name
+ * Searches target folder first, then root folder
+ */
+async function findStreamtapeFile(cleanFilename, folderId = null) {
+  if (!cleanFilename) return null;
+  const targetName = cleanFilename.trim().toLowerCase();
+  const baseName = targetName.replace(/\.mp4$/i, '').slice(0, 30);
+
+  const foldersToSearch = [];
+  if (folderId) foldersToSearch.push(folderId);
+  foldersToSearch.push(null); // root folder
+
+  for (const fId of foldersToSearch) {
+    try {
+      const params = {};
+      if (fId) params.folder = fId;
+      const res = await streamtapeApiGet('/file/listfolder', params);
+      if (res && Array.isArray(res.files)) {
+        for (const file of res.files) {
+          const fn = (file.name || '').trim().toLowerCase();
+          if (fn === targetName || (baseName.length >= 8 && fn.includes(baseName))) {
+            const streamtapeId = file.linkid || file.id;
+            const streamtapeUrl = file.link || `https://streamtape.com/v/${streamtapeId}`;
+            return { streamtapeId, streamtapeUrl };
+          }
+        }
+      }
+    } catch (err) {
+      console.warn(`[Streamtape] Error listing folder ${fId || 'root'}:`, err.message);
+    }
+  }
+  return null;
+}
+
+/**
  * Poll Streamtape Remote Download status until completion
  */
-async function monitorRemoteDownload(remoteDlId, type, id, title, totalSize) {
+async function monitorRemoteDownload(remoteDlId, type, id, title, totalSize, cleanFilename = '', folderId = null) {
   const table = type === 'video' ? 'videos' : 'files';
   const startTime = Date.now();
   const maxTimeoutMs = 60 * 60 * 1000; // 60 minutes
   let lastReportedPct = 0;
+  let consecutiveMissingCount = 0;
 
   while (Date.now() - startTime < maxTimeoutMs) {
     await new Promise(r => setTimeout(r, 4000));
 
     try {
       const statusRes = await streamtapeApiGet('/remotedl/status', { id: remoteDlId });
-      const item = (statusRes && statusRes[remoteDlId]) ? statusRes[remoteDlId] : statusRes;
+      const item = (statusRes && statusRes[remoteDlId]) ? statusRes[remoteDlId] : (statusRes && statusRes.id === remoteDlId ? statusRes : null);
 
-      if (!item) continue;
+      if (item) {
+        consecutiveMissingCount = 0;
+        const bytesLoaded = Number(item.bytes_loaded) || 0;
+        const bytesTotal = Number(item.bytes_total) || totalSize || 0;
 
-      const bytesLoaded = Number(item.bytes_loaded) || 0;
-      const bytesTotal = Number(item.bytes_total) || totalSize || 0;
-
-      if (bytesTotal > 0) {
-        const pct = Math.min(99, Math.floor((bytesLoaded / bytesTotal) * 100));
-        activeUploadProgress.set(`${type}_${id}`, pct);
-        if (pct - lastReportedPct >= 5 || pct >= 95) {
-          lastReportedPct = pct;
+        if (item.status === 'new') {
+          activeUploadProgress.set(`${type}_${id}`, 1);
           try {
-            run(`UPDATE ${table} SET upload_percentage = ? WHERE id = ?`, [pct, id]);
+            run(`UPDATE ${table} SET streamtape_status = 'uploading', upload_percentage = 1 WHERE id = ?`, [id]);
           } catch (_) {}
-          console.log(`[Streamtape Remote DL Progress] ${title || `${type} #${id}`}: ${pct}% (${(bytesLoaded / 1024 / 1024).toFixed(1)}MB / ${(bytesTotal / 1024 / 1024).toFixed(1)}MB)`);
+        } else if (bytesTotal > 0) {
+          const pct = Math.min(99, Math.floor((bytesLoaded / bytesTotal) * 100));
+          activeUploadProgress.set(`${type}_${id}`, pct);
+          if (pct - lastReportedPct >= 5 || pct >= 95) {
+            lastReportedPct = pct;
+            try {
+              run(`UPDATE ${table} SET upload_percentage = ? WHERE id = ?`, [pct, id]);
+            } catch (_) {}
+            console.log(`[Streamtape Remote DL Progress] ${title || `${type} #${id}`}: ${pct}% (${(bytesLoaded / 1024 / 1024).toFixed(1)}MB / ${(bytesTotal / 1024 / 1024).toFixed(1)}MB)`);
+          }
         }
-      }
 
-      // Check if finished
-      const isFinished = item.status === 'finished' || item.status === 'completed' || (typeof item.extid === 'string' && item.extid !== 'false' && item.extid.length > 0);
-      if (isFinished) {
-        const streamtapeId = (typeof item.extid === 'string' && item.extid !== 'false') ? item.extid : (typeof item.fileid === 'string' ? item.fileid : null);
-        const streamtapeUrl = item.url || (streamtapeId ? `https://streamtape.com/v/${streamtapeId}` : null);
-
-        if (streamtapeId) {
-          activeUploadProgress.set(`${type}_${id}`, 100);
-          run(`UPDATE ${table} SET streamtape_status = 'ready', streamtape_id = ?, streamtape_url = ?, upload_percentage = 100 WHERE id = ?`, [
-            streamtapeId,
-            streamtapeUrl,
-            id,
-          ]);
-
-          setTimeout(() => {
-            activeUploadProgress.delete(`${type}_${id}`);
-          }, 10000);
-
-          console.log(`[Streamtape Remote DL] Completed successfully: ${title || `${type} #${id}`} -> ID: ${streamtapeId}`);
-          return { streamtapeId, streamtapeUrl };
+        // Extract Streamtape ID from all possible fields in item
+        let streamtapeId = null;
+        if (typeof item.extid === 'string' && item.extid !== 'false' && item.extid.length > 2) {
+          streamtapeId = item.extid;
+        } else if (typeof item.fileid === 'string' && item.fileid !== 'false' && item.fileid.length > 2) {
+          streamtapeId = item.fileid;
+        } else if (typeof item.url === 'string' && item.url !== 'false') {
+          const match = item.url.match(/streamtape\.[a-z]+\/[ve]\/([a-zA-Z0-9_-]+)/i);
+          if (match) streamtapeId = match[1];
         }
-      }
 
-      if (item.status === 'error') {
-        const errMsg = item.last_error || item.msg || JSON.stringify(item);
-        console.error(`[Streamtape Remote DL Error] Task #${remoteDlId} reported error:`, errMsg);
-        throw new Error(`Streamtape remote download reported error: ${errMsg}`);
+        const isFinished = item.status === 'finished' || 
+                           item.status === 'completed' || 
+                           item.status === 'downloaded' || 
+                           item.status === 'ready' || 
+                           item.status === 'success' ||
+                           (bytesLoaded >= bytesTotal && bytesTotal > 0 && streamtapeId);
+
+        if (streamtapeId && isFinished) {
+          const streamtapeUrl = (typeof item.url === 'string' && item.url.includes('streamtape'))
+            ? item.url
+            : `https://streamtape.com/v/${streamtapeId}`;
+
+          return markUploadReady(table, type, id, streamtapeId, streamtapeUrl, title);
+        }
+
+        // If bytes reached 100% or finished status but ID not returned directly in item,
+        // search Streamtape library directly by filename
+        if (isFinished || (bytesLoaded >= bytesTotal && bytesTotal > 0)) {
+          const found = await findStreamtapeFile(cleanFilename, folderId);
+          if (found) {
+            return markUploadReady(table, type, id, found.streamtapeId, found.streamtapeUrl, title);
+          }
+        }
+
+        if (item.status === 'error') {
+          const errMsg = item.last_error || item.msg || JSON.stringify(item);
+          console.error(`[Streamtape Remote DL Error] Task #${remoteDlId} reported error:`, errMsg);
+          throw new Error(`Streamtape remote download reported error: ${errMsg}`);
+        }
+      } else {
+        // Task is no longer in /remotedl/status (Streamtape purges finished tasks from queue)
+        consecutiveMissingCount++;
+        console.log(`[Streamtape Remote DL] Task #${remoteDlId} not in active queue (poll ${consecutiveMissingCount}/5). Checking account library...`);
+
+        const found = await findStreamtapeFile(cleanFilename, folderId);
+        if (found) {
+          return markUploadReady(table, type, id, found.streamtapeId, found.streamtapeUrl, title);
+        }
+
+        if (consecutiveMissingCount >= 6) {
+          throw new Error(`Task #${remoteDlId} completed or removed by Streamtape, but file could not be indexed.`);
+        }
       }
     } catch (pollErr) {
+      if (pollErr.message.includes('Streamtape remote download reported error') || pollErr.message.includes('removed by Streamtape')) {
+        throw pollErr;
+      }
       console.warn(`[Streamtape Remote DL] Polling status warning for #${id}:`, pollErr.message);
     }
   }
@@ -582,7 +684,7 @@ async function executeUploadTask(task) {
         console.log(`[Streamtape Remote DL] Requesting remote download for "${cleanFilename}" from ${streamUrl} into folder: ${folderId || 'root'}...`);
         const remoteDlId = await triggerRemoteDownload(streamUrl, folderId, cleanFilename);
         console.log(`[Streamtape Remote DL] Task #${remoteDlId} queued on Streamtape! Monitoring live progress...`);
-        return await monitorRemoteDownload(remoteDlId, type, id, title, totalSize);
+        return await monitorRemoteDownload(remoteDlId, type, id, title, totalSize, cleanFilename, folderId);
       } catch (remoteErr) {
         console.warn(`[Streamtape Remote DL] Remote upload failed (${remoteErr.message}), falling back to direct multipart streaming...`);
       }
