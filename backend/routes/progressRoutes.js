@@ -79,7 +79,7 @@ router.post('/', (req, res) => {
      ON CONFLICT(user_id, video_id) DO UPDATE SET
        watched_percentage = excluded.watched_percentage,
        last_timestamp     = excluded.last_timestamp,
-       completed          = excluded.completed,
+       completed          = CASE WHEN progress.completed = 1 THEN 1 ELSE excluded.completed END,
        dismissed          = 0,
        updated_at         = excluded.updated_at`,
     [userId, videoIdInt, percentage, current, completed, new Date().toISOString()]
