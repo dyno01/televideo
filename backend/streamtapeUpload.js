@@ -348,6 +348,12 @@ function getUploadProgress(type, id) {
   return activeUploadProgress.has(`${type}_${id}`) ? activeUploadProgress.get(`${type}_${id}`) : null;
 }
 
+// Clean up any stale 'uploading' tasks left behind from previous server crashes or deploys
+try {
+  run("UPDATE videos SET streamtape_status = 'none' WHERE streamtape_status = 'uploading'");
+  run("UPDATE files SET streamtape_status = 'none' WHERE streamtape_status = 'uploading'");
+} catch (_) {}
+
 const uploadQueue = [];
 let isWorkerRunning = false;
 
@@ -711,7 +717,15 @@ let currentActiveBatchId = null;
 /**
  * Trigger upload for actively watched video and dynamically organize next video & batch priorities
  */
-async function triggerStreamtapeUpload(type, id, userId, fileLocation, title, client) {
+/**
+ * Smart Queue Trigger:
+ * 1. Priority 1: Currently watched video (User is on this video)
+ * 2. Priority 2: Immediate NEXT upcoming video in sequence (lookahead)
+ * 3. Priority 3: Immediate PREVIOUS un-uploaded videos in sequence (lookback: missed or previously failed)
+ * 4. Priority 4: Remaining future videos in the sequence
+ * 5. Priority 5: Backlog from other channels/batches
+ */
+async function triggerStreamtapeUpload(type, id, userId, fileLocation = null, title = null, client = null) {
   if (!isStreamtapeConfigured()) return;
 
   const table = type === 'video' ? 'videos' : 'files';
@@ -719,15 +733,18 @@ async function triggerStreamtapeUpload(type, id, userId, fileLocation, title, cl
   if (!video) return;
 
   const activeBatchId = video.batch_id || null;
+  const activeChannelId = video.channel_id || null;
+  const currentScopeId = activeBatchId ? `batch_${activeBatchId}` : `channel_${activeChannelId}`;
 
-  // If user switched to another batch, demote all previously queued items from other batches
-  if (activeBatchId && activeBatchId !== currentActiveBatchId) {
-    console.log(`[Streamtape Queue] User switched to Batch #${activeBatchId}! Demoting previous batches to Priority 4...`);
-    currentActiveBatchId = activeBatchId;
+  // If user switched to another batch/channel, demote older queued tasks to Priority 5
+  if (currentScopeId !== currentActiveBatchId) {
+    console.log(`[Streamtape Queue] Active context switched to ${currentScopeId}! Demoting background tasks to Priority 5...`);
+    currentActiveBatchId = currentScopeId;
 
     for (const item of uploadQueue) {
-      if (item.batchId !== activeBatchId) {
-        item.priority = 4; // Lower priority for old batch
+      const itemScope = item.batchId ? `batch_${item.batchId}` : `channel_${item.channelId}`;
+      if (itemScope !== currentScopeId) {
+        item.priority = 5;
       }
     }
   }
@@ -741,80 +758,102 @@ async function triggerStreamtapeUpload(type, id, userId, fileLocation, title, cl
     fileLocation,
     title: title || video.title || video.file_name,
     batchId: activeBatchId,
-    channelId: video.channel_id,
+    channelId: activeChannelId,
     client,
   });
 
-  // 2. If it belongs to a batch, find the NEXT upcoming video in sequence and queue with Priority 2
-  if (activeBatchId) {
+  // Filter for un-uploaded items (includes failed, none, or NULL, but excludes already ready items)
+  const unuploadedFilter = "(streamtape_status != 'ready' OR streamtape_status IS NULL)";
+  const scopeClause = activeBatchId ? 'batch_id = ?' : 'channel_id = ?';
+  const scopeId = activeBatchId || activeChannelId;
+
+  if (scopeId) {
     try {
-      // Find the immediate next un-uploaded video in this batch (by message_id > current)
+      // 2. Priority 2: Find immediate NEXT upcoming video in sequence (lookahead)
       let nextVideo = getOne(
-        `SELECT id, title, batch_id, channel_id, size FROM videos 
-         WHERE batch_id = ? AND message_id > ? AND (streamtape_status = 'none' OR streamtape_status IS NULL)
+        `SELECT id, title, batch_id, channel_id, message_id, size FROM videos 
+         WHERE ${scopeClause} AND message_id > ? AND ${unuploadedFilter} AND id != ?
          ORDER BY message_id ASC LIMIT 1`,
-        [activeBatchId, video.message_id]
+        [scopeId, video.message_id || 0, id]
       );
 
-      // Fallback if no higher message_id found
-      if (!nextVideo) {
-        nextVideo = getOne(
-          `SELECT id, title, batch_id, channel_id, size FROM videos 
-           WHERE batch_id = ? AND id != ? AND (streamtape_status = 'none' OR streamtape_status IS NULL)
-           ORDER BY message_id ASC LIMIT 1`,
-          [activeBatchId, id]
-        );
-      }
-
       if (nextVideo) {
-        console.log(`[Streamtape Queue] Next video in active batch is #${nextVideo.id} ("${nextVideo.title}") -> Assigned Priority 2`);
+        console.log(`[Streamtape Queue] Next video in sequence is #${nextVideo.id} ("${nextVideo.title}") -> Assigned Priority 2`);
         enqueueUpload({
           type: 'video',
           id: nextVideo.id,
           userId,
-          priority: 2, // Second priority: immediate next video in batch
-          fileLocation: null, // Will be resolved dynamically
+          priority: 2, // Second priority: immediate next video
+          fileLocation: null,
           title: nextVideo.title,
-          batchId: activeBatchId,
+          batchId: nextVideo.batch_id,
           channelId: nextVideo.channel_id,
           client,
         });
       }
 
-      // 3. Queue remaining un-uploaded videos in this active batch with Priority 3
-      const excludedIds = [id];
-      if (nextVideo) excludedIds.push(nextVideo.id);
-      const placeholders = excludedIds.map(() => '?').join(',');
-
-      const remainingBatchVideos = getAll(
-        `SELECT id, title, batch_id, channel_id, size FROM videos 
-         WHERE batch_id = ? AND id NOT IN (${placeholders}) AND (streamtape_status = 'none' OR streamtape_status IS NULL)
-         ORDER BY message_id ASC`,
-        [activeBatchId, ...excludedIds]
+      // 3. Priority 3: Look BACK at PREVIOUS un-uploaded videos in sequence (e.g. earlier failed or skipped videos)
+      // Ordered by message_id DESC (most recent previous first: e.g. Video 3, then Video 2, then Video 1)
+      const prevVideos = getAll(
+        `SELECT id, title, batch_id, channel_id, message_id, size FROM videos 
+         WHERE ${scopeClause} AND message_id < ? AND ${unuploadedFilter} AND id != ?
+         ORDER BY message_id DESC LIMIT 10`,
+        [scopeId, video.message_id || 0, id]
       );
 
-      for (const bv of remainingBatchVideos) {
+      for (const pv of prevVideos) {
         enqueueUpload({
           type: 'video',
-          id: bv.id,
+          id: pv.id,
           userId,
-          priority: 3, // Third priority: remaining active batch backlog
+          priority: 3, // Third priority: lookback to upload missed earlier videos
           fileLocation: null,
-          title: bv.title,
-          batchId: activeBatchId,
-          channelId: bv.channel_id,
+          title: pv.title,
+          batchId: pv.batch_id,
+          channelId: pv.channel_id,
           client,
         });
       }
 
-      // Re-sort queue so active batch Priority 1 & 2 execute first
+      if (prevVideos.length > 0) {
+        console.log(`[Streamtape Queue] Lookback queued ${prevVideos.length} earlier un-uploaded videos with Priority 3`);
+      }
+
+      // 4. Priority 4: Remaining future videos in sequence
+      const excludedIds = [id];
+      if (nextVideo) excludedIds.push(nextVideo.id);
+      for (const pv of prevVideos) excludedIds.push(pv.id);
+      const placeholders = excludedIds.map(() => '?').join(',');
+
+      const remainingFutureVideos = getAll(
+        `SELECT id, title, batch_id, channel_id, message_id, size FROM videos 
+         WHERE ${scopeClause} AND message_id > ? AND id NOT IN (${placeholders}) AND ${unuploadedFilter}
+         ORDER BY message_id ASC LIMIT 25`,
+        [scopeId, video.message_id || 0, ...excludedIds]
+      );
+
+      for (const fv of remainingFutureVideos) {
+        enqueueUpload({
+          type: 'video',
+          id: fv.id,
+          userId,
+          priority: 4, // Fourth priority: rest of sequence
+          fileLocation: null,
+          title: fv.title,
+          batchId: fv.batch_id,
+          channelId: fv.channel_id,
+          client,
+        });
+      }
+
+      // Re-sort queue so active Priority 1, 2, 3 execute in exact optimal order
       uploadQueue.sort((a, b) => a.priority - b.priority);
 
-      if (remainingBatchVideos.length > 0) {
-        console.log(`[Streamtape Queue] Enqueued ${remainingBatchVideos.length} remaining videos from Batch #${activeBatchId} with Priority 3`);
+      if (remainingFutureVideos.length > 0) {
+        console.log(`[Streamtape Queue] Enqueued ${remainingFutureVideos.length} future videos with Priority 4`);
       }
     } catch (bErr) {
-      console.warn('[Streamtape Queue] Error organizing batch priorities:', bErr.message);
+      console.warn('[Streamtape Queue] Error organizing sequence priorities:', bErr.message);
     }
   }
 }

@@ -182,9 +182,9 @@ router.get('/video/:id', (req, res) => {
 
   if (!video) return res.status(404).json({ error: 'Video not found' });
 
-  // Auto-trigger background upload if configured and not yet uploaded
+  // Auto-trigger background upload and organize smart sequence queue (next video + lookback previous)
   const { isStreamtapeConfigured, triggerStreamtapeUpload } = require('../streamtapeUpload');
-  if (isStreamtapeConfigured() && (!video.streamtape_status || video.streamtape_status === 'none' || video.streamtape_status === 'failed')) {
+  if (isStreamtapeConfigured()) {
     try {
       triggerStreamtapeUpload('video', video.id, req.user.id, null, video.title, null);
     } catch (err) {
