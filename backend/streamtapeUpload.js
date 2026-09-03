@@ -232,6 +232,120 @@ async function deleteFolder(folderId) {
 }
 
 /**
+ * Move a Streamtape file into a folder using /file/move
+ */
+async function moveFileToFolder(fileId, folderId) {
+  if (!fileId || !folderId || !isStreamtapeConfigured()) return false;
+  try {
+    const res = await streamtapeApiGet('/file/move', { file: fileId, folder: folderId });
+    return res && res.result === true;
+  } catch (err) {
+    console.warn(`[Streamtape Move] Note on moving file ${fileId} to folder ${folderId}:`, err.message);
+    return false;
+  }
+}
+
+/**
+ * Move any already-uploaded videos belonging to a batch or channel into their target folder
+ */
+async function organizeExistingUploads(batchId = null, channelId = null) {
+  if (!isStreamtapeConfigured()) return 0;
+  const folderId = await getOrCreateBatchFolder(batchId, channelId);
+  if (!folderId) return 0;
+
+  let movedCount = 0;
+  try {
+    const videos = getAll(
+      `SELECT id, title, streamtape_id FROM videos 
+       WHERE streamtape_id IS NOT NULL AND streamtape_status = 'ready'
+       AND (${batchId ? 'batch_id = ?' : 'channel_id = ?'})`,
+      [batchId || channelId]
+    );
+
+    for (const v of videos) {
+      if (v.streamtape_id) {
+        const moved = await moveFileToFolder(v.streamtape_id, folderId);
+        if (moved) movedCount++;
+      }
+    }
+    if (movedCount > 0) {
+      console.log(`[Streamtape Organize] Moved ${movedCount} existing uploaded videos into target folder ${folderId}`);
+    }
+  } catch (err) {
+    console.warn('[Streamtape Organize] Error organizing existing files:', err.message);
+  }
+  return movedCount;
+}
+
+/**
+ * Daily auto-upload limit tracking (Limits automated background uploads to 5/day)
+ * Manual clicks ("Upload to Streamtape" button) bypass this limit!
+ */
+function getDailyAutoUploadCount() {
+  const { getSetting, setSetting } = require('./db/database');
+  const today = new Date().toISOString().slice(0, 10);
+  const savedDate = getSetting('STREAMTAPE_AUTO_UPLOAD_DATE', '');
+  if (savedDate !== today) {
+    setSetting('STREAMTAPE_AUTO_UPLOAD_DATE', today);
+    setSetting('STREAMTAPE_AUTO_UPLOAD_COUNT', '0');
+    return 0;
+  }
+  return parseInt(getSetting('STREAMTAPE_AUTO_UPLOAD_COUNT', '0'), 10) || 0;
+}
+
+function incrementDailyAutoUploadCount() {
+  const { setSetting } = require('./db/database');
+  const current = getDailyAutoUploadCount();
+  setSetting('STREAMTAPE_AUTO_UPLOAD_COUNT', String(current + 1));
+}
+
+function getDailyAutoUploadLimit() {
+  const { getSetting } = require('./db/database');
+  return parseInt(getSetting('STREAMTAPE_DAILY_LIMIT', '5'), 10) || 5;
+}
+
+function canAutoUpload() {
+  return getDailyAutoUploadCount() < getDailyAutoUploadLimit();
+}
+
+/**
+ * Find existing folder ID on Streamtape by name, or create a new one
+ * This prevents duplicate folder errors and ensures files land in the right folder!
+ */
+async function findOrCreateStreamtapeFolder(folderName, parentId = null) {
+  if (!folderName || !isStreamtapeConfigured()) return null;
+  const cleanName = folderName
+    .replace(/[^\w\s-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 40);
+
+  if (!cleanName) return null;
+
+  try {
+    // 1. Check if folder already exists in Streamtape library
+    const listRes = await streamtapeApiGet('/file/listfolder', parentId ? { folder: parentId } : {});
+    if (listRes && Array.isArray(listRes.folders)) {
+      const existing = listRes.folders.find(f => (f.name || '').trim().toLowerCase() === cleanName.toLowerCase());
+      if (existing && existing.id) {
+        console.log(`[Streamtape] Found existing folder "${cleanName}" -> ID: ${existing.id}`);
+        return existing.id;
+      }
+    }
+
+    // 2. If not found, create new folder
+    const createdId = await createFolder(cleanName, parentId);
+    if (createdId) {
+      console.log(`[Streamtape] Created new folder "${cleanName}" -> ID: ${createdId}`);
+      return createdId;
+    }
+  } catch (err) {
+    console.warn(`[Streamtape] Warning in findOrCreateStreamtapeFolder("${cleanName}"):`, err.message);
+  }
+  return null;
+}
+
+/**
  * Get or create a Streamtape folder for a batch
  */
 async function getOrCreateBatchFolder(batchId, channelId) {
@@ -245,17 +359,14 @@ async function getOrCreateBatchFolder(batchId, channelId) {
         return batch.streamtape_folder_id;
       }
 
-      // Create new folder for this batch
-      try {
-        const folderName = `${batch.name || 'Batch'} (ID ${batch.id})`;
-        const folderId = await createFolder(folderName);
-        if (folderId) {
+      // Check existing folder on Streamtape or create
+      const folderName = `${batch.name || 'Batch'} (ID ${batch.id})`;
+      const folderId = await findOrCreateStreamtapeFolder(folderName);
+      if (folderId) {
+        try {
           run('UPDATE batches SET streamtape_folder_id = ? WHERE id = ?', [folderId, batchId]);
-          console.log(`[Streamtape] Created folder for Batch "${batch.name}": ${folderId}`);
-          return folderId;
-        }
-      } catch (err) {
-        console.warn(`[Streamtape] Failed to create folder for batch ${batchId}:`, err.message);
+        } catch (_) {}
+        return folderId;
       }
     }
   }
@@ -267,18 +378,15 @@ async function getOrCreateBatchFolder(batchId, channelId) {
       if (channel.streamtape_folder_id) {
         return channel.streamtape_folder_id;
       }
-      try {
-        const folderName = `${channel.title || channel.username || 'Channel'}`;
-        const folderId = await createFolder(folderName);
-        if (folderId) {
-          try {
-            run('UPDATE channels SET streamtape_folder_id = ? WHERE id = ?', [folderId, channelId]);
-          } catch (_) {}
-          console.log(`[Streamtape] Created folder for Channel "${channel.title || channel.username}": ${folderId}`);
-          return folderId;
-        }
-      } catch (err) {
-        console.warn(`[Streamtape] Failed to create folder for channel ${channelId}:`, err.message);
+
+      // Check existing folder on Streamtape or create
+      const folderName = `${channel.title || channel.username || 'Channel'}`;
+      const folderId = await findOrCreateStreamtapeFolder(folderName);
+      if (folderId) {
+        try {
+          run('UPDATE channels SET streamtape_folder_id = ? WHERE id = ?', [folderId, channelId]);
+        } catch (_) {}
+        return folderId;
       }
     }
   }
@@ -432,7 +540,7 @@ async function triggerRemoteDownload(streamUrl, folderId, cleanFilename) {
 /**
  * Mark a Streamtape upload as ready in the database and clear progress
  */
-function markUploadReady(table, type, id, streamtapeId, streamtapeUrl, title) {
+function markUploadReady(table, type, id, streamtapeId, streamtapeUrl, title, folderId = null) {
   activeUploadProgress.set(`${type}_${id}`, 100);
   try {
     run(`UPDATE ${table} SET streamtape_status = 'ready', streamtape_id = ?, streamtape_url = ?, upload_percentage = 100 WHERE id = ?`, [
@@ -442,11 +550,16 @@ function markUploadReady(table, type, id, streamtapeId, streamtapeUrl, title) {
     ]);
   } catch (_) {}
 
+  // Guarantee the file is placed inside the correct batch/channel folder
+  if (folderId && streamtapeId) {
+    moveFileToFolder(streamtapeId, folderId).catch(() => {});
+  }
+
   setTimeout(() => {
     activeUploadProgress.delete(`${type}_${id}`);
   }, 10000);
 
-  console.log(`[Streamtape Remote DL] Completed and verified ready: ${title || `${type} #${id}`} -> ID: ${streamtapeId} (${streamtapeUrl})`);
+  console.log(`[Streamtape Remote DL] Completed and verified ready: ${title || `${type} #${id}`} -> ID: ${streamtapeId} (${streamtapeUrl}, folder: ${folderId || 'root'})`);
   return { streamtapeId, streamtapeUrl };
 }
 
@@ -547,7 +660,7 @@ async function monitorRemoteDownload(remoteDlId, type, id, title, totalSize, cle
             ? item.url
             : `https://streamtape.com/v/${streamtapeId}`;
 
-          return markUploadReady(table, type, id, streamtapeId, streamtapeUrl, title);
+          return markUploadReady(table, type, id, streamtapeId, streamtapeUrl, title, folderId);
         }
 
         // If bytes reached 100% or finished status but ID not returned directly in item,
@@ -555,7 +668,7 @@ async function monitorRemoteDownload(remoteDlId, type, id, title, totalSize, cle
         if (isFinished || (bytesLoaded >= bytesTotal && bytesTotal > 0)) {
           const found = await findStreamtapeFile(cleanFilename, folderId);
           if (found) {
-            return markUploadReady(table, type, id, found.streamtapeId, found.streamtapeUrl, title);
+            return markUploadReady(table, type, id, found.streamtapeId, found.streamtapeUrl, title, folderId);
           }
         }
 
@@ -571,7 +684,7 @@ async function monitorRemoteDownload(remoteDlId, type, id, title, totalSize, cle
 
         const found = await findStreamtapeFile(cleanFilename, folderId);
         if (found) {
-          return markUploadReady(table, type, id, found.streamtapeId, found.streamtapeUrl, title);
+          return markUploadReady(table, type, id, found.streamtapeId, found.streamtapeUrl, title, folderId);
         }
 
         if (consecutiveMissingCount >= 6) {
@@ -605,7 +718,52 @@ async function executeUploadTask(task) {
     run(`UPDATE ${table} SET streamtape_status = 'uploading', upload_percentage = 0 WHERE id = ?`, [id]);
   } catch (_) {}
 
-  // Ensure Telegram client is available
+  const mediaRow = getOne(`SELECT * FROM ${table} WHERE id = ?`, [id]);
+  if (!mediaRow) return;
+
+  activeUploadProgress.set(`${type}_${id}`, {
+    pct: 1,
+    bytesLoaded: 0,
+    bytesTotal: mediaRow.size || mediaRow.file_size || 0,
+    status: 'queued',
+  });
+  try {
+    run(`UPDATE ${table} SET streamtape_status = 'uploading', upload_percentage = 1 WHERE id = ?`, [id]);
+  } catch (_) {}
+
+  const cleanFilename = formatCleanFilename(title || mediaRow.title, id);
+  const totalSize = mediaRow.size || mediaRow.file_size || 0;
+
+  // Step 1: Resolve batch folder on Streamtape
+  let folderId = null;
+  try {
+    folderId = await getOrCreateBatchFolder(batchId, channelId);
+  } catch (fErr) {
+    console.warn(`[Streamtape] Folder creation warning for ${type} #${id}:`, fErr.message);
+  }
+
+  // ── METHOD A: Streamtape Remote Upload (Direct & 100% Reliable) ────────
+  // Streamtape's own CDN downloads directly from our streaming URL (/api/stream/:id).
+  // This is multi-threaded, resilient, and avoids all multipart connection timeouts!
+  const baseUrl = getAppBaseUrl();
+  if (baseUrl && !baseUrl.includes('localhost') && !baseUrl.includes('127.0.0.1')) {
+    const streamUrl = `${baseUrl}/api/stream/${id}?download=1`;
+    try {
+      console.log(`[Streamtape Remote DL] Requesting remote download for "${cleanFilename}" from ${streamUrl} into folder: ${folderId || 'root'}...`);
+      const remoteDlId = await triggerRemoteDownload(streamUrl, folderId, cleanFilename);
+      if (!task.isManual) {
+        incrementDailyAutoUploadCount();
+      }
+      console.log(`[Streamtape Remote DL] Task #${remoteDlId} queued on Streamtape! (Auto uploads today: ${getDailyAutoUploadCount()}/${getDailyAutoUploadLimit()})`);
+      return await monitorRemoteDownload(remoteDlId, type, id, title, totalSize, cleanFilename, folderId);
+    } catch (remoteErr) {
+      console.warn(`[Streamtape Remote DL] Remote upload failed (${remoteErr.message}), checking direct streaming fallback...`);
+    }
+  } else {
+    console.warn(`[Streamtape Remote DL] Cannot use remote download: baseUrl is "${baseUrl}" (not a public cloud domain). Please check APP_URL in settings.`);
+  }
+
+  // ── METHOD B: Direct Multipart Streaming Fallback (Requires local tgClient) ──
   let tgClient = client;
   let effectiveUserId = userId;
   if (!effectiveUserId) {
@@ -619,16 +777,22 @@ async function executeUploadTask(task) {
     } catch (_) {}
   }
   if (!tgClient) {
+    const activeUser = getOne("SELECT id FROM users WHERE telegram_session IS NOT NULL AND telegram_session != '' ORDER BY id ASC LIMIT 1");
+    if (activeUser && activeUser.id !== effectiveUserId) {
+      try {
+        const { getClient } = require('./telegramClient');
+        tgClient = await getClient(activeUser.id);
+      } catch (_) {}
+    }
+  }
+  if (!tgClient) {
     console.warn(`[Streamtape] Cannot upload ${type} #${id}: Telegram client unavailable.`);
     activeUploadProgress.delete(`${type}_${id}`);
-    run(`UPDATE ${table} SET streamtape_status = 'none' WHERE id = ?`, [id]);
+    run(`UPDATE ${table} SET streamtape_status = 'failed' WHERE id = ?`, [id]);
     return;
   }
 
-  // Resolve media location with fresh file reference from Telegram
-  const mediaRow = getOne(`SELECT * FROM ${table} WHERE id = ?`, [id]);
   let mediaLoc = fileLocation;
-
   if (!mediaLoc && mediaRow) {
     try {
       const { getFreshMediaLocation } = require('./routes/streamRoutes');
@@ -663,33 +827,6 @@ async function executeUploadTask(task) {
   }
 
   try {
-    // Step 1: Resolve batch folder on Streamtape
-    let folderId = null;
-    try {
-      folderId = await getOrCreateBatchFolder(batchId, channelId);
-    } catch (fErr) {
-      console.warn(`[Streamtape] Folder creation warning for ${type} #${id}:`, fErr.message);
-    }
-
-    const cleanFilename = formatCleanFilename(title || (mediaRow && mediaRow.title), id);
-    const totalSize = mediaLoc.size || (mediaRow && (mediaRow.size || mediaRow.file_size)) || 0;
-
-    // ── METHOD A: Streamtape Remote Upload (Direct & 100% Reliable) ────────
-    // Streamtape's own CDN downloads directly from our streaming URL (/api/stream/:id).
-    // This is multi-threaded, resilient, and avoids all multipart connection timeouts!
-    const baseUrl = getAppBaseUrl();
-    if (baseUrl && !baseUrl.includes('localhost') && !baseUrl.includes('127.0.0.1')) {
-      const streamUrl = `${baseUrl}/api/stream/${id}?download=1`;
-      try {
-        console.log(`[Streamtape Remote DL] Requesting remote download for "${cleanFilename}" from ${streamUrl} into folder: ${folderId || 'root'}...`);
-        const remoteDlId = await triggerRemoteDownload(streamUrl, folderId, cleanFilename);
-        console.log(`[Streamtape Remote DL] Task #${remoteDlId} queued on Streamtape! Monitoring live progress...`);
-        return await monitorRemoteDownload(remoteDlId, type, id, title, totalSize, cleanFilename, folderId);
-      } catch (remoteErr) {
-        console.warn(`[Streamtape Remote DL] Remote upload failed (${remoteErr.message}), falling back to direct multipart streaming...`);
-      }
-    }
-
     // ── METHOD B: Direct Multipart Streaming Fallback ─────────────────────
     console.log(`[Streamtape Queue] Starting direct multipart stream: ${title || `${type} #${id}`} (Priority ${task.priority}, folder: ${folderId || 'root'}, size: ${(totalSize / 1024 / 1024).toFixed(1)}MB)...`);
 
@@ -827,12 +964,18 @@ let currentActiveBatchId = null;
  * 4. Priority 4: Remaining future videos in the sequence
  * 5. Priority 5: Backlog from other channels/batches
  */
-async function triggerStreamtapeUpload(type, id, userId, fileLocation = null, title = null, client = null) {
+async function triggerStreamtapeUpload(type, id, userId, fileLocation = null, title = null, client = null, isManual = false) {
   if (!isStreamtapeConfigured()) return;
 
   const table = type === 'video' ? 'videos' : 'files';
   const video = getOne(`SELECT * FROM ${table} WHERE id = ?`, [id]);
   if (!video) return;
+
+  // If automated trigger (not clicked by user button) and daily auto-upload limit reached:
+  if (!isManual && !canAutoUpload()) {
+    console.log(`[Streamtape Queue] Daily auto-upload limit reached (${getDailyAutoUploadCount()}/${getDailyAutoUploadLimit()}). Auto-queue paused. User can click "Upload to Streamtape" to upload manually.`);
+    return;
+  }
 
   const activeBatchId = video.batch_id || null;
   const activeChannelId = video.channel_id || null;
@@ -862,7 +1005,14 @@ async function triggerStreamtapeUpload(type, id, userId, fileLocation = null, ti
     batchId: activeBatchId,
     channelId: activeChannelId,
     client,
+    isManual,
   });
+
+  // Only auto-queue subsequent/previous videos if daily limit has remaining allowance
+  if (!canAutoUpload()) {
+    console.log(`[Streamtape Queue] Remaining daily auto-upload limit filled. Additional sequence items will not be queued automatically.`);
+    return;
+  }
 
   // Filter for un-uploaded items (includes failed, none, or NULL, but excludes already ready items)
   const unuploadedFilter = "(streamtape_status != 'ready' OR streamtape_status IS NULL)";
@@ -1004,4 +1154,9 @@ module.exports = {
   setDetectedBaseUrl,
   getAppBaseUrl,
   formatCleanFilename,
+  getDailyAutoUploadCount,
+  getDailyAutoUploadLimit,
+  canAutoUpload,
+  moveFileToFolder,
+  organizeExistingUploads,
 };

@@ -681,11 +681,20 @@ return (
 
                 {/* Server Upload Status Badge */}
                 {video.streamtape_status === 'uploading' && (
-                  <Badge variant="outline" className="bg-amber-500/10 border-amber-500/30 text-amber-300 gap-1.5 py-1 animate-pulse">
+                  <Badge variant="outline" className="bg-amber-500/10 border-amber-500/30 text-amber-300 gap-1.5 py-1 animate-pulse font-mono text-xs">
                     <Loader2 size={12} className="animate-spin text-amber-400" />
-                    {typeof video.upload_percentage === 'number' && video.upload_percentage > 0
-                      ? `Uploading to Server: ${video.upload_percentage}% (Streamtape CDN)`
-                      : 'Uploading to Server (Streamtape CDN)'}
+                    <span>
+                      {(video as any).upload_progress && (video as any).upload_progress.bytesTotal > 0
+                        ? `Streamtape Cloud: ${(video as any).upload_progress.pct}% (${((video as any).upload_progress.bytesLoaded / 1024 / 1024).toFixed(1)}MB / ${((video as any).upload_progress.bytesTotal / 1024 / 1024).toFixed(1)}MB)`
+                        : typeof video.upload_percentage === 'number' && video.upload_percentage > 1
+                        ? `Streamtape Cloud: ${video.upload_percentage}%`
+                        : 'Streamtape Cloud: Remote Download Queued...'}
+                    </span>
+                  </Badge>
+                )}
+                {video.streamtape_status === 'failed' && (
+                  <Badge variant="outline" className="bg-rose-500/10 border-rose-500/30 text-rose-400 gap-1.5 py-1 text-xs">
+                    ⚠️ Upload Failed (Click Upload to Retry)
                   </Badge>
                 )}
                 {video.streamtape_status === 'ready' && (
@@ -709,11 +718,20 @@ return (
                     onClick={handleTriggerUpload}
                     disabled={triggeringUpload}
                     className="px-2.5 py-1 rounded-lg text-[11px] font-medium text-emerald-400 hover:text-emerald-300 border border-emerald-800/80 hover:border-emerald-700 bg-emerald-950/40 transition-all flex items-center gap-1.5 shadow-sm"
-                    title="Queue remote background upload to Streamtape"
+                    title="Manual upload to Streamtape (Always uploads immediately, bypassing daily limit)"
                   >
                     <UploadCloud size={12} className={triggeringUpload ? "animate-pulse text-emerald-400" : "text-emerald-400"} />
                     {triggeringUpload ? 'Queueing...' : 'Upload to Streamtape'}
                   </button>
+                )}
+
+                {(video as any).daily_uploads && (
+                  <span 
+                    className="text-[10px] text-zinc-500 font-mono self-center px-1" 
+                    title={`Automated daily upload quota (${(video as any).daily_uploads.count}/${(video as any).daily_uploads.limit}). Clicking "Upload to Streamtape" manually uploads anytime without limit.`}
+                  >
+                    Daily Auto: {(video as any).daily_uploads.count}/{(video as any).daily_uploads.limit}
+                  </span>
                 )}
 
                 <a

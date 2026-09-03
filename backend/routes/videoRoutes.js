@@ -70,19 +70,23 @@ router.get('/video/:id/upload-status', (req, res) => {
 
 // ─── GET /api/streamtape/config (Check status) ─────────────────────────────
 router.get('/streamtape/config', (req, res) => {
-  const { getStreamtapeCredentials, isStreamtapeConfigured, getAppBaseUrl } = require('../streamtapeUpload');
+  const { getStreamtapeCredentials, isStreamtapeConfigured, getAppBaseUrl, getDailyAutoUploadCount, getDailyAutoUploadLimit } = require('../streamtapeUpload');
   const creds = getStreamtapeCredentials();
   res.json({
     configured: isStreamtapeConfigured(),
     login: creds.login ? (creds.login.length > 4 ? creds.login.slice(0, 4) + '***' : creds.login) : '',
     hasKey: !!creds.key,
     appUrl: typeof getAppBaseUrl === 'function' ? getAppBaseUrl() : '',
+    daily_uploads: {
+      count: typeof getDailyAutoUploadCount === 'function' ? getDailyAutoUploadCount() : 0,
+      limit: typeof getDailyAutoUploadLimit === 'function' ? getDailyAutoUploadLimit() : 5,
+    },
   });
 });
 
 // ─── POST /api/streamtape/config (Set credentials via UI) ─────────────────
 router.post('/streamtape/config', (req, res) => {
-  const { login, key, appUrl } = req.body;
+  const { login, key, appUrl, dailyLimit } = req.body;
   const { setSetting } = require('../db/database');
   if (login !== undefined && String(login).trim().length > 0) {
     setSetting('STREAMTAPE_LOGIN', String(login).trim());
@@ -92,6 +96,12 @@ router.post('/streamtape/config', (req, res) => {
   }
   if (appUrl !== undefined && String(appUrl).trim().length > 0) {
     setSetting('APP_URL', String(appUrl).trim().replace(/\/+$/, ''));
+  }
+  if (dailyLimit !== undefined) {
+    const lim = parseInt(dailyLimit, 10);
+    if (!isNaN(lim) && lim >= 1) {
+      setSetting('STREAMTAPE_DAILY_LIMIT', String(lim));
+    }
   }
   const { isStreamtapeConfigured } = require('../streamtapeUpload');
   res.json({ success: true, configured: isStreamtapeConfigured() });
@@ -127,8 +137,13 @@ router.post('/video/:id/streamtape-upload', async (req, res) => {
   }
 
   try {
+    const { setDetectedBaseUrl } = require('../streamtapeUpload');
+    if (typeof setDetectedBaseUrl === 'function') {
+      setDetectedBaseUrl(req);
+    }
+    run("UPDATE videos SET streamtape_status = 'uploading', upload_percentage = 1 WHERE id = ?", [videoId]);
     const userId = (req.user && req.user.id) || 1;
-    await triggerStreamtapeUpload('video', video.id, userId, null, video.title, null);
+    await triggerStreamtapeUpload('video', video.id, userId, null, video.title, null, true /* isManual = true */);
     res.json({ success: true, message: 'Upload queued successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -183,23 +198,35 @@ router.get('/video/:id', (req, res) => {
   if (!video) return res.status(404).json({ error: 'Video not found' });
 
   // Auto-trigger background upload and organize smart sequence queue (next video + lookback previous)
-  const { isStreamtapeConfigured, triggerStreamtapeUpload } = require('../streamtapeUpload');
+  const { isStreamtapeConfigured, triggerStreamtapeUpload, organizeExistingUploads } = require('../streamtapeUpload');
   if (isStreamtapeConfigured()) {
     try {
       triggerStreamtapeUpload('video', video.id, req.user.id, null, video.title, null);
+      if (video.batch_id || video.channel_id) {
+        organizeExistingUploads(video.batch_id, video.channel_id).catch(() => {});
+      }
     } catch (err) {
       console.warn('[Streamtape Auto-Trigger Error]', err.message);
     }
   }
 
   const liveProgress = getUploadProgress('video', videoId);
-  const uploadPct = liveProgress !== null 
-    ? liveProgress 
-    : (video.upload_percentage || (video.streamtape_status === 'ready' ? 100 : 0));
+  const uploadPct = (liveProgress && typeof liveProgress.pct === 'number')
+    ? liveProgress.pct
+    : (typeof liveProgress === 'number'
+      ? liveProgress
+      : (video.upload_percentage || (video.streamtape_status === 'ready' ? 100 : 0)));
+
+  const { getDailyAutoUploadCount, getDailyAutoUploadLimit } = require('../streamtapeUpload');
 
   res.json({
     ...video,
     upload_percentage: uploadPct,
+    upload_progress: liveProgress,
+    daily_uploads: {
+      count: typeof getDailyAutoUploadCount === 'function' ? getDailyAutoUploadCount() : 0,
+      limit: typeof getDailyAutoUploadLimit === 'function' ? getDailyAutoUploadLimit() : 5,
+    },
   });
 });
 
