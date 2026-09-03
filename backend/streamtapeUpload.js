@@ -397,10 +397,15 @@ async function executeUploadTask(task) {
 
   // Ensure Telegram client is available
   let tgClient = client;
-  if (!tgClient && userId) {
+  let effectiveUserId = userId;
+  if (!effectiveUserId) {
+    const activeUser = getOne("SELECT id FROM users WHERE telegram_session IS NOT NULL AND telegram_session != '' ORDER BY id ASC LIMIT 1");
+    effectiveUserId = activeUser ? activeUser.id : 1;
+  }
+  if (!tgClient && effectiveUserId) {
     const { getClient } = require('./telegramClient');
     try {
-      tgClient = await getClient(userId);
+      tgClient = await getClient(effectiveUserId);
     } catch (_) {}
   }
   if (!tgClient) {

@@ -41,12 +41,7 @@ function getUserIdFromRequest(req, media) {
     return req.user.id;
   }
 
-  if (media && media.channel_id) {
-    const channel = getOne('SELECT user_id FROM channels WHERE id = ?', [media.channel_id]);
-    if (channel && channel.user_id) return channel.user_id;
-  }
-
-  const activeUser = getOne('SELECT id FROM users WHERE telegram_session IS NOT NULL AND telegram_session != "" ORDER BY id ASC LIMIT 1');
+  const activeUser = getOne("SELECT id FROM users WHERE telegram_session IS NOT NULL AND telegram_session != '' ORDER BY id ASC LIMIT 1");
   if (activeUser) return activeUser.id;
 
   const firstUser = getOne('SELECT id FROM users ORDER BY id ASC LIMIT 1');
