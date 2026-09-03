@@ -126,7 +126,7 @@ function setDetectedBaseUrl(req) {
 function getAppBaseUrl() {
   const { getSetting } = require('./db/database');
   const renderHost = process.env.RENDER_EXTERNAL_HOSTNAME ? `https://${process.env.RENDER_EXTERNAL_HOSTNAME}` : '';
-  const url = (
+  let url = (
     process.env.APP_URL ||
     process.env.RENDER_EXTERNAL_URL ||
     renderHost ||
@@ -134,6 +134,13 @@ function getAppBaseUrl() {
     detectedBaseUrl ||
     ''
   ).trim();
+
+  if (url.startsWith('http://') && !url.includes('localhost') && !url.includes('127.0.0.1')) {
+    url = url.replace('http://', 'https://');
+  }
+  if (!url.includes('localhost') && !url.includes('127.0.0.1')) {
+    url = url.replace(/:\d+$/, '');
+  }
   return url.replace(/\/+$/, '');
 }
 
@@ -144,7 +151,7 @@ function streamtapeApiGet(endpoint, params = {}) {
   return new Promise((resolve, reject) => {
     const { login, key } = getStreamtapeCredentials();
     if (!login || !key) {
-      return reject(new Error('Streamtape credentials (API / FTP login or FTP / API Password) not configured'));
+      return reject(new Error('Streamtape credentials (API Login or API Password) not configured in settings'));
     }
 
     const url = new URL(`${STREAMTAPE_API_BASE}${endpoint}`);
@@ -156,7 +163,20 @@ function streamtapeApiGet(endpoint, params = {}) {
       }
     }
 
-    https.get(url, (res) => {
+    const options = {
+      hostname: url.hostname,
+      port: 443,
+      path: `${url.pathname}${url.search}`,
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+      timeout: 15000,
+    };
+
+    const req = https.request(options, (res) => {
       let data = '';
       res.on('data', (chunk) => {
         data += chunk;
@@ -170,12 +190,21 @@ function streamtapeApiGet(endpoint, params = {}) {
             reject(new Error(`Streamtape API [status ${json.status}]: ${json.msg || data}`));
           }
         } catch (err) {
-          reject(new Error(`Failed to parse Streamtape response: ${data}`));
+          reject(new Error(`Failed to parse Streamtape response: ${data || res.statusCode}`));
         }
       });
-    }).on('error', (err) => {
+    });
+
+    req.on('timeout', () => {
+      req.destroy();
+      reject(new Error(`Streamtape API request to ${endpoint} timed out after 15 seconds`));
+    });
+
+    req.on('error', (err) => {
       reject(new Error(`Streamtape network error: ${err.message}`));
     });
+
+    req.end();
   });
 }
 

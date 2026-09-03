@@ -216,6 +216,11 @@ async function handleStreamVideo(req, res) {
       });
     }
 
+    // If client (e.g. Streamtape or browser) sent a HEAD request to probe headers, end response now
+    if (req.method === 'HEAD') {
+      return res.end();
+    }
+
     let bytesWritten = 0;
     let firstChunk   = true;
 
