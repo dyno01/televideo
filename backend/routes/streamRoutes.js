@@ -327,4 +327,5 @@ router.get('/file/:fileId', async (req, res) => {
   }
 });
 
+router.getFreshMediaLocation = getFreshMediaLocation;
 module.exports = router;

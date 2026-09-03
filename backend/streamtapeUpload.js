@@ -301,25 +301,36 @@ async function executeUploadTask(task) {
     return;
   }
 
-  // Resolve media location if needed
+  // Resolve media location with fresh file reference from Telegram
+  const mediaRow = getOne(`SELECT * FROM ${table} WHERE id = ?`, [id]);
   let mediaLoc = fileLocation;
-  if (!mediaLoc) {
-    const mediaRow = getOne(`SELECT * FROM ${table} WHERE id = ?`, [id]);
-    if (mediaRow && mediaRow.file_id && mediaRow.access_hash) {
-      const { Api } = require('telegram');
-      mediaLoc = {
-        location: new Api.InputDocumentFileLocation({
-          id: bigInt(mediaRow.file_id),
-          accessHash: bigInt(mediaRow.access_hash),
-          fileReference: Buffer.isBuffer(mediaRow.file_reference) ? mediaRow.file_reference : Buffer.from(mediaRow.file_reference || ''),
-          thumbSize: '',
-        }),
-        dcId: mediaRow.dc_id || 0,
-        size: mediaRow.size || mediaRow.file_size || 0,
-        mimeType: mediaRow.mime_type || 'video/mp4',
-      };
+
+  if (!mediaLoc && mediaRow) {
+    try {
+      const { getFreshMediaLocation } = require('./routes/streamRoutes');
+      if (typeof getFreshMediaLocation === 'function') {
+        mediaLoc = await getFreshMediaLocation(tgClient, mediaRow);
+      }
+    } catch (refreshErr) {
+      console.warn(`[Streamtape] Could not refresh media location from Telegram for ${type} #${id}, attempting DB fallback:`, refreshErr.message);
     }
   }
+
+  if (!mediaLoc && mediaRow && mediaRow.file_id && mediaRow.access_hash) {
+    const { Api } = require('telegram');
+    mediaLoc = {
+      location: new Api.InputDocumentFileLocation({
+        id: bigInt(mediaRow.file_id),
+        accessHash: bigInt(mediaRow.access_hash),
+        fileReference: Buffer.isBuffer(mediaRow.file_reference) ? mediaRow.file_reference : Buffer.from(mediaRow.file_reference || ''),
+        thumbSize: '',
+      }),
+      dcId: mediaRow.dc_id || 0,
+      size: mediaRow.size || mediaRow.file_size || 0,
+      mimeType: mediaRow.mime_type || 'video/mp4',
+    };
+  }
+
   if (!mediaLoc) {
     console.warn(`[Streamtape] Cannot upload ${type} #${id}: missing file location.`);
     activeUploadProgress.delete(`${type}_${id}`);
@@ -340,10 +351,9 @@ async function executeUploadTask(task) {
     const uploadUrl = await getUploadUrl(folderId);
 
     // Step 3: Stream from Telegram into Streamtape multipart form
-    const totalSize = mediaLoc.size || 0;
+    const totalSize = mediaLoc.size || (mediaRow && (mediaRow.size || mediaRow.file_size)) || 0;
     console.log(`[Streamtape Queue] Starting upload: ${title || `${type} #${id}`} (Priority ${task.priority}, folder: ${folderId || 'root'}, size: ${(totalSize / 1024 / 1024).toFixed(1)}MB)...`);
 
-    const form = new FormData();
     const cleanFilename = `${(title || 'video').replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 50)}.mp4`;
 
     async function* telegramChunkGenerator() {
@@ -374,12 +384,27 @@ async function executeUploadTask(task) {
       }
     }
 
+    const form = new FormData();
     const readable = Readable.from(telegramChunkGenerator());
     form.append('file1', readable, {
       filename: cleanFilename,
       contentType: mediaLoc.mimeType || 'video/mp4',
       ...(totalSize > 0 ? { knownLength: totalSize } : {}),
     });
+
+    // CRITICAL FIX: Calculate Content-Length for multipart stream
+    // Streamtape Nginx servers REJECT Transfer-Encoding: chunked without Content-Length
+    let formLength = null;
+    try {
+      formLength = form.getLengthSync();
+    } catch (lenErr) {
+      console.warn('[Streamtape] Note: form.getLengthSync() warning:', lenErr.message);
+    }
+
+    const headers = {
+      ...form.getHeaders(),
+      ...(formLength ? { 'Content-Length': String(formLength) } : {}),
+    };
 
     const uploadRes = await new Promise((resolve, reject) => {
       const parsedUrl = new URL(uploadUrl);
@@ -388,25 +413,39 @@ async function executeUploadTask(task) {
 
       const req = transport.request(parsedUrl, {
         method: 'POST',
-        headers: form.getHeaders(),
+        headers,
       }, (res) => {
         let resBody = '';
         res.on('data', (c) => resBody += c);
         res.on('end', () => {
+          console.log(`[Streamtape Upload Response] HTTP ${res.statusCode}: ${resBody}`);
           try {
             const json = JSON.parse(resBody);
             if (json.status === 200 && json.result) {
               resolve(json.result);
+            } else if (json.result && (json.result.id || json.result.url)) {
+              resolve(json.result);
+            } else if (json.id) {
+              resolve(json);
             } else {
-              reject(new Error(`Streamtape upload failed: ${json.msg || resBody}`));
+              reject(new Error(`Streamtape upload failed (${res.statusCode}): ${json.msg || resBody}`));
             }
           } catch (e) {
-            reject(new Error(`Failed to parse Streamtape upload response: ${resBody}`));
+            reject(new Error(`Failed to parse Streamtape upload response (${res.statusCode}): ${resBody}`));
           }
         });
       });
 
-      req.on('error', reject);
+      // 30 minute timeout for large lectures
+      req.setTimeout(30 * 60 * 1000, () => {
+        req.destroy(new Error('Streamtape upload request timed out after 30 minutes'));
+      });
+
+      req.on('error', (err) => {
+        console.error('[Streamtape Upload Request Error]:', err.message);
+        reject(err);
+      });
+
       form.pipe(req);
     });
 
@@ -426,6 +465,7 @@ async function executeUploadTask(task) {
 
     console.log(`[Streamtape Queue] Finished ${title || `${type} #${id}`} -> ID: ${streamtapeId}`);
   } catch (uploadErr) {
+    console.error(`[Streamtape Upload Error] ${title || `${type} #${id}`}:`, uploadErr.message);
     activeUploadProgress.delete(`${type}_${id}`);
     try {
       run(`UPDATE ${table} SET streamtape_status = 'failed' WHERE id = ?`, [id]);
