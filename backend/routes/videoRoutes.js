@@ -6,7 +6,7 @@
  */
 
 const express = require('express');
-const { getAll, getOne } = require('../db/database');
+const { getAll, getOne, run } = require('../db/database');
 const { getUploadProgress } = require('../streamtapeUpload');
 
 const router = express.Router();
