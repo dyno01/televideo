@@ -330,3 +330,14 @@ export default api
 
 export const dismissProgress = (videoId: number): Promise<{ success: boolean }> =>
   api.post(`/api/progress/${videoId}/dismiss`, {}).then(d)
+
+// ── Streamtape Cloud API ───────────────────────────────────────────────────
+
+export const getStreamtapeConfig = (): Promise<{ configured: boolean; login: string; hasKey: boolean }> =>
+  api.get('/api/streamtape/config').then(d)
+
+export const saveStreamtapeConfig = (login: string, key: string): Promise<{ success: boolean; configured: boolean }> =>
+  api.post('/api/streamtape/config', { login, key }).then(d)
+
+export const linkStreamtapeUrl = (videoId: number, streamtape_url: string): Promise<{ success: boolean; streamtape_id: string; streamtape_url: string }> =>
+  api.post(`/api/video/${videoId}/streamtape-link`, { streamtape_url }).then(d)

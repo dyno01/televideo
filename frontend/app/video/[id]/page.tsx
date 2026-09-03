@@ -16,6 +16,8 @@ import {
   Play,
   CheckCircle2,
   ListOrdered,
+  Link2,
+  UploadCloud,
   Video as VideoIcon
 } from 'lucide-react'
 import { 
@@ -29,6 +31,7 @@ import {
   addVideoTag, 
   removeVideoTag, 
   getApiBase,
+  linkStreamtapeUrl,
   Video, 
   TelegramFile, 
   VideoTag, 
@@ -67,6 +70,33 @@ export default function VideoPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [selectedDoc, setSelectedDoc] = useState<TelegramFile | null>(null)
   const [seqFilter, setSeqFilter] = useState<'all' | 'videos' | 'files'>('all')
+
+  // Direct Streamtape linking (Bandwidth limit bypass)
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false)
+  const [streamtapeLinkInput, setStreamtapeLinkInput] = useState('')
+  const [isLinking, setIsLinking] = useState(false)
+
+  const handleLinkStreamtape = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!streamtapeLinkInput.trim() || !video) return
+    setIsLinking(true)
+    try {
+      const res = await linkStreamtapeUrl(video.id, streamtapeLinkInput.trim())
+      setVideo(prev => prev ? {
+        ...prev,
+        streamtape_id: res.streamtape_id,
+        streamtape_url: res.streamtape_url,
+        streamtape_status: 'ready',
+        upload_percentage: 100,
+      } : null)
+      setIsLinkModalOpen(false)
+      setStreamtapeLinkInput('')
+    } catch (err: any) {
+      alert(err?.response?.data?.error || 'Failed to link Streamtape URL.')
+    } finally {
+      setIsLinking(false)
+    }
+  }
 
   const playerRef = useRef<VideoPlayerHandle>(null)
   const lastSavedRef = useRef<{ time: number; ts: number }>({ time: 0, ts: 0 })
@@ -623,6 +653,15 @@ return (
                     🟢 Streamtape CDN (Ready)
                   </Badge>
                 )}
+
+                <button
+                  type="button"
+                  onClick={() => setIsLinkModalOpen(true)}
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-medium text-zinc-400 hover:text-zinc-200 border border-zinc-800 hover:border-zinc-700 bg-zinc-900/80 transition-all flex items-center gap-1.5 shadow-sm"
+                  title="Directly link or change Streamtape video (0 Render server bandwidth)"
+                >
+                  <Link2 size={12} className="text-emerald-400" /> Link Streamtape
+                </button>
               </div>
               
               {/* VIDEO TAGS SECTION */}
@@ -721,6 +760,70 @@ return (
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
       />
+
+      {/* Streamtape Direct Link Dialog (Bandwidth Limit Bypass) */}
+      {isLinkModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-2xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="size-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                  <UploadCloud size={18} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Direct Streamtape Link</h3>
+                  <p className="text-[11px] text-zinc-500">Zero Render bandwidth streaming</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsLinkModalOpen(false)}
+                className="text-zinc-500 hover:text-zinc-300 p-1.5 rounded-lg hover:bg-zinc-900 transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              If your Render server bandwidth is reached or you uploaded this video directly on Streamtape, paste the video link or ID below. It will connect immediately and play with <strong>0 Render server bandwidth</strong>.
+            </p>
+
+            <form onSubmit={handleLinkStreamtape} className="space-y-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-zinc-400">Streamtape Video URL or ID</label>
+                <Input
+                  type="text"
+                  placeholder="https://streamtape.com/v/abcd1234 or abcd1234"
+                  value={streamtapeLinkInput}
+                  onChange={(e) => setStreamtapeLinkInput(e.target.value)}
+                  className="bg-zinc-900 border-zinc-800 text-xs font-mono h-10 text-white"
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsLinkModalOpen(false)}
+                  className="text-xs text-zinc-400"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={isLinking || !streamtapeLinkInput.trim()}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold gap-1.5 h-9 px-4 rounded-xl"
+                >
+                  {isLinking ? <Loader2 size={13} className="animate-spin" /> : <Link2 size={13} />}
+                  Connect Streamtape Link
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

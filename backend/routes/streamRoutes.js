@@ -171,9 +171,13 @@ router.get('/:videoId', async (req, res) => {
 
     // 3. Trigger Streamtape background upload if configured and not yet uploaded
     if (isStreamtapeConfigured() && (!video.streamtape_status || video.streamtape_status === 'none' || video.streamtape_status === 'failed')) {
-      triggerStreamtapeUpload('video', video.id, userId, fileLocation, video.title, client).catch(err =>
-        console.error('[Streamtape Trigger Error]', err)
-      );
+      try {
+        triggerStreamtapeUpload('video', video.id, userId, fileLocation, video.title, client).catch(err =>
+          console.error('[Streamtape Trigger Error]', err.message)
+        );
+      } catch (triggerErr) {
+        console.warn('[Streamtape Trigger Sync Error]', triggerErr.message);
+      }
     }
 
     // Parse Range header

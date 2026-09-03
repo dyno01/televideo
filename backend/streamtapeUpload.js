@@ -13,8 +13,27 @@ const STREAMTAPE_API_BASE = 'https://api.streamtape.com';
  * - STREAMTAPE_KEY: "FTP / API Password" field on Streamtape panel
  */
 function getStreamtapeCredentials() {
-  const login = (process.env.STREAMTAPE_LOGIN || process.env.STREAMTAPE_API_LOGIN || '').trim();
-  const key = (process.env.STREAMTAPE_KEY || process.env.STREAMTAPE_API_KEY || '').trim();
+  const { getSetting } = require('./db/database');
+  const login = (
+    process.env.STREAMTAPE_LOGIN ||
+    process.env.STREAMTAPE_API_LOGIN ||
+    process.env.STREAMTAPE_API_USER ||
+    process.env.STREAMTAPE_USER ||
+    getSetting('STREAMTAPE_LOGIN') ||
+    getSetting('STREAMTAPE_API_LOGIN') ||
+    ''
+  ).trim();
+
+  const key = (
+    process.env.STREAMTAPE_KEY ||
+    process.env.STREAMTAPE_API_KEY ||
+    process.env.STREAMTAPE_API_PASSWORD ||
+    process.env.STREAMTAPE_PASSWORD ||
+    getSetting('STREAMTAPE_KEY') ||
+    getSetting('STREAMTAPE_API_KEY') ||
+    ''
+  ).trim();
+
   return { login, key };
 }
 
@@ -420,7 +439,7 @@ let currentActiveBatchId = null;
 /**
  * Trigger upload for actively watched video and dynamically organize next video & batch priorities
  */
-function triggerStreamtapeUpload(type, id, userId, fileLocation, title, client) {
+async function triggerStreamtapeUpload(type, id, userId, fileLocation, title, client) {
   if (!isStreamtapeConfigured()) return;
 
   const table = type === 'video' ? 'videos' : 'files';
@@ -528,6 +547,33 @@ function triggerStreamtapeUpload(type, id, userId, fileLocation, title, client) 
   }
 }
 
+/**
+ * Link an existing Streamtape URL or ID directly to a video/file
+ * This completely bypasses Render server bandwidth!
+ */
+function linkStreamtapeDirect(type, id, streamtapeUrlOrId) {
+  const table = type === 'video' ? 'videos' : 'files';
+  let cleanId = (streamtapeUrlOrId || '').trim();
+  let cleanUrl = cleanId;
+
+  // Match: https://streamtape.com/v/abcd123/title.mp4 or https://streamtape.com/e/abcd123
+  const urlMatch = cleanId.match(/streamtape\.com\/(?:v|e)\/([a-zA-Z0-9_-]+)/i);
+  if (urlMatch) {
+    cleanId = urlMatch[1];
+    cleanUrl = `https://streamtape.com/v/${cleanId}`;
+  } else if (!cleanUrl.startsWith('http')) {
+    cleanUrl = `https://streamtape.com/v/${cleanId}`;
+  }
+
+  run(`UPDATE ${table} SET streamtape_id = ?, streamtape_url = ?, streamtape_status = 'ready', upload_percentage = 100 WHERE id = ?`, [
+    cleanId,
+    cleanUrl,
+    id
+  ]);
+
+  return { id, streamtape_id: cleanId, streamtape_url: cleanUrl, streamtape_status: 'ready' };
+}
+
 module.exports = {
   isStreamtapeConfigured,
   getStreamtapeCredentials,
@@ -540,4 +586,5 @@ module.exports = {
   triggerStreamtapeUpload,
   enqueueUpload,
   getUploadProgress,
+  linkStreamtapeDirect,
 };

@@ -24,7 +24,10 @@ import {
   Sparkles,
   Lock,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Cloud,
+  UploadCloud,
+  HardDrive
 } from 'lucide-react'
 import {
   getTelegramStatus,
@@ -34,6 +37,8 @@ import {
   logoutTelegram,
   getCurrentUser,
   changePassword,
+  getStreamtapeConfig,
+  saveStreamtapeConfig,
   TelegramStatus,
 } from '@/lib/api'
 
@@ -48,12 +53,18 @@ export default function TelegramAuthModal({
   onClose,
   onStatusChange,
 }: TelegramAuthModalProps) {
-  const [activeTab, setActiveTab] = useState<'telegram' | 'account'>('telegram')
+  const [activeTab, setActiveTab] = useState<'telegram' | 'account' | 'streamtape'>('telegram')
   const [showManualSession, setShowManualSession] = useState(false)
   
   const [status, setStatus] = useState<TelegramStatus | null>(null)
   const [currentUser, setCurrentUser] = useState<{ id: number, username: string } | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Streamtape CDN settings
+  const [streamtapeConfig, setStreamtapeConfig] = useState<{ configured: boolean; login: string; hasKey: boolean } | null>(null)
+  const [stLogin, setStLogin] = useState('')
+  const [stKey, setStKey] = useState('')
+  const [stLoading, setStLoading] = useState(false)
 
   // Phone auth state
   const [apiId, setApiId] = useState('')
@@ -83,18 +94,39 @@ export default function TelegramAuthModal({
     setLoading(true)
     setErrorMsg('')
     try {
-      const [data, userRes] = await Promise.all([
+      const [data, userRes, stCfg] = await Promise.all([
         getTelegramStatus(),
-        getCurrentUser().catch(() => ({ user: null }))
+        getCurrentUser().catch(() => ({ user: null })),
+        getStreamtapeConfig().catch(() => null)
       ])
       setStatus(data)
       setCurrentUser(userRes.user)
       if (data.apiId) setApiId(String(data.apiId))
+      if (stCfg) {
+        setStreamtapeConfig(stCfg)
+        if (stCfg.login) setStLogin(stCfg.login)
+      }
       onStatusChange?.(data)
     } catch (err: any) {
       setErrorMsg('Failed to check status.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleSaveStreamtape = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setStLoading(true)
+    setErrorMsg('')
+    try {
+      const res = await saveStreamtapeConfig(stLogin, stKey)
+      setSuccessMsg(res.configured ? 'Streamtape connected! Videos will now stream via CDN.' : 'Streamtape credentials saved.')
+      const updated = await getStreamtapeConfig()
+      setStreamtapeConfig(updated)
+    } catch (err: any) {
+      setErrorMsg(err?.response?.data?.error || 'Failed to save Streamtape configuration.')
+    } finally {
+      setStLoading(false)
     }
   }
 
@@ -280,7 +312,7 @@ export default function TelegramAuthModal({
               <div className="flex p-1 bg-zinc-900 rounded-xl border border-zinc-800 text-xs">
                 <button
                   type="button"
-                  className={`flex-1 py-2.5 rounded-lg font-bold transition-all ${
+                  className={`flex-1 py-2 rounded-lg font-bold transition-all ${
                     activeTab === 'telegram'
                       ? 'bg-zinc-800 text-white shadow-sm'
                       : 'text-zinc-500 hover:text-zinc-300'
@@ -290,11 +322,25 @@ export default function TelegramAuthModal({
                     setErrorMsg('')
                   }}
                 >
-                  Telegram Account
+                  Telegram
                 </button>
                 <button
                   type="button"
-                  className={`flex-1 py-2.5 rounded-lg font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  className={`flex-1 py-2 rounded-lg font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    activeTab === 'streamtape'
+                      ? 'bg-zinc-800 text-emerald-400 shadow-sm'
+                      : 'text-zinc-500 hover:text-zinc-300'
+                  }`}
+                  onClick={() => {
+                    setActiveTab('streamtape')
+                    setErrorMsg('')
+                  }}
+                >
+                  <Cloud size={12} /> Streamtape CDN
+                </button>
+                <button
+                  type="button"
+                  className={`flex-1 py-2 rounded-lg font-bold transition-all flex items-center justify-center gap-1.5 ${
                     activeTab === 'account'
                       ? 'bg-zinc-800 text-indigo-400 shadow-sm'
                       : 'text-zinc-500 hover:text-zinc-300'
@@ -304,7 +350,7 @@ export default function TelegramAuthModal({
                     setErrorMsg('')
                   }}
                 >
-                  <Lock size={12} /> Account Settings
+                  <Lock size={12} /> Account
                 </button>
               </div>
 
@@ -511,6 +557,87 @@ export default function TelegramAuthModal({
                       </Button>
                     </div>
                   </form>
+                </div>
+              )}
+
+              {/* STREAMTAPE CDN SETTINGS TAB */}
+              {activeTab === 'streamtape' && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Cloud className="text-emerald-400 size-5" />
+                        <div>
+                          <h4 className="text-xs font-bold text-zinc-200">Streamtape Cloud CDN</h4>
+                          <p className="text-[11px] text-zinc-500">Fast unlimited video streaming with 0 Render bandwidth</p>
+                        </div>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={
+                          streamtapeConfig?.configured
+                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-[10px]'
+                            : 'border-zinc-700 bg-zinc-800 text-zinc-400 text-[10px]'
+                        }
+                      >
+                        {streamtapeConfig?.configured ? 'Active & Ready' : 'Not Configured'}
+                      </Badge>
+                    </div>
+
+                    <p className="text-[11px] text-zinc-400 leading-relaxed">
+                      Connecting Streamtape allows background auto-uploading of videos. Once uploaded, videos play via Streamtape CDN, conserving 100% of your Render server bandwidth quota.
+                    </p>
+                  </div>
+
+                  <form onSubmit={handleSaveStreamtape} className="space-y-3">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-zinc-400 flex items-center justify-between">
+                        <span>API / FTP Login</span>
+                        <a
+                          href="https://streamtape.com/panel"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[10px] text-indigo-400 hover:underline flex items-center gap-1"
+                        >
+                          Find on Streamtape Panel <ExternalLink size={10} />
+                        </a>
+                      </label>
+                      <Input
+                        type="text"
+                        placeholder="e.g. 5a1b2c3d4e5f"
+                        value={stLogin}
+                        onChange={(e) => setStLogin(e.target.value)}
+                        className="bg-zinc-900 border-zinc-800 text-xs h-10 font-mono"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-zinc-400">FTP / API Password (Key)</label>
+                      <Input
+                        type="password"
+                        placeholder={streamtapeConfig?.hasKey ? '•••••••••••••••• (Configured)' : 'Enter API Key / Password'}
+                        value={stKey}
+                        onChange={(e) => setStKey(e.target.value)}
+                        className="bg-zinc-900 border-zinc-800 text-xs h-10 font-mono"
+                      />
+                    </div>
+
+                    <Button
+                      type="submit"
+                      disabled={stLoading || !stLogin.trim()}
+                      className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold h-10 rounded-xl flex items-center justify-center gap-2"
+                    >
+                      {stLoading ? <Loader2 className="animate-spin size-4" /> : <UploadCloud size={16} />}
+                      Save Streamtape Credentials
+                    </Button>
+                  </form>
+
+                  <div className="p-3 rounded-lg bg-zinc-900/60 border border-zinc-800/80 text-[11px] text-zinc-400 space-y-1">
+                    <span className="font-semibold text-zinc-300">💡 Zero-Bandwidth Admin Upload:</span>
+                    <p>
+                      If your Render bandwidth is ever running low, you can upload videos directly to Streamtape using their web interface or desktop tools, then paste the link directly on any video page to link it instantly!
+                    </p>
+                  </div>
                 </div>
               )}
             </div>

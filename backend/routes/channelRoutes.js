@@ -286,14 +286,7 @@ router.delete('/:id', async (req, res) => {
   if (!channel) return res.status(404).json({ error: 'Channel not found' });
 
   try {
-    // Delete any Streamtape videos associated with this channel
-    try {
-      const streamtapeVideos = getAll('SELECT streamtape_id FROM videos WHERE channel_id = ? AND streamtape_id IS NOT NULL', [channelId]);
-      const { deleteStreamtapeVideo } = require('../streamtapeUpload');
-      for (const v of streamtapeVideos) {
-        if (v.streamtape_id) deleteStreamtapeVideo(v.streamtape_id).catch(() => {});
-      }
-    } catch (_) {}
+    // NOTE: Keep Streamtape cloud videos safe — do not delete cloud content if channel is deleted
 
     run(`DELETE FROM progress WHERE video_id IN (SELECT id FROM videos WHERE channel_id = ?)`, [channelId]);
     run(`DELETE FROM notes WHERE video_id IN (SELECT id FROM videos WHERE channel_id = ?)`, [channelId]);

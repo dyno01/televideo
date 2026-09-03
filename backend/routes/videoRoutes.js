@@ -68,6 +68,49 @@ router.get('/video/:id/upload-status', (req, res) => {
   });
 });
 
+// ─── GET /api/streamtape/config (Check status) ─────────────────────────────
+router.get('/streamtape/config', (req, res) => {
+  const { getStreamtapeCredentials, isStreamtapeConfigured } = require('../streamtapeUpload');
+  const creds = getStreamtapeCredentials();
+  res.json({
+    configured: isStreamtapeConfigured(),
+    login: creds.login ? (creds.login.length > 4 ? creds.login.slice(0, 4) + '***' : creds.login) : '',
+    hasKey: !!creds.key,
+  });
+});
+
+// ─── POST /api/streamtape/config (Set credentials via UI) ─────────────────
+router.post('/streamtape/config', (req, res) => {
+  const { login, key } = req.body;
+  const { setSetting } = require('../db/database');
+  if (login !== undefined) setSetting('STREAMTAPE_LOGIN', String(login).trim());
+  if (key !== undefined) setSetting('STREAMTAPE_KEY', String(key).trim());
+  const { isStreamtapeConfigured } = require('../streamtapeUpload');
+  res.json({ success: true, configured: isStreamtapeConfigured() });
+});
+
+// ─── POST /api/video/:id/streamtape-link (Direct manual link for admin/bandwidth bypass) ─
+router.post('/video/:id/streamtape-link', (req, res) => {
+  const videoId = parseInt(req.params.id, 10);
+  if (isNaN(videoId)) return res.status(400).json({ error: 'Invalid video ID' });
+
+  const { streamtape_url } = req.body;
+  if (!streamtape_url || typeof streamtape_url !== 'string') {
+    return res.status(400).json({ error: 'streamtape_url is required' });
+  }
+
+  const video = getOne('SELECT id FROM videos WHERE id = ?', [videoId]);
+  if (!video) return res.status(404).json({ error: 'Video not found' });
+
+  try {
+    const { linkStreamtapeDirect } = require('../streamtapeUpload');
+    const result = linkStreamtapeDirect('video', videoId, streamtape_url);
+    res.json({ success: true, message: 'Streamtape link saved successfully', ...result });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── GET /api/video/:id ────────────────────────────────────────────────────
 router.get('/video/:id', (req, res) => {
   const videoId = parseInt(req.params.id, 10);
@@ -92,6 +135,16 @@ router.get('/video/:id', (req, res) => {
   );
 
   if (!video) return res.status(404).json({ error: 'Video not found' });
+
+  // Auto-trigger background upload if configured and not yet uploaded
+  const { isStreamtapeConfigured, triggerStreamtapeUpload } = require('../streamtapeUpload');
+  if (isStreamtapeConfigured() && (!video.streamtape_status || video.streamtape_status === 'none' || video.streamtape_status === 'failed')) {
+    try {
+      triggerStreamtapeUpload('video', video.id, req.user.id, null, video.title, null);
+    } catch (err) {
+      console.warn('[Streamtape Auto-Trigger Error]', err.message);
+    }
+  }
 
   const liveProgress = getUploadProgress('video', videoId);
   const uploadPct = liveProgress !== null 
@@ -130,11 +183,7 @@ router.delete('/video/:id', async (req, res) => {
   if (!video) return res.status(404).json({ error: 'Video not found' });
 
   try {
-    const { deleteStreamtapeVideo } = require('../streamtapeUpload');
-    if (video.streamtape_id) {
-      await deleteStreamtapeVideo(video.streamtape_id);
-    }
-
+    // NOTE: Keep Streamtape cloud videos safe — do not delete cloud content on video delete
     const { run } = require('../db/database');
     run('DELETE FROM progress WHERE video_id = ?', [videoId]);
     run('DELETE FROM notes WHERE video_id = ?', [videoId]);
