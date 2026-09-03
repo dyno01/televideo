@@ -61,9 +61,10 @@ export default function TelegramAuthModal({
   const [loading, setLoading] = useState(true)
 
   // Streamtape CDN settings
-  const [streamtapeConfig, setStreamtapeConfig] = useState<{ configured: boolean; login: string; hasKey: boolean } | null>(null)
+  const [streamtapeConfig, setStreamtapeConfig] = useState<{ configured: boolean; login: string; hasKey: boolean; appUrl?: string } | null>(null)
   const [stLogin, setStLogin] = useState('')
   const [stKey, setStKey] = useState('')
+  const [stAppUrl, setStAppUrl] = useState('')
   const [stLoading, setStLoading] = useState(false)
 
   // Phone auth state
@@ -105,6 +106,7 @@ export default function TelegramAuthModal({
       if (stCfg) {
         setStreamtapeConfig(stCfg)
         if (stCfg.login) setStLogin(stCfg.login)
+        if (stCfg.appUrl) setStAppUrl(stCfg.appUrl)
       }
       onStatusChange?.(data)
     } catch (err: any) {
@@ -119,7 +121,7 @@ export default function TelegramAuthModal({
     setStLoading(true)
     setErrorMsg('')
     try {
-      const res = await saveStreamtapeConfig(stLogin, stKey)
+      const res = await saveStreamtapeConfig(stLogin, stKey, stAppUrl)
       setSuccessMsg(res.configured ? 'Streamtape connected! Videos will now stream via CDN.' : 'Streamtape credentials saved.')
       const updated = await getStreamtapeConfig()
       setStreamtapeConfig(updated)
@@ -620,6 +622,23 @@ export default function TelegramAuthModal({
                         onChange={(e) => setStKey(e.target.value)}
                         className="bg-zinc-900 border-zinc-800 text-xs h-10 font-mono"
                       />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-zinc-400 flex items-center justify-between">
+                        <span>Backend Server Public URL (For Remote Uploads)</span>
+                        <span className="text-[10px] text-zinc-500">Auto-detected or custom</span>
+                      </label>
+                      <Input
+                        type="text"
+                        placeholder="https://your-backend.onrender.com"
+                        value={stAppUrl}
+                        onChange={(e) => setStAppUrl(e.target.value)}
+                        className="bg-zinc-900 border-zinc-800 text-xs h-10 font-mono"
+                      />
+                      <p className="text-[10px] text-zinc-500">
+                        Streamtape connects directly to this URL to pull video streams into your account.
+                      </p>
                     </div>
 
                     <Button

@@ -6,13 +6,27 @@ import axios, { AxiosResponse } from 'axios'
 
 export const getApiBase = (): string => {
   if (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL
+    return process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, '')
   }
-  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
-    const host = window.location.hostname
-    const protocol = window.location.protocol || 'http:'
-    if (host !== 'localhost' && host !== '127.0.0.1') {
-      return `${protocol}//${host}:4000`
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('televideo_api_url')
+    if (saved) return saved.replace(/\/+$/, '')
+
+    if (window.location && window.location.hostname) {
+      const host = window.location.hostname
+      const port = window.location.port
+      const protocol = window.location.protocol || 'http:'
+
+      // Localhost development uses port 4000
+      if (host === 'localhost' || host === '127.0.0.1') {
+        return `${protocol}//${host}:4000`
+      }
+
+      // Cloud deployments (Render, Vercel, etc.) operate on standard HTTPS port 443
+      if (port && port !== '80' && port !== '443') {
+        return `${protocol}//${host}:${port}`
+      }
+      return `${protocol}//${host}`
     }
   }
   return 'http://localhost:4000'
@@ -333,11 +347,11 @@ export const dismissProgress = (videoId: number): Promise<{ success: boolean }> 
 
 // ── Streamtape Cloud API ───────────────────────────────────────────────────
 
-export const getStreamtapeConfig = (): Promise<{ configured: boolean; login: string; hasKey: boolean }> =>
+export const getStreamtapeConfig = (): Promise<{ configured: boolean; login: string; hasKey: boolean; appUrl?: string }> =>
   api.get('/api/streamtape/config').then(d)
 
-export const saveStreamtapeConfig = (login: string, key: string): Promise<{ success: boolean; configured: boolean }> =>
-  api.post('/api/streamtape/config', { login, key }).then(d)
+export const saveStreamtapeConfig = (login: string, key: string, appUrl?: string): Promise<{ success: boolean; configured: boolean }> =>
+  api.post('/api/streamtape/config', { login, key, appUrl }).then(d)
 
 export const linkStreamtapeUrl = (videoId: number, streamtape_url: string): Promise<{ success: boolean; streamtape_id: string; streamtape_url: string }> =>
   api.post(`/api/video/${videoId}/streamtape-link`, { streamtape_url }).then(d)

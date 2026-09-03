@@ -70,21 +70,23 @@ router.get('/video/:id/upload-status', (req, res) => {
 
 // ─── GET /api/streamtape/config (Check status) ─────────────────────────────
 router.get('/streamtape/config', (req, res) => {
-  const { getStreamtapeCredentials, isStreamtapeConfigured } = require('../streamtapeUpload');
+  const { getStreamtapeCredentials, isStreamtapeConfigured, getAppBaseUrl } = require('../streamtapeUpload');
   const creds = getStreamtapeCredentials();
   res.json({
     configured: isStreamtapeConfigured(),
     login: creds.login ? (creds.login.length > 4 ? creds.login.slice(0, 4) + '***' : creds.login) : '',
     hasKey: !!creds.key,
+    appUrl: typeof getAppBaseUrl === 'function' ? getAppBaseUrl() : '',
   });
 });
 
 // ─── POST /api/streamtape/config (Set credentials via UI) ─────────────────
 router.post('/streamtape/config', (req, res) => {
-  const { login, key } = req.body;
+  const { login, key, appUrl } = req.body;
   const { setSetting } = require('../db/database');
   if (login !== undefined) setSetting('STREAMTAPE_LOGIN', String(login).trim());
   if (key !== undefined) setSetting('STREAMTAPE_KEY', String(key).trim());
+  if (appUrl !== undefined) setSetting('APP_URL', String(appUrl).trim().replace(/\/+$/, ''));
   const { isStreamtapeConfigured } = require('../streamtapeUpload');
   res.json({ success: true, configured: isStreamtapeConfigured() });
 });

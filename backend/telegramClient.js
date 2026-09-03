@@ -49,8 +49,8 @@ function initOrGetClientInstance(userId) {
     const client = new TelegramClient(session, apiId, apiHash, {
       connectionRetries: 5,
       useWSS: false,
-      deviceModel: `TelevideoServer-${Math.random().toString(36).substring(2, 7)}`,
-      systemVersion: `Render-${process.env.RENDER_INSTANCE_ID || 'Local'}`,
+      deviceModel: 'TelevideoServer',
+      systemVersion: 'Linux',
       appVersion: '1.0.0',
     });
 
