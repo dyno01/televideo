@@ -18,6 +18,8 @@ import {
   ListOrdered,
   Link2,
   UploadCloud,
+  Copy,
+  Check,
   Video as VideoIcon
 } from 'lucide-react'
 import { 
@@ -96,6 +98,17 @@ export default function VideoPage() {
     } finally {
       setIsLinking(false)
     }
+  }
+
+  const [copiedStream, setCopiedStream] = useState(false)
+
+  const handleCopyStreamUrl = () => {
+    if (!video) return
+    const apiBase = getApiBase()
+    const url = `${apiBase}/api/stream/${video.id}`
+    navigator.clipboard.writeText(url)
+    setCopiedStream(true)
+    setTimeout(() => setCopiedStream(false), 2000)
   }
 
   const playerRef = useRef<VideoPlayerHandle>(null)
@@ -661,6 +674,16 @@ return (
                   title="Directly link or change Streamtape video (0 Render server bandwidth)"
                 >
                   <Link2 size={12} className="text-emerald-400" /> Link Streamtape
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCopyStreamUrl}
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-medium text-zinc-400 hover:text-zinc-200 border border-zinc-800 hover:border-zinc-700 bg-zinc-900/80 transition-all flex items-center gap-1.5 shadow-sm"
+                  title="Copy direct Telegram video stream URL (can be pasted in Streamtape Remote Upload or browser)"
+                >
+                  {copiedStream ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                  {copiedStream ? 'Stream URL Copied!' : 'Copy Stream URL'}
                 </button>
               </div>
               
