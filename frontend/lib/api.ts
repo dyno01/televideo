@@ -355,3 +355,9 @@ export const saveStreamtapeConfig = (login: string, key: string, appUrl?: string
 
 export const linkStreamtapeUrl = (videoId: number, streamtape_url: string): Promise<{ success: boolean; streamtape_id: string; streamtape_url: string }> =>
   api.post(`/api/video/${videoId}/streamtape-link`, { streamtape_url }).then(d)
+
+export const testStreamtapeConnection = (): Promise<{ success: boolean; message: string; result?: any; error?: string }> =>
+  api.get('/api/streamtape/test').then(d)
+
+export const triggerVideoUpload = (videoId: number): Promise<{ success: boolean; message: string }> =>
+  api.post(`/api/video/${videoId}/streamtape-upload`).then(d)

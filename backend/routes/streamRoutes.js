@@ -13,7 +13,7 @@ const bigInt   = require('big-integer');
 const jwt      = require('jsonwebtoken');
 const { getOne, run, getSetting } = require('../db/database');
 const { getClient } = require('../telegramClient');
-const { isStreamtapeConfigured, triggerStreamtapeUpload, getDirectStreamLink } = require('../streamtapeUpload');
+const { isStreamtapeConfigured, triggerStreamtapeUpload, getDirectStreamLink, formatCleanFilename } = require('../streamtapeUpload');
 
 const router = express.Router();
 const JWT_SECRET = getSetting('JWT_SECRET', 'super_secret_televideo_key_2026');
@@ -136,28 +136,26 @@ async function handleStreamVideo(req, res) {
       });
     }
 
-    // Get fresh file location with database fallback
+    // 1. FAST PATH: Use cached database file reference immediately for 0ms startup lag
     let fileLocation;
-    try {
-      fileLocation = await getFreshMediaLocation(client, video);
-    } catch (fetchErr) {
-      console.warn('[Stream] Could not refresh file reference online, checking database fallback:', fetchErr.message);
-
-      if (video.file_id && video.access_hash && video.file_reference) {
-        fileLocation = {
-          location: new Api.InputDocumentFileLocation({
-            id:            bigInt(video.file_id),
-            accessHash:    bigInt(video.access_hash),
-            fileReference: Buffer.isBuffer(video.file_reference)
-                             ? video.file_reference
-                             : Buffer.from(video.file_reference),
-            thumbSize:     '',
-          }),
-          dcId: video.dc_id || 0,
-          size: video.size || 0,
-          mimeType: video.mime_type || 'video/mp4',
-        };
-      } else {
+    if (video.file_id && video.access_hash && video.file_reference) {
+      fileLocation = {
+        location: new Api.InputDocumentFileLocation({
+          id:            bigInt(video.file_id),
+          accessHash:    bigInt(video.access_hash),
+          fileReference: Buffer.isBuffer(video.file_reference)
+                           ? video.file_reference
+                           : Buffer.from(video.file_reference),
+          thumbSize:     '',
+        }),
+        dcId: video.dc_id || 0,
+        size: video.size || 0,
+        mimeType: video.mime_type || 'video/mp4',
+      };
+    } else {
+      try {
+        fileLocation = await getFreshMediaLocation(client, video);
+      } catch (fetchErr) {
         return res.status(503).json({ error: `Stream unavailable: ${fetchErr.message}` });
       }
     }
@@ -166,11 +164,7 @@ async function handleStreamVideo(req, res) {
     const mimeType  = isDownload ? 'application/octet-stream' : (video.mime_type || 'video/mp4');
     const dcId      = fileLocation.dcId || video.dc_id || 0;
 
-    const filenameSafe = (video.title || 'video')
-      .replace(/[\r\n\t]/g, ' ')
-      .replace(/[^a-zA-Z0-9._ -]/g, '_')
-      .trim()
-      .slice(0, 80) + '.mp4';
+    const filenameSafe = formatCleanFilename(video.title, video.id);
     const contentDisposition = isDownload 
       ? `attachment; filename="${filenameSafe}"; filename*=UTF-8''${encodeURIComponent(filenameSafe)}` 
       : 'inline';
@@ -225,31 +219,46 @@ async function handleStreamVideo(req, res) {
     let bytesWritten = 0;
     let firstChunk   = true;
 
-    for await (const rawChunk of client.iterDownload({
-      file:        fileLocation.location,
-      offset:      bigInt(alignedStart),
-      requestSize: CHUNK_SIZE,
-      ...(dcId ? { dcId } : {}),
-    })) {
-      if (res.destroyed || !res.writable) break;
+    async function streamFromLocation(loc) {
+      for await (const rawChunk of client.iterDownload({
+        file:        loc.location,
+        offset:      bigInt(alignedStart + bytesWritten),
+        requestSize: CHUNK_SIZE,
+        ...(loc.dcId ? { dcId: loc.dcId } : {}),
+      })) {
+        if (res.destroyed || !res.writable) break;
 
-      let chunk = Buffer.isBuffer(rawChunk) ? rawChunk : Buffer.from(rawChunk);
+        let chunk = Buffer.isBuffer(rawChunk) ? rawChunk : Buffer.from(rawChunk);
 
-      if (firstChunk && skipBytes > 0) {
-        chunk = chunk.slice(skipBytes);
-        firstChunk = false;
+        if (firstChunk && skipBytes > 0) {
+          chunk = chunk.slice(skipBytes);
+          firstChunk = false;
+        } else {
+          firstChunk = false;
+        }
+
+        if (rangeHeader && bytesWritten + chunk.length > contentLength) {
+          chunk = chunk.slice(0, contentLength - bytesWritten);
+        }
+
+        if (chunk.length === 0) break;
+        res.write(chunk);
+        bytesWritten += chunk.length;
+        if (rangeHeader && bytesWritten >= contentLength) break;
+      }
+    }
+
+    try {
+      await streamFromLocation(fileLocation);
+    } catch (streamErr) {
+      const errStr = (streamErr.message || '').toUpperCase();
+      if (errStr.includes('FILEREF') || errStr.includes('FILE_REFERENCE')) {
+        console.log('[Stream] File reference expired mid-stream, refreshing online from Telegram...');
+        const freshLoc = await getFreshMediaLocation(client, video);
+        await streamFromLocation(freshLoc);
       } else {
-        firstChunk = false;
+        throw streamErr;
       }
-
-      if (rangeHeader && bytesWritten + chunk.length > contentLength) {
-        chunk = chunk.slice(0, contentLength - bytesWritten);
-      }
-
-      if (chunk.length === 0) break;
-      res.write(chunk);
-      bytesWritten += chunk.length;
-      if (rangeHeader && bytesWritten >= contentLength) break;
     }
 
     res.end();

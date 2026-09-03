@@ -39,6 +39,7 @@ import {
   changePassword,
   getStreamtapeConfig,
   saveStreamtapeConfig,
+  testStreamtapeConnection,
   TelegramStatus,
 } from '@/lib/api'
 
@@ -116,6 +117,8 @@ export default function TelegramAuthModal({
     }
   }
 
+  const [stTesting, setStTesting] = useState(false)
+
   const handleSaveStreamtape = async (e: React.FormEvent) => {
     e.preventDefault()
     setStLoading(true)
@@ -129,6 +132,28 @@ export default function TelegramAuthModal({
       setErrorMsg(err?.response?.data?.error || 'Failed to save Streamtape configuration.')
     } finally {
       setStLoading(false)
+    }
+  }
+
+  const handleTestConnection = async () => {
+    setStTesting(true)
+    setErrorMsg('')
+    try {
+      if (stLogin.trim()) {
+        await saveStreamtapeConfig(stLogin, stKey, stAppUrl)
+      }
+      const res = await testStreamtapeConnection()
+      if (res.success) {
+        setSuccessMsg('✅ Streamtape API verified & reachable via Cloudflare DNS!')
+        const updated = await getStreamtapeConfig()
+        setStreamtapeConfig(updated)
+      } else {
+        setErrorMsg(res.error || 'Connection test failed.')
+      }
+    } catch (err: any) {
+      setErrorMsg(err?.response?.data?.error || 'Could not connect to Streamtape API.')
+    } finally {
+      setStTesting(false)
     }
   }
 
@@ -641,14 +666,27 @@ export default function TelegramAuthModal({
                       </p>
                     </div>
 
-                    <Button
-                      type="submit"
-                      disabled={stLoading || !stLogin.trim()}
-                      className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold h-10 rounded-xl flex items-center justify-center gap-2"
-                    >
-                      {stLoading ? <Loader2 className="animate-spin size-4" /> : <UploadCloud size={16} />}
-                      Save Streamtape Credentials
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        type="submit"
+                        disabled={stLoading || !stLogin.trim()}
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold h-10 rounded-xl flex items-center justify-center gap-2"
+                      >
+                        {stLoading ? <Loader2 className="animate-spin size-4" /> : <UploadCloud size={16} />}
+                        Save Credentials
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleTestConnection}
+                        disabled={stTesting || stLoading || !stLogin.trim()}
+                        className="border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 text-xs h-10 rounded-xl flex items-center gap-2 px-3"
+                        title="Test connection to Streamtape API via forced Cloudflare DNS"
+                      >
+                        {stTesting ? <Loader2 className="animate-spin size-4" /> : <Sparkles size={14} className="text-amber-400" />}
+                        Test Connection
+                      </Button>
+                    </div>
                   </form>
 
                   <div className="p-3 rounded-lg bg-zinc-900/60 border border-zinc-800/80 text-[11px] text-zinc-400 space-y-1">

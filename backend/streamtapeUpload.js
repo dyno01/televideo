@@ -37,6 +37,67 @@ function getStreamtapeCredentials() {
   return { login, key };
 }
 
+/**
+ * Format clean, human-readable video filename from Telegram captions
+ * Removes Unicode math fonts (e.g. 𝚅𝚒𝚍 𝙸𝚍 -> Vid Id), resolution tags, channel handles, and junk.
+ */
+function formatCleanFilename(rawText, defaultId = '') {
+  if (!rawText || typeof rawText !== 'string') {
+    return `video_${defaultId || Date.now()}.mp4`;
+  }
+
+  // 1. Normalize Unicode mathematical/bold/monospace characters (e.g. 𝚅𝚒𝚍 𝙸𝚍 -> Vid Id)
+  const norm = rawText.normalize('NFKD');
+
+  // 2. Extract title after 'Video Title :'
+  let extracted = '';
+  const titleMatch = norm.match(/(?:video\s*title|lecture\s*name|topic)\s*:\s*([^\n\r]+)/i);
+  if (titleMatch && titleMatch[1]) {
+    extracted = titleMatch[1];
+  } else {
+    const lines = norm.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    for (const l of lines) {
+      if (!/(vid\s*id|batch\s*name|extracted|join|@|https?:)/i.test(l)) {
+        extracted = l;
+        break;
+      }
+    }
+    if (!extracted && lines.length > 0) extracted = lines[0];
+  }
+
+  // 3. Remove metadata, extensions, resolutions, URLs, and channel tags
+  let clean = extracted
+    .replace(/\[\d+x\d+p\]/gi, '')
+    .replace(/\.mkv|\.mp4/gi, '')
+    .replace(/@\S+/g, '')
+    .replace(/https?:\/\/\S+/gi, '')
+    .replace(/[\/\\?%*:|"<>]/g, '')
+    .trim();
+
+  // 4. Clean duplicate phrases (e.g. 'Topic 02 Topic [Part 02]' -> 'Topic - Lecture 02')
+  const numSplit = clean.split(/\s+(\d+)\s+/);
+  if (numSplit.length >= 3) {
+    const p1 = numSplit[0].trim();
+    const num = numSplit[1].trim();
+    const p2 = numSplit.slice(2).join(' ').replace(/\[Part\s*\d+\]/gi, '').trim();
+    if (p2.toLowerCase().startsWith(p1.toLowerCase().slice(0, 15)) || p1.toLowerCase().startsWith(p2.toLowerCase().slice(0, 15))) {
+      clean = p1 + ' - Lecture ' + num;
+    }
+  }
+
+  clean = clean
+    .replace(/\[Part\s*\d+\]/gi, '')
+    .replace(/[^\w\s.-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!clean || clean.length < 2) {
+    clean = `video_${defaultId || 'file'}`;
+  }
+
+  return clean.slice(0, 100).trim() + '.mp4';
+}
+
 function isStreamtapeConfigured() {
   const { login, key } = getStreamtapeCredentials();
   return login.length > 0 && key.length > 0;
@@ -45,21 +106,30 @@ function isStreamtapeConfigured() {
 let detectedBaseUrl = null;
 
 function setDetectedBaseUrl(req) {
-  if (!detectedBaseUrl && req) {
+  if (req) {
     const host = req.get('x-forwarded-host') || req.get('host');
     const proto = req.get('x-forwarded-proto') || req.protocol || 'https';
     if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
-      detectedBaseUrl = `${proto}://${host}`;
-      console.log(`[Streamtape Base URL] Detected public server URL: ${detectedBaseUrl}`);
+      const fullUrl = `${proto}://${host}`;
+      if (detectedBaseUrl !== fullUrl) {
+        detectedBaseUrl = fullUrl;
+        try {
+          const { setSetting } = require('./db/database');
+          setSetting('APP_URL', fullUrl);
+        } catch (_) {}
+        console.log(`[Streamtape Base URL] Detected and saved public server URL: ${detectedBaseUrl}`);
+      }
     }
   }
 }
 
 function getAppBaseUrl() {
   const { getSetting } = require('./db/database');
+  const renderHost = process.env.RENDER_EXTERNAL_HOSTNAME ? `https://${process.env.RENDER_EXTERNAL_HOSTNAME}` : '';
   const url = (
     process.env.APP_URL ||
     process.env.RENDER_EXTERNAL_URL ||
+    renderHost ||
     getSetting('APP_URL') ||
     detectedBaseUrl ||
     ''
@@ -347,9 +417,10 @@ async function monitorRemoteDownload(remoteDlId, type, id, title, totalSize) {
       }
 
       // Check if finished
-      if (item.extid || item.status === 'finished') {
-        const streamtapeId = item.extid || item.id;
-        const streamtapeUrl = item.url || `https://streamtape.com/v/${streamtapeId}`;
+      const isFinished = item.status === 'finished' || item.status === 'completed' || (typeof item.extid === 'string' && item.extid !== 'false' && item.extid.length > 0);
+      if (isFinished) {
+        const streamtapeId = (typeof item.extid === 'string' && item.extid !== 'false') ? item.extid : (typeof item.fileid === 'string' ? item.fileid : null);
+        const streamtapeUrl = item.url || (streamtapeId ? `https://streamtape.com/v/${streamtapeId}` : null);
 
         if (streamtapeId) {
           activeUploadProgress.set(`${type}_${id}`, 100);
@@ -369,7 +440,9 @@ async function monitorRemoteDownload(remoteDlId, type, id, title, totalSize) {
       }
 
       if (item.status === 'error') {
-        throw new Error(`Streamtape remote download reported error for task ${remoteDlId}`);
+        const errMsg = item.last_error || item.msg || JSON.stringify(item);
+        console.error(`[Streamtape Remote DL Error] Task #${remoteDlId} reported error:`, errMsg);
+        throw new Error(`Streamtape remote download reported error: ${errMsg}`);
       }
     } catch (pollErr) {
       console.warn(`[Streamtape Remote DL] Polling status warning for #${id}:`, pollErr.message);
@@ -461,7 +534,7 @@ async function executeUploadTask(task) {
       console.warn(`[Streamtape] Folder creation warning for ${type} #${id}:`, fErr.message);
     }
 
-    const cleanFilename = `${(title || 'video').replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 50)}.mp4`;
+    const cleanFilename = formatCleanFilename(title || (mediaRow && mediaRow.title), id);
     const totalSize = mediaLoc.size || (mediaRow && (mediaRow.size || mediaRow.file_size)) || 0;
 
     // ── METHOD A: Streamtape Remote Upload (Direct & 100% Reliable) ────────
@@ -747,6 +820,7 @@ function linkStreamtapeDirect(type, id, streamtapeUrlOrId) {
 module.exports = {
   isStreamtapeConfigured,
   getStreamtapeCredentials,
+  streamtapeApiGet,
   createFolder,
   deleteFolder,
   getOrCreateBatchFolder,
@@ -759,4 +833,5 @@ module.exports = {
   linkStreamtapeDirect,
   setDetectedBaseUrl,
   getAppBaseUrl,
+  formatCleanFilename,
 };

@@ -121,6 +121,23 @@ export default function VideoPage() {
     setTimeout(() => setCopiedDownload(false), 2000)
   }
 
+  const [triggeringUpload, setTriggeringUpload] = useState(false)
+
+  const handleTriggerUpload = async () => {
+    if (!video) return
+    setTriggeringUpload(true)
+    try {
+      const { triggerVideoUpload } = await import('@/lib/api')
+      await triggerVideoUpload(video.id)
+      setVideo(prev => prev ? { ...prev, streamtape_status: 'uploading' } : null)
+      alert('Upload queued! Streamtape will now remotely fetch and save this video.')
+    } catch (err: any) {
+      alert(err?.response?.data?.error || 'Failed to trigger Streamtape upload. Make sure your Streamtape API credentials are saved in Telegram Settings.')
+    } finally {
+      setTriggeringUpload(false)
+    }
+  }
+
   const playerRef = useRef<VideoPlayerHandle>(null)
   const lastSavedRef = useRef<{ time: number; ts: number }>({ time: 0, ts: 0 })
   const currentPosRef = useRef<{ currentTime: number; duration: number }>({ currentTime: 0, duration: 0 })
@@ -685,6 +702,19 @@ return (
                 >
                   <Link2 size={12} className="text-emerald-400" /> Link Streamtape
                 </button>
+
+                {video && video.streamtape_status !== 'ready' && video.streamtape_status !== 'uploading' && (
+                  <button
+                    type="button"
+                    onClick={handleTriggerUpload}
+                    disabled={triggeringUpload}
+                    className="px-2.5 py-1 rounded-lg text-[11px] font-medium text-emerald-400 hover:text-emerald-300 border border-emerald-800/80 hover:border-emerald-700 bg-emerald-950/40 transition-all flex items-center gap-1.5 shadow-sm"
+                    title="Queue remote background upload to Streamtape"
+                  >
+                    <UploadCloud size={12} className={triggeringUpload ? "animate-pulse text-emerald-400" : "text-emerald-400"} />
+                    {triggeringUpload ? 'Queueing...' : 'Upload to Streamtape'}
+                  </button>
+                )}
 
                 <a
                   href={video ? `${getApiBase()}/api/stream/${video.id}?download=1` : '#'}

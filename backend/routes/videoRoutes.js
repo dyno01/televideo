@@ -84,11 +84,55 @@ router.get('/streamtape/config', (req, res) => {
 router.post('/streamtape/config', (req, res) => {
   const { login, key, appUrl } = req.body;
   const { setSetting } = require('../db/database');
-  if (login !== undefined) setSetting('STREAMTAPE_LOGIN', String(login).trim());
-  if (key !== undefined) setSetting('STREAMTAPE_KEY', String(key).trim());
-  if (appUrl !== undefined) setSetting('APP_URL', String(appUrl).trim().replace(/\/+$/, ''));
+  if (login !== undefined && String(login).trim().length > 0) {
+    setSetting('STREAMTAPE_LOGIN', String(login).trim());
+  }
+  if (key !== undefined && String(key).trim().length > 0) {
+    setSetting('STREAMTAPE_KEY', String(key).trim());
+  }
+  if (appUrl !== undefined && String(appUrl).trim().length > 0) {
+    setSetting('APP_URL', String(appUrl).trim().replace(/\/+$/, ''));
+  }
   const { isStreamtapeConfigured } = require('../streamtapeUpload');
   res.json({ success: true, configured: isStreamtapeConfigured() });
+});
+
+// ─── GET /api/streamtape/test (Test Streamtape API connection & DNS) ───────
+router.get('/streamtape/test', async (req, res) => {
+  const { streamtapeApiGet, isStreamtapeConfigured } = require('../streamtapeUpload');
+  if (!isStreamtapeConfigured()) {
+    return res.status(400).json({ success: false, error: 'Streamtape login or key not configured in settings.' });
+  }
+
+  try {
+    const result = await streamtapeApiGet('/account/info');
+    res.json({ success: true, message: 'Streamtape API connected successfully via Cloudflare DNS!', result });
+  } catch (err) {
+    console.error('[Streamtape Test Error]', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── POST /api/video/:id/streamtape-upload (Manual trigger background upload) ─
+router.post('/video/:id/streamtape-upload', async (req, res) => {
+  const videoId = parseInt(req.params.id, 10);
+  if (isNaN(videoId)) return res.status(400).json({ error: 'Invalid video ID' });
+
+  const video = getOne('SELECT id, title, streamtape_status FROM videos WHERE id = ?', [videoId]);
+  if (!video) return res.status(404).json({ error: 'Video not found' });
+
+  const { isStreamtapeConfigured, triggerStreamtapeUpload } = require('../streamtapeUpload');
+  if (!isStreamtapeConfigured()) {
+    return res.status(400).json({ error: 'Streamtape is not configured. Please enter your API Login and Password in Telegram Settings.' });
+  }
+
+  try {
+    const userId = (req.user && req.user.id) || 1;
+    await triggerStreamtapeUpload('video', video.id, userId, null, video.title, null);
+    res.json({ success: true, message: 'Upload queued successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ─── POST /api/video/:id/streamtape-link (Direct manual link for admin/bandwidth bypass) ─

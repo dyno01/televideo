@@ -1,3 +1,33 @@
+const dns = require('dns');
+
+// Force Node.js to use Cloudflare's DNS servers (1.1.1.1, 1.0.0.1) for Streamtape & external APIs
+try {
+  dns.setServers(['1.1.1.1', '1.0.0.1', '8.8.8.8', '8.8.4.4']);
+  const originalLookup = dns.lookup;
+  dns.lookup = function(hostname, options, callback) {
+    if (typeof options === 'function') {
+      callback = options;
+      options = {};
+    }
+    // Route Streamtape, tapecontent & external domains through Cloudflare DNS resolve4
+    if (hostname && (hostname.includes('streamtape') || hostname.includes('tapecontent') || hostname.includes('telegram'))) {
+      return dns.resolve4(hostname, (err, addresses) => {
+        if (err || !addresses || !addresses.length) {
+          return originalLookup(hostname, options, callback);
+        }
+        if (options && options.all) {
+          return callback(null, addresses.map(a => ({ address: a, family: 4 })));
+        }
+        return callback(null, addresses[0], 4);
+      });
+    }
+    return originalLookup(hostname, options, callback);
+  };
+  console.log('[DNS] Forced Cloudflare DNS (1.1.1.1, 1.0.0.1) for Streamtape connectivity');
+} catch (dnsErr) {
+  console.warn('[DNS] DNS override error:', dnsErr.message);
+}
+
 require('dotenv').config();
 
 const express = require('express');
