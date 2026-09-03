@@ -469,7 +469,7 @@ async function executeUploadTask(task) {
     // This is multi-threaded, resilient, and avoids all multipart connection timeouts!
     const baseUrl = getAppBaseUrl();
     if (baseUrl && !baseUrl.includes('localhost') && !baseUrl.includes('127.0.0.1')) {
-      const streamUrl = `${baseUrl}/api/stream/${id}`;
+      const streamUrl = `${baseUrl}/api/stream/${id}?download=1`;
       try {
         console.log(`[Streamtape Remote DL] Requesting remote download for "${cleanFilename}" from ${streamUrl} into folder: ${folderId || 'root'}...`);
         const remoteDlId = await triggerRemoteDownload(streamUrl, folderId, cleanFilename);

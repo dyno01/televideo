@@ -100,12 +100,14 @@ async function getFreshMediaLocation(client, media) {
   };
 }
 
-router.get('/:videoId', async (req, res) => {
+async function handleStreamVideo(req, res) {
   const videoId = parseInt(req.params.videoId, 10);
   if (isNaN(videoId)) return res.status(400).json({ error: 'Invalid video ID' });
 
   const video = getOne('SELECT * FROM videos WHERE id = ?', [videoId]);
   if (!video) return res.status(404).json({ error: 'Video not found' });
+
+  const isDownload = req.query.download === '1' || req.query.dl === '1' || req.path.endsWith('/download');
 
   // 1. Streamtape Playback Redirect Check (Direct video CDN link for native player)
   if (isStreamtapeConfigured() && video.streamtape_status === 'ready' && video.streamtape_id) {
@@ -161,8 +163,17 @@ router.get('/:videoId', async (req, res) => {
     }
 
     const totalSize = fileLocation.size || video.size || 0;
-    const mimeType  = video.mime_type || 'video/mp4';
+    const mimeType  = isDownload ? 'application/octet-stream' : (video.mime_type || 'video/mp4');
     const dcId      = fileLocation.dcId || video.dc_id || 0;
+
+    const filenameSafe = (video.title || 'video')
+      .replace(/[\r\n\t]/g, ' ')
+      .replace(/[^a-zA-Z0-9._ -]/g, '_')
+      .trim()
+      .slice(0, 80) + '.mp4';
+    const contentDisposition = isDownload 
+      ? `attachment; filename="${filenameSafe}"; filename*=UTF-8''${encodeURIComponent(filenameSafe)}` 
+      : 'inline';
 
     // 3. Trigger Streamtape background upload if configured and not yet uploaded
     if (isStreamtapeConfigured() && (!video.streamtape_status || video.streamtape_status === 'none' || video.streamtape_status === 'failed')) {
@@ -194,18 +205,20 @@ router.get('/:videoId', async (req, res) => {
 
     if (rangeHeader) {
       res.writeHead(206, {
-        'Content-Range':  `bytes ${start}-${end}/${totalSize || '*'}`,
-        'Accept-Ranges':  'bytes',
-        'Content-Length': contentLength,
-        'Content-Type':   mimeType,
-        'Cache-Control':  'no-cache',
+        'Content-Range':       `bytes ${start}-${end}/${totalSize || '*'}`,
+        'Accept-Ranges':       'bytes',
+        'Content-Length':      contentLength,
+        'Content-Type':        mimeType,
+        'Content-Disposition': contentDisposition,
+        'Cache-Control':       'no-cache',
       });
     } else {
       res.writeHead(200, {
         ...(totalSize ? { 'Content-Length': totalSize } : {}),
-        'Content-Type':  mimeType,
-        'Accept-Ranges': 'bytes',
-        'Cache-Control': 'no-cache',
+        'Content-Type':        mimeType,
+        'Content-Disposition': contentDisposition,
+        'Accept-Ranges':       'bytes',
+        'Cache-Control':       'no-cache',
       });
     }
 
@@ -249,7 +262,13 @@ router.get('/:videoId', async (req, res) => {
       res.end();
     }
   }
+}
+
+router.get('/:videoId/download', (req, res) => {
+  req.query.download = '1';
+  return handleStreamVideo(req, res);
 });
+router.get('/:videoId', handleStreamVideo);
 
 // GET /api/stream/file/:fileId
 router.get('/file/:fileId', async (req, res) => {

@@ -101,6 +101,7 @@ export default function VideoPage() {
   }
 
   const [copiedStream, setCopiedStream] = useState(false)
+  const [copiedDownload, setCopiedDownload] = useState(false)
 
   const handleCopyStreamUrl = () => {
     if (!video) return
@@ -109,6 +110,15 @@ export default function VideoPage() {
     navigator.clipboard.writeText(url)
     setCopiedStream(true)
     setTimeout(() => setCopiedStream(false), 2000)
+  }
+
+  const handleCopyDownloadUrl = () => {
+    if (!video) return
+    const apiBase = getApiBase()
+    const url = `${apiBase}/api/stream/${video.id}?download=1`
+    navigator.clipboard.writeText(url)
+    setCopiedDownload(true)
+    setTimeout(() => setCopiedDownload(false), 2000)
   }
 
   const playerRef = useRef<VideoPlayerHandle>(null)
@@ -676,14 +686,35 @@ return (
                   <Link2 size={12} className="text-emerald-400" /> Link Streamtape
                 </button>
 
+                <a
+                  href={video ? `${getApiBase()}/api/stream/${video.id}?download=1` : '#'}
+                  target="_blank"
+                  rel="noreferrer"
+                  download
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-medium text-blue-300 hover:text-blue-100 border border-blue-800/60 hover:border-blue-700 bg-blue-950/40 hover:bg-blue-900/60 transition-all flex items-center gap-1.5 shadow-sm"
+                  title="Directly download this video file to your computer/phone"
+                >
+                  <Download size={12} className="text-blue-400" /> Direct Download
+                </a>
+
+                <button
+                  type="button"
+                  onClick={handleCopyDownloadUrl}
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-medium text-zinc-400 hover:text-zinc-200 border border-zinc-800 hover:border-zinc-700 bg-zinc-900/80 transition-all flex items-center gap-1.5 shadow-sm"
+                  title="Copy direct download link (ideal for pasting into Streamtape Remote Upload or download managers)"
+                >
+                  {copiedDownload ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                  {copiedDownload ? 'Download Link Copied!' : 'Copy Download Link'}
+                </button>
+
                 <button
                   type="button"
                   onClick={handleCopyStreamUrl}
-                  className="px-2.5 py-1 rounded-lg text-[11px] font-medium text-zinc-400 hover:text-zinc-200 border border-zinc-800 hover:border-zinc-700 bg-zinc-900/80 transition-all flex items-center gap-1.5 shadow-sm"
-                  title="Copy direct Telegram video stream URL (can be pasted in Streamtape Remote Upload or browser)"
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-medium text-zinc-500 hover:text-zinc-300 border border-zinc-800/80 hover:border-zinc-700 bg-zinc-950 transition-all flex items-center gap-1.5 shadow-sm"
+                  title="Copy direct Telegram video stream URL (inline stream format)"
                 >
                   {copiedStream ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                  {copiedStream ? 'Stream URL Copied!' : 'Copy Stream URL'}
+                  {copiedStream ? 'Stream URL Copied!' : 'Stream URL'}
                 </button>
               </div>
               
