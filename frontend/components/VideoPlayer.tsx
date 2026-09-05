@@ -99,9 +99,17 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   const postToIframe = useCallback((method: string, value?: any) => {
     if (!iframeRef.current?.contentWindow) return
     try {
-      const msg: any = { context: 'player.js', method }
+      // 1. Standard Embedly Player.js spec format (with version 0.0.11)
+      const msg: any = { context: 'player.js', version: '0.0.11', method }
       if (value !== undefined) msg.value = value
-      iframeRef.current.contentWindow.postMessage(JSON.stringify(msg), '*')
+      const jsonStr = JSON.stringify(msg)
+      iframeRef.current.contentWindow.postMessage(jsonStr, '*')
+      iframeRef.current.contentWindow.postMessage(msg, '*')
+
+      // 2. Also send raw method/value in case player accepts simplified objects
+      if (value !== undefined) {
+        iframeRef.current.contentWindow.postMessage(JSON.stringify({ method, value }), '*')
+      }
     } catch (_) {}
   }, [])
 
@@ -263,15 +271,11 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
       if (videoRef.current) {
         videoRef.current.currentTime = seconds
       }
+      postToIframe('setCurrentTime', seconds)
       if (iframeRef.current?.contentWindow) {
         try {
-          // 1. Standard Player.js specification
-          iframeRef.current.contentWindow.postMessage(JSON.stringify({ context: 'player.js', method: 'setCurrentTime', value: seconds }), '*')
-          iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'setCurrentTime', value: seconds }), '*')
-          // 2. PlayerJS platform format
           iframeRef.current.contentWindow.postMessage(JSON.stringify({ api: 'seek', set: seconds }), '*')
           iframeRef.current.contentWindow.postMessage(JSON.stringify({ api: 'seek', value: seconds }), '*')
-          // 3. Plain text command
           iframeRef.current.contentWindow.postMessage(`seek:${seconds}`, '*')
         } catch (_) {}
       }
@@ -741,11 +745,10 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
         <div className="relative w-full h-full">
           <iframe
             ref={iframeRef}
-            src={`https://${currentMirror}/e/${video.streamtape_id}${initialTimestamp > 0 ? `?t=${Math.floor(initialTimestamp)}#t=${Math.floor(initialTimestamp)}` : ''}`}
+            src={`https://${currentMirror}/e/${video.streamtape_id}`}
             className="w-full h-full border-0"
             allowFullScreen
             allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-            referrerPolicy="no-referrer"
             onLoad={handleIframeLoad}
           />
           {/* Streamtape Fast CDN Badge */}
