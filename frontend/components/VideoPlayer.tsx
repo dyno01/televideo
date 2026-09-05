@@ -22,7 +22,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ListVideo,
-  ExternalLink
+  ExternalLink,
+  CheckCircle2
 } from 'lucide-react'
 import { cn, getMediaTokenQuery } from '@/lib/utils'
 import { Video, getApiBase } from '@/lib/api'
@@ -89,6 +90,30 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   const currentMirror = mirrors[mirrorIndex % mirrors.length]
   const isStreamtapeReady = !!(video.streamtape_id && video.streamtape_status === 'ready')
   const useStreamtape = isStreamtapeReady && !preferNative
+  const [isAutoTracking, setIsAutoTracking] = useState(true)
+
+  // Active Watch Progress Timer for Streamtape iframe (Tracks real-time progress while watching)
+  useEffect(() => {
+    if (!useStreamtape || !isAutoTracking) return
+
+    const videoDur = duration || video.duration || 0
+    if (videoDur <= 0) return
+
+    const timer = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        setCurrentTime(prev => {
+          const next = Math.min(prev + 2, videoDur)
+          const pct = Math.round((next / videoDur) * 100)
+          setProgress(pct)
+          onProgress?.(pct)
+          onTimeUpdate?.(next, videoDur)
+          return next
+        })
+      }
+    }, 2000)
+
+    return () => clearInterval(timer)
+  }, [useStreamtape, isAutoTracking, duration, video.duration, onProgress, onTimeUpdate])
 
   // Helper to send Player.js formatted postMessage to Streamtape iframe
   const postToIframe = useCallback((method: string, value?: any) => {
@@ -782,6 +807,108 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
                 <ListVideo size={16} />
               </button>
             )}
+          </div>
+
+          {/* Streamtape Active Progress & Scrubber Bar */}
+          <div className="absolute bottom-0 inset-x-0 z-40 bg-gradient-to-t from-black/95 via-black/80 to-transparent p-3 pt-6 flex flex-col gap-1.5 transition-all pointer-events-auto">
+            {/* Clickable Progress Scrubber */}
+            <div 
+              className="relative w-full h-2 bg-zinc-800/80 hover:h-2.5 rounded-full cursor-pointer overflow-hidden group/bar transition-all"
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect()
+                const clickX = Math.max(0, Math.min(e.clientX - rect.left, rect.width))
+                const clickPct = clickX / rect.width
+                const videoDur = duration || video.duration || 0
+                const targetTime = Math.round(clickPct * videoDur)
+                setCurrentTime(targetTime)
+                setProgress(clickPct * 100)
+                onProgress?.(clickPct * 100)
+                onTimeUpdate?.(targetTime, videoDur)
+              }}
+              title="Click to set watch progress"
+            >
+              <div 
+                className="h-full bg-indigo-500 group-hover/bar:bg-indigo-400 transition-all rounded-full"
+                style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-zinc-300">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[11px] text-zinc-300 font-medium">
+                  {formatTime(currentTime)} / {formatTime(duration || video.duration || 0)}
+                </span>
+                <span className="font-bold text-emerald-400 text-[11px]">
+                  ({Math.round(progress)}% watched)
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsAutoTracking(prev => !prev)}
+                  className={`text-[10px] px-2 py-0.5 rounded-full border transition-all ${
+                    isAutoTracking 
+                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20' 
+                      : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-700'
+                  }`}
+                  title={isAutoTracking ? "Auto-tracking watch time is active (Click to pause)" : "Auto-tracking is paused (Click to resume)"}
+                >
+                  {isAutoTracking ? '⏱️ Tracking Active' : '⏸️ Tracking Paused'}
+                </button>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const videoDur = duration || video.duration || 0
+                    const next = Math.min(currentTime + 300, videoDur)
+                    setCurrentTime(next)
+                    if (videoDur > 0) {
+                      const pct = Math.round((next / videoDur) * 100)
+                      setProgress(pct)
+                      onProgress?.(pct)
+                      onTimeUpdate?.(next, videoDur)
+                    }
+                  }}
+                  className="px-2 py-0.5 text-[10px] rounded bg-zinc-800/90 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 transition-colors"
+                  title="Fast forward progress by 5 minutes"
+                >
+                  +5m
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const videoDur = duration || video.duration || 0
+                    const next = Math.min(currentTime + 600, videoDur)
+                    setCurrentTime(next)
+                    if (videoDur > 0) {
+                      const pct = Math.round((next / videoDur) * 100)
+                      setProgress(pct)
+                      onProgress?.(pct)
+                      onTimeUpdate?.(next, videoDur)
+                    }
+                  }}
+                  className="px-2 py-0.5 text-[10px] rounded bg-zinc-800/90 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 transition-colors"
+                  title="Fast forward progress by 10 minutes"
+                >
+                  +10m
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const videoDur = duration || video.duration || 0
+                    setCurrentTime(videoDur)
+                    setProgress(100)
+                    onProgress?.(100)
+                    onTimeUpdate?.(videoDur, videoDur)
+                    onEnded?.()
+                  }}
+                  className="px-2.5 py-0.5 text-[10px] font-semibold rounded bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 border border-emerald-500/40 flex items-center gap-1 transition-colors"
+                  title="Mark this video as 100% completed"
+                >
+                  <CheckCircle2 size={11} /> Mark Done
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       ) : (
