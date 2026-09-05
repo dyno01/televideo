@@ -83,7 +83,12 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
 
   const [showSpeedMenu, setShowSpeedMenu] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [preferNative, setPreferNative] = useState(false)
+  const [preferNative, setPreferNative] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('preferred_player') === 'native'
+    }
+    return false
+  })
   const mirrors = ['streamta.pe', 'streamtape.com', 'antiadtape.com', 'strcloud.link']
   const [mirrorIndex, setMirrorIndex] = useState(0)
   const currentMirror = mirrors[mirrorIndex % mirrors.length]
@@ -182,6 +187,9 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
 
   const switchToNative = () => {
     setPreferNative(true)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('preferred_player', 'native')
+    }
     setTimeout(() => {
       if (videoRef.current && currentTime > 0) {
         videoRef.current.currentTime = currentTime
@@ -191,6 +199,9 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
 
   const switchToStreamtape = () => {
     setPreferNative(false)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('preferred_player', 'streamtape')
+    }
     setTimeout(() => {
       subscribeToStreamtape()
     }, 500)

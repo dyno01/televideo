@@ -699,6 +699,28 @@ return (
                   <span className="text-zinc-400">• {Math.round(video.watched_percentage)}% Watched</span>
                 )}
 
+                <button
+                  type="button"
+                  onClick={() => {
+                    const dur = video.duration || 1
+                    const isAlreadyDone = video.completed === 1 || (video.watched_percentage || 0) >= 90
+                    const newPct = isAlreadyDone ? 0 : 100
+                    const newTime = isAlreadyDone ? 0 : dur
+                    persistProgress(newTime, dur, true)
+                    setVideo(prev => prev ? { ...prev, completed: isAlreadyDone ? 0 : 1, watched_percentage: newPct, last_timestamp: newTime } : null)
+                  }}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all flex items-center gap-1.5 shadow-sm",
+                    video.completed === 1 || (video.watched_percentage || 0) >= 90
+                      ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40 hover:bg-emerald-500/30"
+                      : "bg-zinc-900/80 hover:bg-emerald-950/40 text-zinc-300 hover:text-emerald-300 border-zinc-800 hover:border-emerald-700"
+                  )}
+                  title={video.completed === 1 || (video.watched_percentage || 0) >= 90 ? "Click to reset progress" : "Mark video as completed"}
+                >
+                  <CheckCircle2 size={12} className={video.completed === 1 || (video.watched_percentage || 0) >= 90 ? "text-emerald-400" : "text-zinc-400"} />
+                  <span>{video.completed === 1 || (video.watched_percentage || 0) >= 90 ? 'Completed' : 'Mark Done'}</span>
+                </button>
+
                 {/* Server Upload Status Badge */}
                 {video.streamtape_status === 'uploading' && (
                   <Badge variant="outline" className="bg-amber-500/10 border-amber-500/30 text-amber-300 gap-1.5 py-1 animate-pulse font-mono text-xs">

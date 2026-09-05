@@ -450,7 +450,7 @@ async function getDirectStreamLink(fileId) {
     if (!ticketRes || !ticketRes.ticket) return null;
 
     const waitTime = typeof ticketRes.wait_time === 'number' ? ticketRes.wait_time : 0;
-    if (waitTime > 0 && waitTime <= 5) {
+    if (waitTime > 0 && waitTime <= 10) {
       await new Promise(r => setTimeout(r, (waitTime + 0.5) * 1000));
     }
 

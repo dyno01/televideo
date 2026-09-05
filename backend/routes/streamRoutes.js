@@ -113,7 +113,7 @@ async function handleStreamVideo(req, res) {
   if (isStreamtapeConfigured() && video.streamtape_status === 'ready' && video.streamtape_id) {
     try {
       const directUrl = await getDirectStreamLink(video.streamtape_id);
-      if (directUrl && typeof directUrl === 'string' && (directUrl.includes('.tapecontent.net') || directUrl.includes('/stream') || directUrl.includes('get_video') || directUrl.includes('dl?'))) {
+      if (directUrl && typeof directUrl === 'string' && directUrl.startsWith('http') && !directUrl.includes('/e/') && !directUrl.includes('/v/')) {
         return res.redirect(directUrl);
       }
     } catch (err) {
