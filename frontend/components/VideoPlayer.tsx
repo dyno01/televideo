@@ -74,6 +74,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   const [progress, setProgress] = useState(initialPercentage)
   const [duration, setDuration] = useState(0)
   const [currentTime, setCurrentTime] = useState(initialTimestamp || 0)
+  const currentTimeRef = useRef(initialTimestamp || 0)
+  const durationRef = useRef(video.duration || 0)
   const [isMuted, setIsMuted] = useState(false)
   const [volume, setVolume] = useState(1)
   const [showControls, setShowControls] = useState(true)
@@ -108,25 +110,33 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
       streamtapePlayerRef.current.destroy()
     }
 
-    const stPlayer = new StreamtapePlayerJS(iframeRef.current, initialTimestamp || currentTime || 0)
+    const stPlayer = new StreamtapePlayerJS(iframeRef.current, initialTimestamp || currentTimeRef.current || 0)
     streamtapePlayerRef.current = stPlayer
 
     stPlayer.on('ready', () => {
       stPlayer.getDuration((d) => {
-        if (typeof d === 'number' && d > 0) setDuration(d)
+        if (typeof d === 'number' && d > 0) {
+          setDuration(d)
+          durationRef.current = d
+        }
       })
     })
 
     stPlayer.on('timeupdate', ({ seconds, duration: dur }) => {
       if (typeof seconds === 'number' && seconds >= 0) {
         setCurrentTime(seconds)
-        if (dur > 0) {
-          setDuration(dur)
-          const pct = (seconds / dur) * 100
+        currentTimeRef.current = seconds
+        const effectiveDur = dur > 0 ? dur : (durationRef.current || video.duration || 0)
+        if (effectiveDur > 0) {
+          if (dur > 0) {
+            setDuration(dur)
+            durationRef.current = dur
+          }
+          const pct = Math.min(100, (seconds / effectiveDur) * 100)
           setProgress(pct)
           onProgress?.(pct)
         }
-        onTimeUpdate?.(seconds, dur || duration || video.duration || 0)
+        onTimeUpdate?.(seconds, effectiveDur)
       }
     })
 
@@ -136,12 +146,12 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
 
     stPlayer.on('pause', () => {
       setIsPlaying(false)
-      onPause?.(currentTime, duration || video.duration || 0)
+      onPause?.(currentTimeRef.current, durationRef.current || video.duration || 0)
     })
 
     stPlayer.on('ended', () => {
       setIsPlaying(false)
-      const finalDur = duration || video.duration || 0
+      const finalDur = durationRef.current || video.duration || 0
       if (finalDur > 0) {
         onTimeUpdate?.(finalDur, finalDur)
         onProgress?.(100)
@@ -229,6 +239,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   useImperativeHandle(ref, () => ({
     seekTo: (seconds: number) => {
       setCurrentTime(seconds)
+      currentTimeRef.current = seconds
       if (videoRef.current) {
         videoRef.current.currentTime = seconds
       }
@@ -259,7 +270,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
       }
     },
     getCurrentTime: () => {
-      return videoRef.current?.currentTime ?? currentTime
+      return videoRef.current?.currentTime ?? currentTimeRef.current
     }
   }))
 
@@ -301,6 +312,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
 
     const handleTimeUpdate = () => {
       if (!v.duration) return
+      currentTimeRef.current = v.currentTime
+      durationRef.current = v.duration
       const p = (v.currentTime / v.duration) * 100
       setProgress(p)
       setCurrentTime(v.currentTime)

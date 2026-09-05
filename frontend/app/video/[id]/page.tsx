@@ -147,6 +147,8 @@ export default function VideoPage() {
   const playerRef = useRef<VideoPlayerHandle>(null)
   const lastSavedRef = useRef<{ time: number; ts: number }>({ time: 0, ts: 0 })
   const currentPosRef = useRef<{ currentTime: number; duration: number }>({ currentTime: 0, duration: 0 })
+  const [liveCurrentTime, setLiveCurrentTime] = useState(0)
+  const [liveDuration, setLiveDuration] = useState(0)
 
   const getAuthHeaders = () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('app_passcode_token') : null
@@ -660,6 +662,16 @@ return (
             onOpenTelegramAuth={() => setIsAuthModalOpen(true)}
             onTimeUpdate={(c, d) => {
               persistProgress(c, d, false)
+              const sec = Math.floor(c)
+              const dur = d > 0 ? Math.floor(d) : (video.duration || 0)
+              setLiveCurrentTime(sec)
+              if (dur > 0) setLiveDuration(dur)
+              const pct = dur > 0 ? Math.min(100, Math.round((sec / dur) * 100)) : 0
+              setVideo(prev => prev ? { ...prev, last_timestamp: sec, watched_percentage: pct } : null)
+
+              // Update playlist in real-time
+              setChannelVideos(prev => prev.map(v => v.id === videoId ? { ...v, last_timestamp: sec, watched_percentage: pct } : v))
+              setBatchSequence(prev => prev.map(item => item.item_type === 'video' && item.id === videoId ? { ...item, last_timestamp: sec, watched_percentage: pct } : item))
             }}
             onPause={(c, d) => persistProgress(c, d, true)}
             onEnded={() => {
@@ -695,11 +707,14 @@ return (
               </h1>
 
               <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-400 font-medium">
-                <span className="bg-zinc-900 border border-zinc-800 px-3 py-1 rounded-lg text-indigo-300 font-semibold">
-                  {formatDuration(video.duration)}
+                <span className="bg-zinc-900 border border-zinc-800 px-3 py-1 rounded-lg text-indigo-300 font-semibold flex items-center gap-1.5 font-mono">
+                  <Play size={10} className="text-indigo-400 fill-indigo-400" />
+                  {formatDuration(liveCurrentTime || video.last_timestamp || 0)} / {formatDuration(liveDuration || video.duration || 0)}
                 </span>
-                {video.watched_percentage > 0 && (
-                  <span className="text-zinc-400">• {Math.round(video.watched_percentage)}% Watched</span>
+                {((video.watched_percentage > 0) || (liveCurrentTime > 0)) && (
+                  <span className="text-emerald-400 font-semibold bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-md text-[11px] font-mono">
+                    {Math.min(100, Math.round(((liveCurrentTime || video.last_timestamp || 0) / (liveDuration || video.duration || 1)) * 100))}% Watched
+                  </span>
                 )}
 
                 <button

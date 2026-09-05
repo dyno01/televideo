@@ -25,6 +25,8 @@ export class StreamtapePlayerJS {
   private targetResumeTime: number = 0
   private lastSeekTime: number = -1
   private lastSeekTimestamp: number = 0
+  private pollInterval: any = null
+  private cachedDuration: number = 0
 
   constructor(iframe: HTMLIFrameElement, resumeTime: number = 0) {
     this.iframe = iframe
@@ -43,6 +45,9 @@ export class StreamtapePlayerJS {
       value: 'ready',
       listener: 'listener_ready'
     })
+
+    // Start polling timer to guarantee realtime progress tracking every second
+    this.startPolling()
   }
 
   public setResumeTime(seconds: number) {
@@ -50,8 +55,8 @@ export class StreamtapePlayerJS {
     this.initialSeekDone = false
   }
 
-  private getUUID(): string {
-    return 'listener_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36)
+  private getUUID(prefix: string = 'listener'): string {
+    return `${prefix}_` + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36)
   }
 
   private sendRaw(payload: any) {
@@ -74,17 +79,51 @@ export class StreamtapePlayerJS {
     }
 
     if (callback) {
-      const id = this.getUUID()
+      const id = this.getUUID(`listener_${method}`)
       payload.listener = id
       this.pendingCallbacks.set(id, callback)
     }
 
-    if (!this.isReady && method !== 'addEventListener') {
+    // Allow getters and event listeners to pass through immediately
+    const immediateMethods = ['addEventListener', 'removeEventListener', 'getCurrentTime', 'getDuration']
+    if (!this.isReady && !immediateMethods.includes(method)) {
       this.queue.push(payload)
       return
     }
 
     this.sendRaw(payload)
+  }
+
+  private startPolling() {
+    if (this.pollInterval || typeof window === 'undefined') return
+    // Poll getCurrentTime every 1000ms
+    this.pollInterval = setInterval(() => {
+      this.getCurrentTime((seconds) => {
+        if (typeof seconds === 'number' && seconds >= 0) {
+          const dur = this.cachedDuration || 0
+          this.emitTimeUpdate(seconds, dur)
+        }
+      })
+
+      if (!this.cachedDuration) {
+        this.getDuration((d) => {
+          if (typeof d === 'number' && d > 0) this.cachedDuration = d
+        })
+      }
+    }, 1000)
+  }
+
+  private emitTimeUpdate(sec: number, dur: number) {
+    // Apply resume smoothly on first playback progress if requested
+    if (!this.initialSeekDone && this.targetResumeTime > 2) {
+      this.initialSeekDone = true
+      this.setCurrentTime(this.targetResumeTime)
+    }
+
+    const cbs = this.listeners.get('timeupdate')
+    if (cbs) {
+      cbs.forEach(cb => cb({ seconds: sec, duration: dur }))
+    }
   }
 
   private handleMessage(e: MessageEvent) {
@@ -103,13 +142,23 @@ export class StreamtapePlayerJS {
       return
     }
 
-    if (!data || data.context !== 'player.js') return
+    if (!data) return
+
+    // Verify context or common Player.js message signatures
+    const isPlayerJS = data.context === 'player.js' || data.event || data.method
+    if (!isPlayerJS) return
+
+    // Any valid communication from iframe indicates it's ready
+    if (!this.isReady) {
+      this.isReady = true
+      while (this.queue.length > 0) {
+        const item = this.queue.shift()
+        this.sendRaw(item)
+      }
+    }
 
     // 1. Ready event
     if (data.event === 'ready') {
-      this.isReady = true
-
-      // Re-register all subscribed events to Streamtape iframe
       this.listeners.forEach((_, eventName) => {
         this.sendRaw({
           context: 'player.js',
@@ -120,12 +169,6 @@ export class StreamtapePlayerJS {
         })
       })
 
-      // Flush queue
-      while (this.queue.length > 0) {
-        const item = this.queue.shift()
-        this.sendRaw(item)
-      }
-
       const readyCbs = this.listeners.get('ready')
       if (readyCbs) {
         readyCbs.forEach(cb => cb(data.value))
@@ -133,39 +176,78 @@ export class StreamtapePlayerJS {
       return
     }
 
-    // 2. Pending method callbacks (e.g. getDuration, getCurrentTime)
+    // 2. Pending method callbacks mapped by listener token
     if (data.listener && this.pendingCallbacks.has(data.listener)) {
       const cb = this.pendingCallbacks.get(data.listener)
       this.pendingCallbacks.delete(data.listener)
       if (cb) cb(data.value)
     }
 
-    // 3. Events (timeupdate, play, pause, ended, error)
+    // 3. Responses to getCurrentTime
+    if (data.event === 'getCurrentTime' || data.method === 'getCurrentTime') {
+      let sec: number | null = null
+      if (typeof data.value === 'number') sec = data.value
+      else if (data.value && typeof data.value.seconds === 'number') sec = data.value.seconds
+      else if (typeof data.seconds === 'number') sec = data.seconds
+      else if (typeof data.currentTime === 'number') sec = data.currentTime
+
+      if (sec !== null && sec >= 0) {
+        // Resolve any matching pending callbacks
+        this.pendingCallbacks.forEach((cb, id) => {
+          if (id.startsWith('listener_getCurrentTime') || !data.listener || data.listener === id) {
+            cb(sec)
+            this.pendingCallbacks.delete(id)
+          }
+        })
+        this.emitTimeUpdate(sec, this.cachedDuration || 0)
+      }
+      return
+    }
+
+    // 4. Responses to getDuration
+    if (data.event === 'getDuration' || data.method === 'getDuration') {
+      let dur: number | null = null
+      if (typeof data.value === 'number') dur = data.value
+      else if (data.value && typeof data.value.duration === 'number') dur = data.value.duration
+      else if (typeof data.duration === 'number') dur = data.duration
+
+      if (dur !== null && dur > 0) {
+        this.cachedDuration = dur
+        this.pendingCallbacks.forEach((cb, id) => {
+          if (id.startsWith('listener_getDuration') || !data.listener || data.listener === id) {
+            cb(dur)
+            this.pendingCallbacks.delete(id)
+          }
+        })
+      }
+      return
+    }
+
+    // 5. Events (timeupdate, play, pause, ended, error)
     if (data.event) {
       const cbs = this.listeners.get(data.event)
 
       // Normalize timeupdate value
       if (data.event === 'timeupdate') {
         let sec = 0
-        let dur = 0
+        let dur = this.cachedDuration || 0
         if (typeof data.value === 'number') {
           sec = data.value
         } else if (data.value && typeof data.value === 'object') {
           sec = data.value.seconds ?? data.value.currentTime ?? 0
-          dur = data.value.duration ?? 0
+          if (data.value.duration && data.value.duration > 0) {
+            dur = data.value.duration
+            this.cachedDuration = dur
+          }
+        } else if (typeof data.seconds === 'number') {
+          sec = data.seconds
+          if (data.duration && data.duration > 0) {
+            dur = data.duration
+            this.cachedDuration = dur
+          }
         }
-
-        // Apply resume smoothly on first playback progress if requested
-        if (!this.initialSeekDone && this.targetResumeTime > 2) {
-          this.initialSeekDone = true
-          this.setCurrentTime(this.targetResumeTime)
-        }
-
-        if (cbs) {
-          cbs.forEach(cb => cb({ seconds: sec, duration: dur }))
-        }
+        this.emitTimeUpdate(sec, dur)
       } else if (data.event === 'play') {
-        // Apply initial resume on play once
         if (!this.initialSeekDone && this.targetResumeTime > 2) {
           this.initialSeekDone = true
           this.setCurrentTime(this.targetResumeTime)
@@ -246,6 +328,10 @@ export class StreamtapePlayerJS {
   }
 
   public destroy() {
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval)
+      this.pollInterval = null
+    }
     if (typeof window !== 'undefined') {
       window.removeEventListener('message', this.messageHandler)
     }
