@@ -102,6 +102,24 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
 
   const streamtapePlayerRef = useRef<StreamtapePlayerJS | null>(null)
 
+  // Stable refs for callbacks and video ID to avoid effect re-runs on every tick
+  const onTimeUpdateRef = useRef(onTimeUpdate)
+  onTimeUpdateRef.current = onTimeUpdate
+  const onProgressRef = useRef(onProgress)
+  onProgressRef.current = onProgress
+  const onPauseRef = useRef(onPause)
+  onPauseRef.current = onPause
+  const onEndedRef = useRef(onEnded)
+  onEndedRef.current = onEnded
+
+  const lastVideoIdRef = useRef(video.id)
+  const initialResumeTimestampRef = useRef(initialTimestamp || 0)
+
+  if (lastVideoIdRef.current !== video.id) {
+    lastVideoIdRef.current = video.id
+    initialResumeTimestampRef.current = initialTimestamp || 0
+  }
+
   // Initialize and bind Embedly Player.js client for Streamtape embed
   useEffect(() => {
     if (!useStreamtape || !iframeRef.current) return
@@ -110,7 +128,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
       streamtapePlayerRef.current.destroy()
     }
 
-    const stPlayer = new StreamtapePlayerJS(iframeRef.current, initialTimestamp || currentTimeRef.current || 0)
+    const resumeTime = initialResumeTimestampRef.current || 0
+    const stPlayer = new StreamtapePlayerJS(iframeRef.current, resumeTime)
     streamtapePlayerRef.current = stPlayer
 
     stPlayer.on('ready', () => {
@@ -134,9 +153,9 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
           }
           const pct = Math.min(100, (seconds / effectiveDur) * 100)
           setProgress(pct)
-          onProgress?.(pct)
+          onProgressRef.current?.(pct)
         }
-        onTimeUpdate?.(seconds, effectiveDur)
+        onTimeUpdateRef.current?.(seconds, effectiveDur)
       }
     })
 
@@ -146,24 +165,24 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
 
     stPlayer.on('pause', () => {
       setIsPlaying(false)
-      onPause?.(currentTimeRef.current, durationRef.current || video.duration || 0)
+      onPauseRef.current?.(currentTimeRef.current, durationRef.current || video.duration || 0)
     })
 
     stPlayer.on('ended', () => {
       setIsPlaying(false)
       const finalDur = durationRef.current || video.duration || 0
       if (finalDur > 0) {
-        onTimeUpdate?.(finalDur, finalDur)
-        onProgress?.(100)
+        onTimeUpdateRef.current?.(finalDur, finalDur)
+        onProgressRef.current?.(100)
       }
-      onEnded?.()
+      onEndedRef.current?.()
     })
 
     return () => {
       stPlayer.destroy()
       streamtapePlayerRef.current = null
     }
-  }, [useStreamtape, video.streamtape_id, initialTimestamp, onTimeUpdate, onProgress, onPause, onEnded, video.duration, currentMirror])
+  }, [useStreamtape, video.id, video.streamtape_id, currentMirror])
 
   const switchToNative = (targetTime?: number | React.MouseEvent) => {
     setPreferNative(true)
@@ -186,12 +205,9 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   }
 
   const handleIframeLoad = () => {
-    if (iframeRef.current) {
-      if (!streamtapePlayerRef.current) {
-        streamtapePlayerRef.current = new StreamtapePlayerJS(iframeRef.current, initialTimestamp || currentTime || 0)
-      } else {
-        streamtapePlayerRef.current.setResumeTime(initialTimestamp || currentTime || 0)
-      }
+    if (iframeRef.current && !streamtapePlayerRef.current) {
+      const resumeTime = initialResumeTimestampRef.current || 0
+      streamtapePlayerRef.current = new StreamtapePlayerJS(iframeRef.current, resumeTime)
     }
   }
 

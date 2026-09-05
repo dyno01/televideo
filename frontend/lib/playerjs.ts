@@ -51,8 +51,10 @@ export class StreamtapePlayerJS {
   }
 
   public setResumeTime(seconds: number) {
-    this.targetResumeTime = seconds
-    this.initialSeekDone = false
+    if (Math.abs(this.targetResumeTime - seconds) > 3) {
+      this.targetResumeTime = seconds
+      this.initialSeekDone = false
+    }
   }
 
   private getUUID(prefix: string = 'listener'): string {
@@ -117,7 +119,9 @@ export class StreamtapePlayerJS {
     // Apply resume smoothly on first playback progress if requested
     if (!this.initialSeekDone && this.targetResumeTime > 2) {
       this.initialSeekDone = true
-      this.setCurrentTime(this.targetResumeTime)
+      if (Math.abs(sec - this.targetResumeTime) > 3) {
+        this.setCurrentTime(this.targetResumeTime)
+      }
     }
 
     const cbs = this.listeners.get('timeupdate')
@@ -297,7 +301,7 @@ export class StreamtapePlayerJS {
   public setCurrentTime(seconds: number) {
     const s = Math.max(0, Math.round(seconds * 10) / 10)
     const now = Date.now()
-    if (Math.abs(s - this.lastSeekTime) < 1 && now - this.lastSeekTimestamp < 1200) {
+    if (Math.abs(s - this.lastSeekTime) < 2 && now - this.lastSeekTimestamp < 2000) {
       return
     }
     this.lastSeekTime = s

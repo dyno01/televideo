@@ -667,13 +667,18 @@ return (
               setLiveCurrentTime(sec)
               if (dur > 0) setLiveDuration(dur)
               const pct = dur > 0 ? Math.min(100, Math.round((sec / dur) * 100)) : 0
-              setVideo(prev => prev ? { ...prev, last_timestamp: sec, watched_percentage: pct } : null)
 
-              // Update playlist in real-time
-              setChannelVideos(prev => prev.map(v => v.id === videoId ? { ...v, last_timestamp: sec, watched_percentage: pct } : v))
-              setBatchSequence(prev => prev.map(item => item.item_type === 'video' && item.id === videoId ? { ...item, last_timestamp: sec, watched_percentage: pct } : item))
+              // Update playlist in real-time only when percentage changes
+              setChannelVideos(prev => prev.map(v => (v.id === videoId && v.watched_percentage !== pct) ? { ...v, last_timestamp: sec, watched_percentage: pct } : v))
+              setBatchSequence(prev => prev.map(item => (item.item_type === 'video' && item.id === videoId && (item as any).watched_percentage !== pct) ? { ...item, last_timestamp: sec, watched_percentage: pct } : item))
             }}
-            onPause={(c, d) => persistProgress(c, d, true)}
+            onPause={(c, d) => {
+              persistProgress(c, d, true)
+              const sec = Math.floor(c)
+              const dur = d > 0 ? Math.floor(d) : (video.duration || 0)
+              const pct = dur > 0 ? Math.min(100, Math.round((sec / dur) * 100)) : 0
+              setVideo(prev => prev ? { ...prev, last_timestamp: sec, watched_percentage: pct } : null)
+            }}
             onEnded={() => {
               if (video.duration) {
                 persistProgress(video.duration, video.duration, true)
