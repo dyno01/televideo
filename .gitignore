@@ -37,3 +37,6 @@ Thumbs.db
 .gemini/
 .system_generated/
  c4-c6-4d34-b678-bc5eb6f8deb8/
+
+# Archives
+*.zip
