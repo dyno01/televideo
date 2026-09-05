@@ -21,29 +21,21 @@ export class StreamtapePlayerJS {
   private listeners: Map<string, Set<(data?: any) => void>> = new Map()
   private messageHandler: (e: MessageEvent) => void
   private pendingCallbacks: Map<string, (val: any) => void> = new Map()
-  private targetOrigin: string = '*'
   private initialSeekDone: boolean = false
   private targetResumeTime: number = 0
+  private lastSeekTime: number = -1
+  private lastSeekTimestamp: number = 0
 
   constructor(iframe: HTMLIFrameElement, resumeTime: number = 0) {
     this.iframe = iframe
     this.targetResumeTime = resumeTime
-
-    try {
-      if (iframe.src) {
-        const u = new URL(iframe.src)
-        this.targetOrigin = u.origin
-      }
-    } catch (_) {
-      this.targetOrigin = '*'
-    }
 
     this.messageHandler = this.handleMessage.bind(this)
     if (typeof window !== 'undefined') {
       window.addEventListener('message', this.messageHandler)
     }
 
-    // Attempt to register ready listener immediately
+    // Register ready event listener with iframe
     this.sendRaw({
       context: 'player.js',
       version: '0.0.11',
@@ -66,11 +58,7 @@ export class StreamtapePlayerJS {
     if (!this.iframe?.contentWindow) return
     try {
       const json = JSON.stringify(payload)
-      // Send to both specific origin and wildcard to ensure receipt
       this.iframe.contentWindow.postMessage(json, '*')
-      if (this.targetOrigin !== '*') {
-        this.iframe.contentWindow.postMessage(json, this.targetOrigin)
-      }
     } catch (_) {}
   }
 
@@ -100,7 +88,6 @@ export class StreamtapePlayerJS {
   }
 
   private handleMessage(e: MessageEvent) {
-    // Basic validation
     if (!e.data) return
 
     let data: any
@@ -139,11 +126,6 @@ export class StreamtapePlayerJS {
         this.sendRaw(item)
       }
 
-      // Apply initial seek if specified
-      if (this.targetResumeTime > 0 && !this.initialSeekDone) {
-        this.setCurrentTime(this.targetResumeTime)
-      }
-
       const readyCbs = this.listeners.get('ready')
       if (readyCbs) {
         readyCbs.forEach(cb => cb(data.value))
@@ -173,22 +155,20 @@ export class StreamtapePlayerJS {
           dur = data.value.duration ?? 0
         }
 
-        // Check if initial resume needs re-triggering upon playback
-        if (!this.initialSeekDone && this.targetResumeTime > 2 && sec < 2) {
+        // Apply resume smoothly on first playback progress if requested
+        if (!this.initialSeekDone && this.targetResumeTime > 2) {
+          this.initialSeekDone = true
           this.setCurrentTime(this.targetResumeTime)
-          this.initialSeekDone = true
-        } else if (sec >= this.targetResumeTime - 2) {
-          this.initialSeekDone = true
         }
 
         if (cbs) {
           cbs.forEach(cb => cb({ seconds: sec, duration: dur }))
         }
       } else if (data.event === 'play') {
-        // When video begins playing, re-apply resume if not done
-        if (!this.initialSeekDone && this.targetResumeTime > 0) {
-          this.setCurrentTime(this.targetResumeTime)
+        // Apply initial resume on play once
+        if (!this.initialSeekDone && this.targetResumeTime > 2) {
           this.initialSeekDone = true
+          this.setCurrentTime(this.targetResumeTime)
         }
         if (cbs) cbs.forEach(cb => cb(data.value))
       } else {
@@ -226,22 +206,23 @@ export class StreamtapePlayerJS {
 
   public play() {
     this.send('play')
-    this.sendDirectCommand('play')
   }
 
   public pause() {
     this.send('pause')
-    this.sendDirectCommand('pause')
   }
 
   public setCurrentTime(seconds: number) {
     const s = Math.max(0, Math.round(seconds * 10) / 10)
-    // 1. Official Embedly Player.js spec:
-    // { context: 'player.js', version: '0.0.11', method: 'setCurrentTime', value: seconds }
-    this.send('setCurrentTime', s)
+    const now = Date.now()
+    if (Math.abs(s - this.lastSeekTime) < 1 && now - this.lastSeekTimestamp < 1200) {
+      return
+    }
+    this.lastSeekTime = s
+    this.lastSeekTimestamp = now
 
-    // 2. Direct formats (JWPlayer / Clappr / Video.js iframe wrappers)
-    this.sendDirectCommand('seek', s)
+    // Official Embedly Player.js spec:
+    this.send('setCurrentTime', s)
   }
 
   public getCurrentTime(callback: (seconds: number) => void) {
@@ -262,19 +243,6 @@ export class StreamtapePlayerJS {
 
   public unmute() {
     this.send('unmute')
-  }
-
-  private sendDirectCommand(cmd: string, val?: any) {
-    if (!this.iframe?.contentWindow) return
-    try {
-      if (cmd === 'seek') {
-        this.iframe.contentWindow.postMessage(JSON.stringify({ method: 'setCurrentTime', value: val }), '*')
-        this.iframe.contentWindow.postMessage(JSON.stringify({ api: 'seek', value: val }), '*')
-        this.iframe.contentWindow.postMessage(`seek:${val}`, '*')
-      } else {
-        this.iframe.contentWindow.postMessage(JSON.stringify({ method: cmd }), '*')
-      }
-    } catch (_) {}
   }
 
   public destroy() {

@@ -147,9 +147,6 @@ export default function VideoPage() {
   const playerRef = useRef<VideoPlayerHandle>(null)
   const lastSavedRef = useRef<{ time: number; ts: number }>({ time: 0, ts: 0 })
   const currentPosRef = useRef<{ currentTime: number; duration: number }>({ currentTime: 0, duration: 0 })
-  const [sliderTime, setSliderTime] = useState(0)
-  const [isSavedNotice, setIsSavedNotice] = useState(false)
-  const [isJumpNotice, setIsJumpNotice] = useState(false)
 
   const getAuthHeaders = () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('app_passcode_token') : null
@@ -241,7 +238,6 @@ export default function VideoPage() {
     getVideo(videoId)
       .then(async (v) => {
         setVideo(v)
-        setSliderTime(v.last_timestamp || 0)
 
         if (v.batch_id) {
           // Load batch sequence (contains both videos & files in order)
@@ -664,7 +660,6 @@ return (
             onOpenTelegramAuth={() => setIsAuthModalOpen(true)}
             onTimeUpdate={(c, d) => {
               persistProgress(c, d, false)
-              setSliderTime(Math.floor(c))
             }}
             onPause={(c, d) => persistProgress(c, d, true)}
             onEnded={() => {
@@ -692,149 +687,6 @@ return (
               }
             }}
           />
-
-          {/* Watch Progress & Quick Resume Controller */}
-          <div className="mx-4 lg:mx-8 mt-4 p-3.5 rounded-xl bg-[#121215] border border-zinc-800 shadow-md flex flex-col gap-2.5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-zinc-200 flex items-center gap-1.5">
-                  <Play size={11} className="text-indigo-400 fill-indigo-400" />
-                  Progress & Resume Tracker
-                </span>
-                <span className="text-[11px] font-mono text-zinc-400">
-                  {formatDuration(sliderTime)} / {formatDuration(video.duration || 0)}
-                </span>
-                <span className="text-[11px] font-bold text-emerald-400">
-                  ({Math.round(((sliderTime) / (video.duration || 1)) * 100)}%)
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {isSavedNotice && (
-                  <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1 animate-pulse">
-                    <CheckCircle2 size={12} /> Progress Saved!
-                  </span>
-                )}
-                {isJumpNotice && (
-                  <span className="text-[11px] text-indigo-400 font-medium flex items-center gap-1 animate-pulse">
-                    ⏩ Seeking to {formatDuration(sliderTime)}...
-                  </span>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    const dur = video.duration || 1
-                    persistProgress(sliderTime, dur, true)
-                    setVideo(prev => prev ? { ...prev, last_timestamp: sliderTime, watched_percentage: Math.round((sliderTime / dur) * 100) } : null)
-                    setIsSavedNotice(true)
-                    setTimeout(() => setIsSavedNotice(false), 2500)
-                  }}
-                  className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-zinc-800 hover:bg-zinc-700 text-emerald-400 border border-zinc-700 hover:border-emerald-500/40 transition-all flex items-center gap-1 shadow-sm cursor-pointer"
-                  title="Save this progress to your database so it will resume here next time"
-                >
-                  <Save size={12} className="text-emerald-400" />
-                  <span>Save Progress</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    const dur = video.duration || 1
-                    persistProgress(sliderTime, dur, true)
-                    setVideo(prev => prev ? { ...prev, last_timestamp: sliderTime, watched_percentage: Math.round((sliderTime / dur) * 100) } : null)
-
-                    // Directly seek in whatever player is currently active (Streamtape embed via Player.js or Our Player via HTML5)
-                    playerRef.current?.seekTo(sliderTime)
-
-                    setIsJumpNotice(true)
-                    setTimeout(() => setIsJumpNotice(false), 2500)
-                  }}
-                  className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-all flex items-center gap-1 shadow-sm cursor-pointer"
-                  title="Instantly jump and play the video from this exact timestamp"
-                >
-                  <span>⏩ Jump to {formatDuration(sliderTime)}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Draggable Range Slider */}
-            <div className="relative flex items-center">
-              <input
-                type="range"
-                min={0}
-                max={video.duration || 100}
-                value={sliderTime}
-                onChange={(e) => {
-                  const val = Number(e.target.value)
-                  setSliderTime(val)
-                }}
-                onPointerUp={(e) => {
-                  const val = Number((e.target as HTMLInputElement).value)
-                  const dur = video.duration || 1
-                  persistProgress(val, dur, true)
-                  setVideo(prev => prev ? { ...prev, last_timestamp: val, watched_percentage: Math.round((val / dur) * 100) } : null)
-                  setIsSavedNotice(true)
-                  setTimeout(() => setIsSavedNotice(false), 2000)
-                }}
-                className="w-full h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-indigo-500 hover:accent-indigo-400 transition-all"
-              />
-            </div>
-
-            {/* Quick jump pills */}
-            <div className="flex flex-wrap items-center justify-between gap-1.5 pt-0.5 text-[11px]">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-zinc-500 text-[10px] mr-1">Quick Jump:</span>
-                {[-300, 300, 600].map((delta) => {
-                  const label = delta > 0 ? `+${delta / 60}m` : `${delta / 60}m`
-                  return (
-                    <button
-                      key={delta}
-                      type="button"
-                      onClick={() => {
-                        const dur = video.duration || 1
-                        const next = Math.max(0, Math.min(sliderTime + delta, dur))
-                        setSliderTime(next)
-                        persistProgress(next, dur, true)
-                        setVideo(prev => prev ? { ...prev, last_timestamp: next, watched_percentage: Math.round((next / dur) * 100) } : null)
-                        playerRef.current?.seekTo(next)
-                        setIsSavedNotice(true)
-                        setTimeout(() => setIsSavedNotice(false), 2000)
-                      }}
-                      className="px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 hover:border-zinc-700 transition-all cursor-pointer"
-                    >
-                      {label}
-                    </button>
-                  )
-                })}
-                {[0.25, 0.5, 0.75].map((fraction) => {
-                  const pct = Math.round(fraction * 100)
-                  return (
-                    <button
-                      key={pct}
-                      type="button"
-                      onClick={() => {
-                        const dur = video.duration || 1
-                        const next = Math.round(dur * fraction)
-                        setSliderTime(next)
-                        persistProgress(next, dur, true)
-                        setVideo(prev => prev ? { ...prev, last_timestamp: next, watched_percentage: pct } : null)
-                        playerRef.current?.seekTo(next)
-                        setIsSavedNotice(true)
-                        setTimeout(() => setIsSavedNotice(false), 2000)
-                      }}
-                      className="px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border border-zinc-800/80 transition-all cursor-pointer"
-                    >
-                      {pct}%
-                    </button>
-                  )
-                })}
-              </div>
-
-              <span className="text-[10px] text-zinc-500">
-                💡 Drag slider anytime to save progress. Streamtape & Our Player will resume from here!
-              </span>
-            </div>
-          </div>
 
           <div className="p-4 lg:p-8 flex flex-col gap-8 max-w-[1200px] mx-auto w-full">
             <div className="space-y-4">

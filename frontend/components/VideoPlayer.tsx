@@ -112,11 +112,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     streamtapePlayerRef.current = stPlayer
 
     stPlayer.on('ready', () => {
-      console.log('[Streamtape Embed] Player.js Ready received')
-      const target = currentTime || initialTimestamp || 0
-      if (target > 0) {
-        stPlayer.setCurrentTime(target)
-      }
       stPlayer.getDuration((d) => {
         if (typeof d === 'number' && d > 0) setDuration(d)
       })
