@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { cn } from '@/lib/utils'
 import {
   Dialog,
   DialogContent,
@@ -27,7 +28,9 @@ import {
   ChevronUp,
   Cloud,
   UploadCloud,
-  HardDrive
+  HardDrive,
+  Pause,
+  Play
 } from 'lucide-react'
 import {
   getTelegramStatus,
@@ -40,6 +43,7 @@ import {
   getStreamtapeConfig,
   saveStreamtapeConfig,
   testStreamtapeConnection,
+  toggleStreamtapePause,
   TelegramStatus,
 } from '@/lib/api'
 
@@ -62,11 +66,13 @@ export default function TelegramAuthModal({
   const [loading, setLoading] = useState(true)
 
   // Streamtape CDN settings
-  const [streamtapeConfig, setStreamtapeConfig] = useState<{ configured: boolean; login: string; hasKey: boolean; appUrl?: string } | null>(null)
+  const [streamtapeConfig, setStreamtapeConfig] = useState<{ configured: boolean; login: string; hasKey: boolean; appUrl?: string; daily_uploads?: { count: number; limit: number; paused?: boolean } } | null>(null)
   const [stLogin, setStLogin] = useState('')
   const [stKey, setStKey] = useState('')
   const [stAppUrl, setStAppUrl] = useState('')
   const [stLoading, setStLoading] = useState(false)
+  const [stDailyPaused, setStDailyPaused] = useState(false)
+  const [stTogglingPause, setStTogglingPause] = useState(false)
 
   // Phone auth state
   const [apiId, setApiId] = useState('')
@@ -108,12 +114,34 @@ export default function TelegramAuthModal({
         setStreamtapeConfig(stCfg)
         if (stCfg.login) setStLogin(stCfg.login)
         if (stCfg.appUrl) setStAppUrl(stCfg.appUrl)
+        if (stCfg.daily_uploads) setStDailyPaused(!!stCfg.daily_uploads.paused)
       }
       onStatusChange?.(data)
     } catch (err: any) {
       setErrorMsg('Failed to check status.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleTogglePause = async () => {
+    setStTogglingPause(true)
+    setErrorMsg('')
+    try {
+      const res = await toggleStreamtapePause(!stDailyPaused)
+      setStDailyPaused(res.paused)
+      setStreamtapeConfig(prev => prev ? {
+        ...prev,
+        daily_uploads: {
+          ...(prev.daily_uploads || { count: 0, limit: 5 }),
+          paused: res.paused
+        }
+      } : null)
+      setSuccessMsg(res.paused ? '⏸️ Daily auto-upload paused.' : '▶️ Daily auto-upload resumed.')
+    } catch (err: any) {
+      setErrorMsg(err?.response?.data?.error || 'Failed to toggle upload pause.')
+    } finally {
+      setStTogglingPause(false)
     }
   }
 
@@ -614,6 +642,51 @@ export default function TelegramAuthModal({
                     <p className="text-[11px] text-zinc-400 leading-relaxed">
                       Connecting Streamtape allows background auto-uploading of videos. Once uploaded, videos play via Streamtape CDN, conserving 100% of your Render server bandwidth quota.
                     </p>
+
+                    {streamtapeConfig?.configured && (
+                      <div className="p-3 rounded-xl bg-zinc-900/90 border border-zinc-800 flex items-center justify-between gap-3 mt-3">
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-zinc-200">Daily Auto-Uploads</span>
+                            <Badge variant="outline" className={stDailyPaused ? "text-[10px] bg-amber-500/10 text-amber-300 border-amber-500/30" : "text-[10px] bg-emerald-500/10 text-emerald-400 border-emerald-500/30"}>
+                              {stDailyPaused ? 'Paused' : 'Active (5/day)'}
+                            </Badge>
+                          </div>
+                          <p className="text-[10px] text-zinc-500">
+                            {stDailyPaused 
+                              ? 'Background auto-uploads are paused. Click manual upload button anytime.' 
+                              : `Automated sequence uploads running (${streamtapeConfig.daily_uploads?.count ?? 0}/${streamtapeConfig.daily_uploads?.limit ?? 5} today).`}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleTogglePause}
+                          disabled={stTogglingPause}
+                          className={cn(
+                            "h-8 text-xs font-semibold shrink-0 gap-1.5 transition-all",
+                            stDailyPaused 
+                              ? "border-emerald-700/60 bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/60 hover:text-white" 
+                              : "border-amber-700/60 bg-amber-950/40 text-amber-300 hover:bg-amber-900/60 hover:text-white"
+                          )}
+                        >
+                          {stTogglingPause ? (
+                            <Loader2 className="animate-spin size-3.5" />
+                          ) : stDailyPaused ? (
+                            <>
+                              <Play size={12} className="text-emerald-400" />
+                              <span>Resume</span>
+                            </>
+                          ) : (
+                            <>
+                              <Pause size={12} className="text-amber-400" />
+                              <span>Pause</span>
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
                   <form onSubmit={handleSaveStreamtape} className="space-y-3">

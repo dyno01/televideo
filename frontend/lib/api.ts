@@ -106,6 +106,11 @@ export interface Video {
     bytesTotal: number
     status: string
   } | null
+  daily_uploads?: {
+    count: number
+    limit: number
+    paused?: boolean
+  }
 }
 
 export interface TelegramFile {
@@ -367,3 +372,6 @@ export const testStreamtapeConnection = (): Promise<{ success: boolean; message:
 
 export const triggerVideoUpload = (videoId: number): Promise<{ success: boolean; message: string }> =>
   api.post(`/api/video/${videoId}/streamtape-upload`).then(d)
+
+export const toggleStreamtapePause = (paused?: boolean): Promise<{ success: boolean; paused: boolean; daily_uploads: { count: number; limit: number; paused: boolean } }> =>
+  api.post('/api/streamtape/pause', { paused }).then(d)

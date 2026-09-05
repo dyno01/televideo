@@ -70,7 +70,7 @@ router.get('/video/:id/upload-status', (req, res) => {
 
 // ─── GET /api/streamtape/config (Check status) ─────────────────────────────
 router.get('/streamtape/config', (req, res) => {
-  const { getStreamtapeCredentials, isStreamtapeConfigured, getAppBaseUrl, getDailyAutoUploadCount, getDailyAutoUploadLimit } = require('../streamtapeUpload');
+  const { getStreamtapeCredentials, isStreamtapeConfigured, getAppBaseUrl, getDailyAutoUploadCount, getDailyAutoUploadLimit, isAutoUploadPaused } = require('../streamtapeUpload');
   const creds = getStreamtapeCredentials();
   res.json({
     configured: isStreamtapeConfigured(),
@@ -80,7 +80,25 @@ router.get('/streamtape/config', (req, res) => {
     daily_uploads: {
       count: typeof getDailyAutoUploadCount === 'function' ? getDailyAutoUploadCount() : 0,
       limit: typeof getDailyAutoUploadLimit === 'function' ? getDailyAutoUploadLimit() : 5,
+      paused: typeof isAutoUploadPaused === 'function' ? isAutoUploadPaused() : false,
     },
+  });
+});
+
+// ─── POST /api/streamtape/pause (Toggle or set daily auto-upload pause) ─────
+router.post('/streamtape/pause', (req, res) => {
+  const { paused } = req.body;
+  const { setAutoUploadPaused, isAutoUploadPaused, getDailyAutoUploadCount, getDailyAutoUploadLimit } = require('../streamtapeUpload');
+  const newPaused = typeof paused === 'boolean' ? paused : !isAutoUploadPaused();
+  setAutoUploadPaused(newPaused);
+  res.json({
+    success: true,
+    paused: newPaused,
+    daily_uploads: {
+      count: typeof getDailyAutoUploadCount === 'function' ? getDailyAutoUploadCount() : 0,
+      limit: typeof getDailyAutoUploadLimit === 'function' ? getDailyAutoUploadLimit() : 5,
+      paused: newPaused,
+    }
   });
 });
 
@@ -198,8 +216,8 @@ router.get('/video/:id', (req, res) => {
   if (!video) return res.status(404).json({ error: 'Video not found' });
 
   // Auto-trigger background upload and organize smart sequence queue (next video + lookback previous)
-  const { isStreamtapeConfigured, triggerStreamtapeUpload, organizeExistingUploads } = require('../streamtapeUpload');
-  if (isStreamtapeConfigured()) {
+  const { isStreamtapeConfigured, triggerStreamtapeUpload, organizeExistingUploads, canAutoUpload, isAutoUploadPaused, getDailyAutoUploadCount, getDailyAutoUploadLimit } = require('../streamtapeUpload');
+  if (isStreamtapeConfigured() && canAutoUpload()) {
     try {
       triggerStreamtapeUpload('video', video.id, req.user.id, null, video.title, null);
       if (video.batch_id || video.channel_id) {
@@ -224,8 +242,6 @@ router.get('/video/:id', (req, res) => {
       ? liveProgress
       : (video.upload_percentage || (video.streamtape_status === 'ready' ? 100 : 0)));
 
-  const { getDailyAutoUploadCount, getDailyAutoUploadLimit } = require('../streamtapeUpload');
-
   res.json({
     ...video,
     upload_percentage: uploadPct,
@@ -233,6 +249,7 @@ router.get('/video/:id', (req, res) => {
     daily_uploads: {
       count: typeof getDailyAutoUploadCount === 'function' ? getDailyAutoUploadCount() : 0,
       limit: typeof getDailyAutoUploadLimit === 'function' ? getDailyAutoUploadLimit() : 5,
+      paused: typeof isAutoUploadPaused === 'function' ? isAutoUploadPaused() : false,
     },
   });
 });

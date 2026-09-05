@@ -20,6 +20,7 @@ import {
   UploadCloud,
   Copy,
   Check,
+  Pause,
   Video as VideoIcon
 } from 'lucide-react'
 import { 
@@ -34,6 +35,7 @@ import {
   removeVideoTag, 
   getApiBase,
   linkStreamtapeUrl,
+  toggleStreamtapePause,
   Video, 
   TelegramFile, 
   VideoTag, 
@@ -77,6 +79,7 @@ export default function VideoPage() {
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false)
   const [streamtapeLinkInput, setStreamtapeLinkInput] = useState('')
   const [isLinking, setIsLinking] = useState(false)
+  const [isTogglingPause, setIsTogglingPause] = useState(false)
 
   const handleLinkStreamtape = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -749,12 +752,54 @@ return (
                 )}
 
                 {(video as any).daily_uploads && (
-                  <span 
-                    className="text-[10px] text-zinc-500 font-mono self-center px-1" 
-                    title={`Automated daily upload quota (${(video as any).daily_uploads.count}/${(video as any).daily_uploads.limit}). Clicking "Upload to Streamtape" manually uploads anytime without limit.`}
+                  <button
+                    onClick={async () => {
+                      if (isTogglingPause) return
+                      setIsTogglingPause(true)
+                      try {
+                        const currentPaused = !!(video as any).daily_uploads?.paused
+                        const res = await toggleStreamtapePause(!currentPaused)
+                        setVideo(prev => prev ? {
+                          ...prev,
+                          daily_uploads: {
+                            ...(prev as any).daily_uploads,
+                            paused: res.paused,
+                            count: res.daily_uploads?.count ?? (prev as any).daily_uploads?.count,
+                            limit: res.daily_uploads?.limit ?? (prev as any).daily_uploads?.limit,
+                          }
+                        } : null)
+                      } catch (err: any) {
+                        alert(err?.response?.data?.error || err?.message || 'Failed to toggle upload pause')
+                      } finally {
+                        setIsTogglingPause(false)
+                      }
+                    }}
+                    disabled={isTogglingPause}
+                    className={cn(
+                      "text-[10px] font-mono px-2.5 py-1 rounded-lg border transition-all flex items-center gap-1.5 shadow-sm",
+                      (video as any).daily_uploads.paused
+                        ? "bg-amber-500/10 text-amber-300 border-amber-500/40 hover:bg-amber-500/20"
+                        : "bg-zinc-900/80 text-zinc-400 border-zinc-800 hover:border-zinc-700 hover:text-zinc-200"
+                    )}
+                    title={`Click to ${(video as any).daily_uploads.paused ? 'Resume' : 'Pause'} automatic daily uploads.`}
                   >
-                    Daily Auto: {(video as any).daily_uploads.count}/{(video as any).daily_uploads.limit}
-                  </span>
+                    {isTogglingPause ? (
+                      <Loader2 size={11} className="animate-spin text-zinc-400" />
+                    ) : (video as any).daily_uploads.paused ? (
+                      <>
+                        <Pause size={11} className="text-amber-400" />
+                        <span>Daily Auto: Paused ⏸️</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="relative flex h-1.5 w-1.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                        </span>
+                        <span>Daily Auto: {(video as any).daily_uploads.count}/{(video as any).daily_uploads.limit}</span>
+                      </>
+                    )}
+                  </button>
                 )}
 
                 <a

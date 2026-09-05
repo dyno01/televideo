@@ -304,7 +304,18 @@ function getDailyAutoUploadLimit() {
   return parseInt(getSetting('STREAMTAPE_DAILY_LIMIT', '5'), 10) || 5;
 }
 
+function isAutoUploadPaused() {
+  const { getSetting } = require('./db/database');
+  return getSetting('STREAMTAPE_AUTO_UPLOAD_PAUSED', 'false') === 'true';
+}
+
+function setAutoUploadPaused(paused) {
+  const { setSetting } = require('./db/database');
+  setSetting('STREAMTAPE_AUTO_UPLOAD_PAUSED', paused ? 'true' : 'false');
+}
+
 function canAutoUpload() {
+  if (isAutoUploadPaused()) return false;
   return getDailyAutoUploadCount() < getDailyAutoUploadLimit();
 }
 
@@ -1277,6 +1288,8 @@ module.exports = {
   getDailyAutoUploadCount,
   getDailyAutoUploadLimit,
   canAutoUpload,
+  isAutoUploadPaused,
+  setAutoUploadPaused,
   moveFileToFolder,
   organizeExistingUploads,
   pingStreamtapeVideo,
