@@ -26,6 +26,7 @@ import {
 } from 'lucide-react'
 import { cn, getMediaTokenQuery } from '@/lib/utils'
 import { Video, getApiBase } from '@/lib/api'
+import { StreamtapePlayerJS } from '@/lib/playerjs'
 
 export interface VideoPlayerHandle {
   seekTo: (seconds: number) => void
@@ -91,99 +92,73 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     }
     return false
   })
-  const mirrors = ['streamta.pe', 'streamtape.com', 'antiadtape.com', 'strcloud.link']
+  const mirrors = ['streamtape.com', 'streamta.pe', 'antiadtape.com', 'strcloud.link']
   const [mirrorIndex, setMirrorIndex] = useState(0)
   const currentMirror = mirrors[mirrorIndex % mirrors.length]
   const isStreamtapeReady = !!(video.streamtape_id && video.streamtape_status === 'ready')
   const useStreamtape = isStreamtapeReady && !preferNative
 
-  // Helper to send Player.js formatted postMessage to Streamtape iframe
-  const postToIframe = useCallback((method: string, value?: any) => {
-    if (!iframeRef.current?.contentWindow) return
-    try {
-      // 1. Standard Embedly Player.js spec format (with version 0.0.11)
-      const msg: any = { context: 'player.js', version: '0.0.11', method }
-      if (value !== undefined) msg.value = value
-      const jsonStr = JSON.stringify(msg)
-      iframeRef.current.contentWindow.postMessage(jsonStr, '*')
-      iframeRef.current.contentWindow.postMessage(msg, '*')
+  const streamtapePlayerRef = useRef<StreamtapePlayerJS | null>(null)
 
-      // 2. Also send raw method/value in case player accepts simplified objects
-      if (value !== undefined) {
-        iframeRef.current.contentWindow.postMessage(JSON.stringify({ method, value }), '*')
-      }
-    } catch (_) {}
-  }, [])
-
-  // Subscribe to all Player.js events and restore initial seek position
-  const subscribeToStreamtape = useCallback(() => {
-    postToIframe('addEventListener', 'ready')
-    postToIframe('addEventListener', 'timeupdate')
-    postToIframe('addEventListener', 'play')
-    postToIframe('addEventListener', 'pause')
-    postToIframe('addEventListener', 'ended')
-    postToIframe('addEventListener', 'error')
-
-    const startSec = currentTime || initialTimestamp || 0
-    if (startSec > 0) {
-      postToIframe('setCurrentTime', startSec)
-    }
-    postToIframe('getDuration')
-  }, [currentTime, initialTimestamp, postToIframe])
-
-  // Bidirectional Player.js Message Sync for Streamtape embed
+  // Initialize and bind Embedly Player.js client for Streamtape embed
   useEffect(() => {
-    const handleWindowMessage = (e: MessageEvent) => {
-      try {
-        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data
-        if (!data) return
+    if (!useStreamtape || !iframeRef.current) return
 
-        if (data.context === 'player.js' || data.event || data.method) {
-          if (data.event === 'ready') {
-            subscribeToStreamtape()
-          } else if (data.event === 'timeupdate' || data.method === 'getCurrentTime') {
-            let sec: number | null = null
-            let dur: number = duration || video.duration || 0
-
-            if (typeof data.value === 'number') {
-              sec = data.value
-            } else if (data.value && typeof data.value === 'object') {
-              if (typeof data.value.seconds === 'number') sec = data.value.seconds
-              else if (typeof data.value.currentTime === 'number') sec = data.value.currentTime
-              if (typeof data.value.duration === 'number' && data.value.duration > 0) dur = data.value.duration
-            }
-
-            if (typeof sec === 'number' && sec >= 0) {
-              setCurrentTime(sec)
-              if (dur > 0) {
-                setDuration(dur)
-                const pct = (sec / dur) * 100
-                setProgress(pct)
-                onProgress?.(pct)
-              }
-              onTimeUpdate?.(sec, dur)
-            }
-          } else if (data.event === 'pause') {
-            onPause?.(currentTime, duration || video.duration || 0)
-          } else if (data.event === 'ended') {
-            const finalDur = duration || video.duration || 0
-            if (finalDur > 0) {
-              onTimeUpdate?.(finalDur, finalDur)
-              onProgress?.(100)
-            }
-            onEnded?.()
-          } else if (data.method === 'getDuration' && typeof data.value === 'number' && data.value > 0) {
-            setDuration(data.value)
-          }
-        }
-      } catch (_) {}
+    if (streamtapePlayerRef.current) {
+      streamtapePlayerRef.current.destroy()
     }
 
-    window.addEventListener('message', handleWindowMessage)
-    return () => window.removeEventListener('message', handleWindowMessage)
-  }, [currentTime, duration, initialTimestamp, onTimeUpdate, onProgress, onPause, onEnded, video.duration, subscribeToStreamtape])
+    const stPlayer = new StreamtapePlayerJS(iframeRef.current, initialTimestamp || currentTime || 0)
+    streamtapePlayerRef.current = stPlayer
 
+    stPlayer.on('ready', () => {
+      console.log('[Streamtape Embed] Player.js Ready received')
+      const target = currentTime || initialTimestamp || 0
+      if (target > 0) {
+        stPlayer.setCurrentTime(target)
+      }
+      stPlayer.getDuration((d) => {
+        if (typeof d === 'number' && d > 0) setDuration(d)
+      })
+    })
 
+    stPlayer.on('timeupdate', ({ seconds, duration: dur }) => {
+      if (typeof seconds === 'number' && seconds >= 0) {
+        setCurrentTime(seconds)
+        if (dur > 0) {
+          setDuration(dur)
+          const pct = (seconds / dur) * 100
+          setProgress(pct)
+          onProgress?.(pct)
+        }
+        onTimeUpdate?.(seconds, dur || duration || video.duration || 0)
+      }
+    })
+
+    stPlayer.on('play', () => {
+      setIsPlaying(true)
+    })
+
+    stPlayer.on('pause', () => {
+      setIsPlaying(false)
+      onPause?.(currentTime, duration || video.duration || 0)
+    })
+
+    stPlayer.on('ended', () => {
+      setIsPlaying(false)
+      const finalDur = duration || video.duration || 0
+      if (finalDur > 0) {
+        onTimeUpdate?.(finalDur, finalDur)
+        onProgress?.(100)
+      }
+      onEnded?.()
+    })
+
+    return () => {
+      stPlayer.destroy()
+      streamtapePlayerRef.current = null
+    }
+  }, [useStreamtape, video.streamtape_id, initialTimestamp, onTimeUpdate, onProgress, onPause, onEnded, video.duration, currentMirror])
 
   const switchToNative = (targetTime?: number | React.MouseEvent) => {
     setPreferNative(true)
@@ -203,18 +178,16 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     if (typeof window !== 'undefined') {
       localStorage.setItem('preferred_player', 'streamtape')
     }
-    setTimeout(() => {
-      subscribeToStreamtape()
-    }, 500)
   }
 
   const handleIframeLoad = () => {
-    // Send subscription requests at staggered intervals to guarantee the inner player receives them
-    ;[300, 800, 1500, 2500].forEach(delay => {
-      setTimeout(() => {
-        subscribeToStreamtape()
-      }, delay)
-    })
+    if (iframeRef.current) {
+      if (!streamtapePlayerRef.current) {
+        streamtapePlayerRef.current = new StreamtapePlayerJS(iframeRef.current, initialTimestamp || currentTime || 0)
+      } else {
+        streamtapePlayerRef.current.setResumeTime(initialTimestamp || currentTime || 0)
+      }
+    }
   }
 
   // Seek ripple: { side: 'left'|'right'|'center', icon: 'ccw'|'cw'|'play'|'pause', key: number }
@@ -264,13 +237,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
       if (videoRef.current) {
         videoRef.current.currentTime = seconds
       }
-      postToIframe('setCurrentTime', seconds)
-      if (iframeRef.current?.contentWindow) {
-        try {
-          iframeRef.current.contentWindow.postMessage(JSON.stringify({ api: 'seek', set: seconds }), '*')
-          iframeRef.current.contentWindow.postMessage(JSON.stringify({ api: 'seek', value: seconds }), '*')
-          iframeRef.current.contentWindow.postMessage(`seek:${seconds}`, '*')
-        } catch (_) {}
+      if (streamtapePlayerRef.current) {
+        streamtapePlayerRef.current.setCurrentTime(seconds)
       }
     },
     switchToNativeAndSeek: (seconds: number) => {
@@ -282,10 +250,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
         videoRef.current.play().catch(() => {})
         setIsPlaying(true)
       }
-      if (iframeRef.current?.contentWindow) {
-        iframeRef.current.contentWindow.postMessage(JSON.stringify({
-          method: 'play'
-        }), '*')
+      if (streamtapePlayerRef.current) {
+        streamtapePlayerRef.current.play()
       }
     },
     pause: () => {
@@ -293,10 +259,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
         videoRef.current.pause()
         setIsPlaying(false)
       }
-      if (iframeRef.current?.contentWindow) {
-        iframeRef.current.contentWindow.postMessage(JSON.stringify({
-          method: 'pause'
-        }), '*')
+      if (streamtapePlayerRef.current) {
+        streamtapePlayerRef.current.pause()
       }
     },
     getCurrentTime: () => {
@@ -746,7 +710,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
             className="w-full h-full border-0"
             allowFullScreen
             allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-            referrerPolicy="no-referrer"
             onLoad={handleIframeLoad}
           />
           {/* Streamtape Fast CDN Badge */}

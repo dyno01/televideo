@@ -228,10 +228,14 @@ router.get('/video/:id', (req, res) => {
     }
   }
 
-  // Touch last accessed timestamp to keep cloud files active
+  // Touch last accessed timestamp and prewarm direct CDN link for instantaneous playback
   if (video.streamtape_status === 'ready') {
     try {
       run("UPDATE videos SET streamtape_last_accessed_at = datetime('now') WHERE id = ?", [videoId]);
+      if (video.streamtape_id) {
+        const { prewarmDirectStreamLink } = require('../streamtapeUpload');
+        prewarmDirectStreamLink(video.streamtape_id).catch(() => {});
+      }
     } catch (_) {}
   }
 

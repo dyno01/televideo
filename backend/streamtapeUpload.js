@@ -147,16 +147,16 @@ function getAppBaseUrl() {
 /**
  * Make a GET request to Streamtape API
  */
-function streamtapeApiGet(endpoint, params = {}) {
+function streamtapeApiGet(endpoint, params = {}, requireAuth = true) {
   return new Promise((resolve, reject) => {
     const { login, key } = getStreamtapeCredentials();
-    if (!login || !key) {
+    if (requireAuth && (!login || !key)) {
       return reject(new Error('Streamtape credentials (API Login or API Password) not configured in settings'));
     }
 
     const url = new URL(`${STREAMTAPE_API_BASE}${endpoint}`);
-    url.searchParams.set('login', login);
-    url.searchParams.set('key', key);
+    if (login) url.searchParams.set('login', login);
+    if (key) url.searchParams.set('key', key);
     for (const [k, v] of Object.entries(params)) {
       if (v !== undefined && v !== null) {
         url.searchParams.set(k, String(v));
@@ -433,40 +433,64 @@ async function deleteStreamtapeVideo(fileId) {
 }
 
 const directLinkCache = new Map(); // fileId -> { url, expiresAt }
+const warmingLinks = new Set(); // fileId currently in progress
+
+/**
+ * Prewarm direct stream link in background (fetches dlticket, waits wait_time, fetches dl, and caches for 3h)
+ */
+async function prewarmDirectStreamLink(fileId) {
+  if (!fileId || warmingLinks.has(fileId)) return null;
+  const cached = directLinkCache.get(fileId);
+  if (cached && cached.expiresAt > Date.now() + 60000) return cached.url;
+
+  warmingLinks.add(fileId);
+  try {
+    const ticketRes = await streamtapeApiGet('/file/dlticket', { file: fileId }, false);
+    if (!ticketRes || !ticketRes.ticket) return null;
+
+    const waitTime = typeof ticketRes.wait_time === 'number' ? ticketRes.wait_time : 0;
+    if (waitTime > 0 && waitTime <= 30) {
+      await new Promise(r => setTimeout(r, (waitTime + 0.5) * 1000));
+    }
+
+    const dlRes = await streamtapeApiGet('/file/dl', { file: fileId, ticket: ticketRes.ticket }, false);
+    if (dlRes && dlRes.url) {
+      console.log(`[Streamtape CDN] Direct video link ready for ${fileId}`);
+      directLinkCache.set(fileId, {
+        url: dlRes.url,
+        expiresAt: Date.now() + 3 * 3600 * 1000,
+      });
+      return dlRes.url;
+    }
+  } catch (err) {
+    console.warn(`[Streamtape Prewarm] Error for ${fileId}:`, err.message);
+  } finally {
+    warmingLinks.delete(fileId);
+  }
+  return null;
+}
 
 /**
  * Get direct stream/download link for playing Streamtape in native <video> player
  */
 async function getDirectStreamLink(fileId) {
-  if (!fileId || !isStreamtapeConfigured()) return null;
+  if (!fileId) return null;
 
   const cached = directLinkCache.get(fileId);
   if (cached && cached.expiresAt > Date.now()) {
     return cached.url;
   }
 
-  try {
-    const ticketRes = await streamtapeApiGet('/file/dlticket', { file: fileId });
-    if (!ticketRes || !ticketRes.ticket) return null;
+  // Trigger background prewarming
+  const prewarmPromise = prewarmDirectStreamLink(fileId);
 
-    const waitTime = typeof ticketRes.wait_time === 'number' ? ticketRes.wait_time : 0;
-    if (waitTime > 0 && waitTime <= 10) {
-      await new Promise(r => setTimeout(r, (waitTime + 0.5) * 1000));
-    }
+  // If fast enough (e.g. waitTime <= 3s or already resolved), wait briefly
+  const quickResult = await Promise.race([
+    prewarmPromise,
+    new Promise(r => setTimeout(() => r(null), 3500))
+  ]);
 
-    const dlRes = await streamtapeApiGet('/file/dl', { file: fileId, ticket: ticketRes.ticket });
-    if (dlRes && dlRes.url) {
-      // Cache for 2.5 hours
-      directLinkCache.set(fileId, {
-        url: dlRes.url,
-        expiresAt: Date.now() + 2.5 * 3600 * 1000,
-      });
-      return dlRes.url;
-    }
-  } catch (err) {
-    console.warn(`[Streamtape] Could not resolve direct stream link for ${fileId}:`, err.message);
-  }
-  return null;
+  return quickResult || null;
 }
 
 const activeUploadProgress = new Map(); // `${type}_${id}` -> percentage (0..100)
@@ -1278,6 +1302,7 @@ module.exports = {
   getUploadUrl,
   deleteStreamtapeVideo,
   getDirectStreamLink,
+  prewarmDirectStreamLink,
   triggerStreamtapeUpload,
   enqueueUpload,
   getUploadProgress,

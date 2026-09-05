@@ -743,14 +743,8 @@ return (
                     persistProgress(sliderTime, dur, true)
                     setVideo(prev => prev ? { ...prev, last_timestamp: sliderTime, watched_percentage: Math.round((sliderTime / dur) * 100) } : null)
 
-                    // If in Our Player, seek directly. If in Streamtape embed, switch to Our Player so it actually seeks and plays!
-                    if (playerRef.current?.isNativePlayer?.()) {
-                      playerRef.current.seekTo(sliderTime)
-                    } else if (playerRef.current?.switchToNativeAndSeek) {
-                      playerRef.current.switchToNativeAndSeek(sliderTime)
-                    } else {
-                      playerRef.current?.seekTo(sliderTime)
-                    }
+                    // Directly seek in whatever player is currently active (Streamtape embed via Player.js or Our Player via HTML5)
+                    playerRef.current?.seekTo(sliderTime)
 
                     setIsJumpNotice(true)
                     setTimeout(() => setIsJumpNotice(false), 2500)

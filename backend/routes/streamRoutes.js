@@ -110,18 +110,18 @@ async function handleStreamVideo(req, res) {
   const isDownload = req.query.download === '1' || req.query.dl === '1' || req.path.endsWith('/download');
 
   // 1. Streamtape Playback Redirect Check (Direct video CDN link for native player)
-  if (isStreamtapeConfigured() && video.streamtape_status === 'ready' && video.streamtape_id) {
+  if (video.streamtape_status === 'ready' && video.streamtape_id) {
     try {
+      console.log(`[Stream] Checking Streamtape CDN for video #${videoId} (streamtape_id: ${video.streamtape_id})...`);
       const directUrl = await getDirectStreamLink(video.streamtape_id);
       if (directUrl && typeof directUrl === 'string' && directUrl.startsWith('http') && !directUrl.includes('/e/') && !directUrl.includes('/v/')) {
+        console.log(`[Stream] Video #${videoId} redirecting to Streamtape direct CDN: ${directUrl.slice(0, 60)}...`);
         return res.redirect(directUrl);
       }
+      console.log(`[Stream] Direct Streamtape link not yet resolved for #${videoId}, falling back to Telegram stream while warming...`);
     } catch (err) {
       console.warn('[Streamtape Direct Link Error]:', err.message);
     }
-    // Note: Do NOT redirect to video.streamtape_url because that is an HTML webpage,
-    // which causes the HTML5 <video> player to buffer or error.
-    // Instead, smoothly fall through to direct Telegram streaming below!
   }
 
   const userId = getUserIdFromRequest(req, video);
