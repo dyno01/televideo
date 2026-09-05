@@ -30,6 +30,8 @@ import { Video, getApiBase } from '@/lib/api'
 export interface VideoPlayerHandle {
   seekTo: (seconds: number) => void
   getCurrentTime: () => number
+  switchToNativeAndSeek?: (seconds: number) => void
+  isNativePlayer?: () => boolean
 }
 
 interface VideoPlayerProps {
@@ -181,28 +183,19 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     return () => window.removeEventListener('message', handleWindowMessage)
   }, [currentTime, duration, initialTimestamp, onTimeUpdate, onProgress, onPause, onEnded, video.duration, subscribeToStreamtape])
 
-  // Heartbeat Poller: Periodically query Player.js for currentTime and duration to guarantee progress is tracked
-  useEffect(() => {
-    if (!useStreamtape) return
 
-    const syncInterval = setInterval(() => {
-      postToIframe('getCurrentTime')
-      postToIframe('getDuration')
-    }, 2000)
 
-    return () => clearInterval(syncInterval)
-  }, [useStreamtape, postToIframe])
-
-  const switchToNative = () => {
+  const switchToNative = (targetTime?: number | React.MouseEvent) => {
     setPreferNative(true)
     if (typeof window !== 'undefined') {
       localStorage.setItem('preferred_player', 'native')
     }
+    const seekSeconds = typeof targetTime === 'number' ? targetTime : currentTime
     setTimeout(() => {
-      if (videoRef.current && currentTime > 0) {
-        videoRef.current.currentTime = currentTime
+      if (videoRef.current && seekSeconds > 0) {
+        videoRef.current.currentTime = seekSeconds
       }
-    }, 100)
+    }, 150)
   }
 
   const switchToStreamtape = () => {
@@ -280,6 +273,10 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
         } catch (_) {}
       }
     },
+    switchToNativeAndSeek: (seconds: number) => {
+      switchToNative(seconds)
+    },
+    isNativePlayer: () => preferNative || !isStreamtapeReady,
     play: () => {
       if (videoRef.current) {
         videoRef.current.play().catch(() => {})
@@ -749,6 +746,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
             className="w-full h-full border-0"
             allowFullScreen
             allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+            referrerPolicy="no-referrer"
             onLoad={handleIframeLoad}
           />
           {/* Streamtape Fast CDN Badge */}
@@ -787,7 +785,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
               <span className="text-zinc-500 text-[10px]">🔄</span>
             </button>
             <button
-              onClick={switchToNative}
+              onClick={() => switchToNative()}
               className="px-2.5 py-1 text-[11px] font-medium bg-zinc-900/90 text-zinc-300 hover:text-white rounded-lg border border-zinc-700/60 shadow backdrop-blur transition-all"
               title="Switch to our custom HTML5 player with notes and custom scrubber"
             >

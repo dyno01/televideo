@@ -149,6 +149,7 @@ export default function VideoPage() {
   const currentPosRef = useRef<{ currentTime: number; duration: number }>({ currentTime: 0, duration: 0 })
   const [sliderTime, setSliderTime] = useState(0)
   const [isSavedNotice, setIsSavedNotice] = useState(false)
+  const [isJumpNotice, setIsJumpNotice] = useState(false)
 
   const getAuthHeaders = () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('app_passcode_token') : null
@@ -714,6 +715,11 @@ return (
                     <CheckCircle2 size={12} /> Progress Saved!
                   </span>
                 )}
+                {isJumpNotice && (
+                  <span className="text-[11px] text-indigo-400 font-medium flex items-center gap-1 animate-pulse">
+                    ⏩ Seeking to {formatDuration(sliderTime)}...
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={() => {
@@ -736,12 +742,21 @@ return (
                     const dur = video.duration || 1
                     persistProgress(sliderTime, dur, true)
                     setVideo(prev => prev ? { ...prev, last_timestamp: sliderTime, watched_percentage: Math.round((sliderTime / dur) * 100) } : null)
-                    playerRef.current?.seekTo(sliderTime)
-                    setIsSavedNotice(true)
-                    setTimeout(() => setIsSavedNotice(false), 2000)
+
+                    // If in Our Player, seek directly. If in Streamtape embed, switch to Our Player so it actually seeks and plays!
+                    if (playerRef.current?.isNativePlayer?.()) {
+                      playerRef.current.seekTo(sliderTime)
+                    } else if (playerRef.current?.switchToNativeAndSeek) {
+                      playerRef.current.switchToNativeAndSeek(sliderTime)
+                    } else {
+                      playerRef.current?.seekTo(sliderTime)
+                    }
+
+                    setIsJumpNotice(true)
+                    setTimeout(() => setIsJumpNotice(false), 2500)
                   }}
                   className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-all flex items-center gap-1 shadow-sm cursor-pointer"
-                  title="Jump the video player to this timestamp"
+                  title="Instantly jump and play the video from this exact timestamp"
                 >
                   <span>⏩ Jump to {formatDuration(sliderTime)}</span>
                 </button>
