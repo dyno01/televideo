@@ -47,6 +47,7 @@ import NotesPanel from '@/components/NotesPanel'
 import LectureList from '@/components/LectureList'
 import DocumentModal from '@/components/DocumentModal'
 import TelegramAuthModal from '@/components/TelegramAuthModal'
+import ServerStatusBadge from '@/components/ServerStatusBadge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -70,6 +71,7 @@ export default function VideoPage() {
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState<'playlist' | 'notes'>('playlist')
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+  const [authModalTab, setAuthModalTab] = useState<'telegram' | 'account' | 'streamtape' | 'servers'>('telegram')
   const [isTagging, setIsTagging] = useState(false)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [selectedDoc, setSelectedDoc] = useState<TelegramFile | null>(null)
@@ -629,7 +631,14 @@ return (
             {cleanTitle(video.title)}
           </h2>
         </div>
-        <div className="w-20 shrink-0"></div>
+        <div className="flex items-center gap-2 shrink-0">
+          <ServerStatusBadge
+            onClick={() => {
+              setAuthModalTab('servers')
+              setIsAuthModalOpen(true)
+            }}
+          />
+        </div>
       </header>
 
       {/* MAIN AREA */}
@@ -929,6 +938,7 @@ return (
       <TelegramAuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
+        initialTab={authModalTab}
       />
 
       {/* Streamtape Direct Link Dialog (Bandwidth Limit Bypass) */}

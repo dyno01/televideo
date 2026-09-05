@@ -4,32 +4,104 @@
  */
 import axios, { AxiosResponse } from 'axios'
 
-export const getApiBase = (): string => {
+export const getDefaultBackend = (): string => {
   if (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_URL) {
     return process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, '')
   }
   if (typeof window !== 'undefined') {
-    const saved = localStorage.getItem('televideo_api_url')
-    if (saved) return saved.replace(/\/+$/, '')
+    const host = window.location.hostname
+    const port = window.location.port
+    const protocol = window.location.protocol || 'http:'
 
-    if (window.location && window.location.hostname) {
-      const host = window.location.hostname
-      const port = window.location.port
-      const protocol = window.location.protocol || 'http:'
-
-      // Localhost development uses port 4000
-      if (host === 'localhost' || host === '127.0.0.1') {
-        return `${protocol}//${host}:4000`
-      }
-
-      // Cloud deployments (Render, Vercel, etc.) operate on standard HTTPS port 443
-      if (port && port !== '80' && port !== '443') {
-        return `${protocol}//${host}:${port}`
-      }
-      return `${protocol}//${host}`
+    // Localhost development uses port 4000
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return `${protocol}//${host}:4000`
     }
+
+    // Cloud deployments (Render, Vercel, etc.) operate on standard HTTPS port 443
+    if (port && port !== '80' && port !== '443') {
+      return `${protocol}//${host}:${port}`
+    }
+    return `${protocol}//${host}`
   }
   return 'http://localhost:4000'
+}
+
+export const getBackendList = (): string[] => {
+  if (typeof window === 'undefined') return [getDefaultBackend()]
+  try {
+    const raw = localStorage.getItem('televideo_backend_list')
+    let list: string[] = raw ? JSON.parse(raw) : []
+    
+    // Also include env variable list if provided in Vercel
+    if (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_BACKEND_URLS) {
+      const envList = process.env.NEXT_PUBLIC_BACKEND_URLS.split(',').map(s => s.trim().replace(/\/+$/, '')).filter(Boolean)
+      for (const u of envList) {
+        if (!list.includes(u)) list.push(u)
+      }
+    }
+
+    const def = getDefaultBackend()
+    if (!list.includes(def)) {
+      list.unshift(def)
+    }
+    return list.filter(Boolean)
+  } catch (_) {
+    return [getDefaultBackend()]
+  }
+}
+
+export const saveBackendList = (list: string[]): void => {
+  if (typeof window === 'undefined') return
+  const clean = Array.from(new Set(list.map(u => u.trim().replace(/\/+$/, '')).filter(Boolean)))
+  localStorage.setItem('televideo_backend_list', JSON.stringify(clean))
+  window.dispatchEvent(new CustomEvent('backend_list_updated', { detail: { list: clean } }))
+}
+
+export const getApiBase = (): string => {
+  if (typeof window !== 'undefined') {
+    const active = localStorage.getItem('televideo_active_backend') || localStorage.getItem('televideo_api_url')
+    if (active) return active.replace(/\/+$/, '')
+    const list = getBackendList()
+    if (list.length > 0) return list[0]
+  }
+  return getDefaultBackend()
+}
+
+export const setActiveBackend = (url: string): void => {
+  if (typeof window === 'undefined') return
+  const clean = url.trim().replace(/\/+$/, '')
+  localStorage.setItem('televideo_active_backend', clean)
+  localStorage.setItem('televideo_api_url', clean) // backwards compatibility
+  const list = getBackendList()
+  if (!list.includes(clean)) {
+    saveBackendList([clean, ...list])
+  }
+  window.dispatchEvent(new CustomEvent('backend_changed', { detail: { url: clean } }))
+}
+
+export const isAutoFailoverEnabled = (): boolean => {
+  if (typeof window === 'undefined') return true
+  return localStorage.getItem('televideo_auto_failover') !== 'false'
+}
+
+export const setAutoFailoverEnabled = (enabled: boolean): void => {
+  if (typeof window === 'undefined') return
+  localStorage.setItem('televideo_auto_failover', enabled ? 'true' : 'false')
+}
+
+export const checkBackendHealth = async (url: string): Promise<{ ok: boolean; latency: number; error?: string }> => {
+  const start = Date.now()
+  try {
+    const cleanUrl = url.trim().replace(/\/+$/, '')
+    const res = await axios.get(`${cleanUrl}/api/auth/status?_t=${Date.now()}`, {
+      timeout: 4000,
+      headers: { 'Cache-Control': 'no-cache' }
+    })
+    return { ok: res.status >= 200 && res.status < 400, latency: Date.now() - start }
+  } catch (err: any) {
+    return { ok: false, latency: Date.now() - start, error: err?.message || 'Unreachable' }
+  }
 }
 
 export const API_BASE = getApiBase()
@@ -51,14 +123,51 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+let isFailingOver = false
+
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config
+
     if (error?.response?.status === 401 && error?.response?.data?.passcodeRequired) {
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('app_passcode_required'))
       }
+      return Promise.reject(error)
     }
+
+    // Auto-Failover: Check if this was a network failure, timeout, or server suspension (502, 503, 504)
+    const isNetworkError = !error.response || [502, 503, 504, 521, 522, 523, 524].includes(error.response.status)
+    const canRetry = originalRequest && !originalRequest._retriedFailover && isAutoFailoverEnabled()
+
+    if (isNetworkError && canRetry && typeof window !== 'undefined') {
+      const list = getBackendList()
+      const currentUrl = getApiBase()
+      const alternateUrls = list.filter(u => u !== currentUrl)
+
+      if (alternateUrls.length > 0 && !isFailingOver) {
+        isFailingOver = true
+        originalRequest._retriedFailover = true
+
+        // Probe alternate backends to find a healthy one
+        for (const candidate of alternateUrls) {
+          const health = await checkBackendHealth(candidate)
+          if (health.ok) {
+            console.log(`[Auto-Failover] Switched active backend from ${currentUrl} -> ${candidate} (${health.latency}ms)`)
+            setActiveBackend(candidate)
+            window.dispatchEvent(new CustomEvent('backend_failover', {
+              detail: { previousUrl: currentUrl, newUrl: candidate, reason: error.message || 'Server Unreachable' }
+            }))
+            isFailingOver = false
+            originalRequest.baseURL = candidate
+            return api(originalRequest)
+          }
+        }
+        isFailingOver = false
+      }
+    }
+
     return Promise.reject(error)
   }
 )

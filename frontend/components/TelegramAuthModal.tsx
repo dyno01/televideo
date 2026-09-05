@@ -30,7 +30,12 @@ import {
   UploadCloud,
   HardDrive,
   Pause,
-  Play
+  Play,
+  Server,
+  Activity,
+  Plus,
+  Trash2,
+  RefreshCw
 } from 'lucide-react'
 import {
   getTelegramStatus,
@@ -44,6 +49,13 @@ import {
   saveStreamtapeConfig,
   testStreamtapeConnection,
   toggleStreamtapePause,
+  getBackendList,
+  saveBackendList,
+  getApiBase,
+  setActiveBackend,
+  checkBackendHealth,
+  isAutoFailoverEnabled,
+  setAutoFailoverEnabled,
   TelegramStatus,
 } from '@/lib/api'
 
@@ -51,14 +63,16 @@ interface TelegramAuthModalProps {
   isOpen: boolean
   onClose: () => void
   onStatusChange?: (status: TelegramStatus) => void
+  initialTab?: 'telegram' | 'account' | 'streamtape' | 'servers'
 }
 
 export default function TelegramAuthModal({
   isOpen,
   onClose,
   onStatusChange,
+  initialTab = 'telegram',
 }: TelegramAuthModalProps) {
-  const [activeTab, setActiveTab] = useState<'telegram' | 'account' | 'streamtape'>('telegram')
+  const [activeTab, setActiveTab] = useState<'telegram' | 'account' | 'streamtape' | 'servers'>(initialTab)
   const [showManualSession, setShowManualSession] = useState(false)
   
   const [status, setStatus] = useState<TelegramStatus | null>(null)
@@ -185,11 +199,103 @@ export default function TelegramAuthModal({
     }
   }
 
+  // Multi-server state
+  const [servers, setServers] = useState<string[]>([])
+  const [activeServer, setActiveServer] = useState<string>('')
+  const [serverHealth, setServerHealth] = useState<Record<string, { ok: boolean; latency: number; error?: string }>>({})
+  const [checkingHealth, setCheckingHealth] = useState(false)
+  const [newServerUrl, setNewServerUrl] = useState('')
+  const [addingServer, setAddingServer] = useState(false)
+  const [autoFailover, setAutoFailover] = useState(true)
+
+  const refreshServers = () => {
+    setServers(getBackendList())
+    setActiveServer(getApiBase())
+    setAutoFailover(isAutoFailoverEnabled())
+  }
+
+  const pingAllServers = async () => {
+    setCheckingHealth(true)
+    const currentList = getBackendList()
+    const results: Record<string, { ok: boolean; latency: number; error?: string }> = {}
+    await Promise.all(
+      currentList.map(async (u) => {
+        results[u] = await checkBackendHealth(u)
+      })
+    )
+    setServerHealth(results)
+    setCheckingHealth(false)
+  }
+
+  const handleSelectServer = (url: string) => {
+    setActiveBackend(url)
+    setActiveServer(url)
+    setSuccessMsg(`Switched active backend to: ${url}`)
+    setTimeout(() => {
+      fetchStatus()
+    }, 200)
+  }
+
+  const handleAddServer = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newServerUrl.trim()) return
+    setAddingServer(true)
+    setErrorMsg('')
+    try {
+      let clean = newServerUrl.trim().replace(/\/+$/, '')
+      if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
+        clean = `https://${clean}`
+      }
+      const health = await checkBackendHealth(clean)
+      const current = getBackendList()
+      if (!current.includes(clean)) {
+        const next = [...current, clean]
+        saveBackendList(next)
+        setServers(next)
+      }
+      setServerHealth(prev => ({ ...prev, [clean]: health }))
+      setNewServerUrl('')
+      if (health.ok) {
+        setSuccessMsg(`✅ Server added & verified reachable (${health.latency}ms)!`)
+      } else {
+        setErrorMsg(`⚠️ Server added, but could not be reached: ${health.error || 'Check URL'}`)
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to add server.')
+    } finally {
+      setAddingServer(false)
+    }
+  }
+
+  const handleRemoveServer = (url: string) => {
+    const next = servers.filter(u => u !== url)
+    if (next.length === 0) {
+      setErrorMsg('You must have at least one server in the list.')
+      return
+    }
+    saveBackendList(next)
+    setServers(next)
+    if (activeServer === url) {
+      handleSelectServer(next[0])
+    }
+    setSuccessMsg(`Removed server: ${url}`)
+  }
+
+  const handleToggleAutoFailover = () => {
+    const next = !autoFailover
+    setAutoFailover(next)
+    setAutoFailoverEnabled(next)
+    setSuccessMsg(next ? 'Auto-failover enabled: will auto-switch if a server dies.' : 'Auto-failover disabled.')
+  }
+
   useEffect(() => {
     if (isOpen) {
+      if (initialTab) setActiveTab(initialTab)
       fetchStatus()
+      refreshServers()
+      pingAllServers()
     }
-  }, [isOpen])
+  }, [isOpen, initialTab])
 
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -406,6 +512,22 @@ export default function TelegramAuthModal({
                   }}
                 >
                   <Lock size={12} /> Account
+                </button>
+                <button
+                  type="button"
+                  className={`flex-1 py-2 rounded-lg font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    activeTab === 'servers'
+                      ? 'bg-zinc-800 text-sky-400 shadow-sm'
+                      : 'text-zinc-500 hover:text-zinc-300'
+                  }`}
+                  onClick={() => {
+                    setActiveTab('servers')
+                    setErrorMsg('')
+                    refreshServers()
+                    pingAllServers()
+                  }}
+                >
+                  <Server size={12} /> Servers
                 </button>
               </div>
 
@@ -768,6 +890,151 @@ export default function TelegramAuthModal({
                       If your Render bandwidth is ever running low, you can upload videos directly to Streamtape using their web interface or desktop tools, then paste the link directly on any video page to link it instantly!
                     </p>
                   </div>
+                </div>
+              )}
+
+              {/* SERVERS TAB */}
+              {activeTab === 'servers' && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Server className="size-4 text-sky-400" />
+                        <h4 className="text-sm font-bold text-zinc-200">Multi-Backend Switcher</h4>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={pingAllServers}
+                        disabled={checkingHealth}
+                        className="h-7 text-[11px] gap-1 px-2.5 border-zinc-700 bg-zinc-800 text-zinc-300 hover:text-white"
+                      >
+                        <RefreshCw size={11} className={checkingHealth ? "animate-spin text-sky-400" : "text-sky-400"} />
+                        {checkingHealth ? 'Testing...' : 'Ping All'}
+                      </Button>
+                    </div>
+                    <p className="text-[11px] text-zinc-400 leading-relaxed">
+                      Deploy your backend to multiple free hosts (Render, SnapDeploy, or your Mac via Cloudflare Tunnel). If one server hits bandwidth limits or suspends, you can switch immediately or let auto-failover handle it!
+                    </p>
+                    <div className="flex items-center justify-between pt-2 border-t border-zinc-800/80">
+                      <div className="space-y-0.5">
+                        <span className="text-xs font-semibold text-zinc-300">Seamless Auto-Failover</span>
+                        <p className="text-[10px] text-zinc-500">Automatically switch to a backup server if the current one goes down or returns 502/503.</p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleToggleAutoFailover}
+                        className={cn(
+                          "h-7 text-xs font-bold px-3 transition-all",
+                          autoFailover
+                            ? "border-emerald-700/60 bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/60"
+                            : "border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-zinc-200"
+                        )}
+                      >
+                        {autoFailover ? '✓ Enabled' : 'Disabled'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Configured Servers List */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-zinc-400">Available Backend Servers ({servers.length})</label>
+                    <div className="space-y-2">
+                      {servers.map((url) => {
+                        const isActive = activeServer === url
+                        const health = serverHealth[url]
+                        return (
+                          <div
+                            key={url}
+                            className={cn(
+                              "p-3 rounded-xl border transition-all flex items-center justify-between gap-3",
+                              isActive
+                                ? "bg-sky-500/10 border-sky-500/40 shadow-sm"
+                                : "bg-zinc-900/60 border-zinc-800 hover:border-zinc-700"
+                            )}
+                          >
+                            <div className="space-y-1 min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-zinc-200 truncate">{url}</span>
+                                {isActive && (
+                                  <Badge className="bg-sky-500 text-white text-[9px] px-1.5 py-0 font-mono">
+                                    ACTIVE
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 text-[10px]">
+                                {health ? (
+                                  health.ok ? (
+                                    <span className="text-emerald-400 flex items-center gap-1 font-mono">
+                                      <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                      Online ({health.latency}ms)
+                                    </span>
+                                  ) : (
+                                    <span className="text-rose-400 flex items-center gap-1 font-mono">
+                                      <span className="size-1.5 rounded-full bg-rose-400"></span>
+                                      Offline ({health.error || '502/503/Timeout'})
+                                    </span>
+                                  )
+                                ) : (
+                                  <span className="text-zinc-500 font-mono">Status: Unknown (Click Ping)</span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {!isActive && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={() => handleSelectServer(url)}
+                                  className="h-7 text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-semibold"
+                                >
+                                  Switch Here
+                                </Button>
+                              )}
+                              {servers.length > 1 && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleRemoveServer(url)}
+                                  className="h-7 w-7 p-0 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10"
+                                  title="Remove this server from list"
+                                >
+                                  <Trash2 size={13} />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Add New Server */}
+                  <form onSubmit={handleAddServer} className="space-y-2 pt-2 border-t border-zinc-800">
+                    <label className="text-xs font-semibold text-zinc-400">Add New Backend Server URL</label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="text"
+                        placeholder="https://televideo-backup.snapdeploy.app or onrender.com"
+                        value={newServerUrl}
+                        onChange={(e) => setNewServerUrl(e.target.value)}
+                        className="bg-zinc-900 border-zinc-800 text-xs h-9 font-mono flex-1"
+                      />
+                      <Button
+                        type="submit"
+                        disabled={addingServer || !newServerUrl.trim()}
+                        className="h-9 px-3 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold gap-1.5"
+                      >
+                        {addingServer ? <Loader2 className="animate-spin size-3.5" /> : <Plus size={14} />}
+                        Add Server
+                      </Button>
+                    </div>
+                  </form>
                 </div>
               )}
             </div>

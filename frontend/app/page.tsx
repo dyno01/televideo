@@ -38,6 +38,7 @@ import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import TelegramAuthModal from '@/components/TelegramAuthModal'
+import ServerStatusBadge from '@/components/ServerStatusBadge'
 import PasscodeLock from '@/components/PasscodeLock'
 import { cleanTitle } from '@/lib/utils'
 
@@ -58,6 +59,7 @@ export default function HomePage() {
   const [overallCompletion, setOverallCompletion] = useState(0)
   
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+  const [authModalTab, setAuthModalTab] = useState<'telegram' | 'account' | 'streamtape' | 'servers'>('telegram')
   const [telegramStatus, setTelegramStatus] = useState<TelegramStatus | null>(null)
   const [isLocked, setIsLocked] = useState(false)
 
@@ -225,8 +227,17 @@ export default function HomePage() {
 
           {/* User Actions */}
           <div className="flex items-center gap-2 sm:gap-3">
+            <ServerStatusBadge
+              onClick={() => {
+                setAuthModalTab('servers')
+                setIsAuthModalOpen(true)
+              }}
+            />
             <button
-              onClick={() => setIsAuthModalOpen(true)}
+              onClick={() => {
+                setAuthModalTab('telegram')
+                setIsAuthModalOpen(true)
+              }}
               className={`flex items-center justify-center sm:px-3 sm:py-1.5 size-8 sm:size-auto rounded-full sm:rounded-full text-[10px] sm:text-[11px] font-bold border transition-all shrink-0 ${
                 telegramStatus?.authenticated
                   ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
@@ -257,7 +268,10 @@ export default function HomePage() {
               <span className="hidden sm:inline sm:ml-1.5">Log Out</span>
             </button>
             <button
-              onClick={() => setIsAuthModalOpen(true)}
+              onClick={() => {
+                setAuthModalTab('telegram')
+                setIsAuthModalOpen(true)
+              }}
               className="flex items-center justify-center rounded-lg size-8 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors shrink-0"
               title="Settings"
             >
@@ -506,6 +520,7 @@ export default function HomePage() {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         onStatusChange={setTelegramStatus}
+        initialTab={authModalTab}
       />
     </div>
   )

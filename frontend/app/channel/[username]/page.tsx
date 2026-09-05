@@ -12,6 +12,7 @@ import LectureList from '@/components/LectureList'
 import FileLibrary from '@/components/FileLibrary'
 import BatchManager from '@/components/BatchManager'
 import TelegramAuthModal from '@/components/TelegramAuthModal'
+import ServerStatusBadge from '@/components/ServerStatusBadge'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -36,6 +37,7 @@ export default function ChannelPage() {
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+  const [authModalTab, setAuthModalTab] = useState<'telegram' | 'account' | 'streamtape' | 'servers'>('telegram')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [rescanning, setRescanning] = useState(false)
@@ -190,13 +192,25 @@ export default function ChannelPage() {
           <RefreshCw size={16} className={cn(rescanning && "animate-spin")} />
           {rescanning ? 'Synchronizing...' : 'Synchronize'}
         </Button>
+        <div className="px-3 py-2 flex items-center justify-between rounded-lg bg-[#111113] border border-[#27272a]">
+          <span className="text-xs text-[#a1a1aa] font-medium">Server</span>
+          <ServerStatusBadge
+            onClick={() => {
+              setAuthModalTab('servers')
+              setIsAuthModalOpen(true)
+            }}
+          />
+        </div>
         <Button 
           variant="ghost" 
           className="w-full justify-start gap-2 text-[#a1a1aa] hover:text-[#fafafa] hover:bg-[#18181b]"
-          onClick={() => setIsAuthModalOpen(true)}
+          onClick={() => {
+            setAuthModalTab('telegram')
+            setIsAuthModalOpen(true)
+          }}
         >
           <Settings size={16} />
-          Telegram Settings
+          Settings
         </Button>
         <Button 
           variant="ghost" 
@@ -238,14 +252,22 @@ export default function ChannelPage() {
 
       <main className="flex-1 flex flex-col min-w-0 bg-[#0a0a0b] overflow-y-auto">
         {/* Mobile Header */}
-        <header className="lg:hidden h-14 border-b border-[#27272a] flex items-center px-4 bg-[#0a0a0b] z-30 sticky top-0 shrink-0">
-          <button 
-            className="mr-3 text-[#a1a1aa] hover:text-[#fafafa] transition-colors"
-            onClick={() => setIsSidebarOpen(true)}
-          >
-            <Menu size={24} />
-          </button>
-          <h1 className="text-sm font-bold text-[#fafafa] truncate">{channel?.title}</h1>
+        <header className="lg:hidden h-14 border-b border-[#27272a] flex items-center justify-between px-4 bg-[#0a0a0b] z-30 sticky top-0 shrink-0">
+          <div className="flex items-center min-w-0 mr-2">
+            <button 
+              className="mr-3 text-[#a1a1aa] hover:text-[#fafafa] transition-colors"
+              onClick={() => setIsSidebarOpen(true)}
+            >
+              <Menu size={24} />
+            </button>
+            <h1 className="text-sm font-bold text-[#fafafa] truncate">{channel?.title}</h1>
+          </div>
+          <ServerStatusBadge
+            onClick={() => {
+              setAuthModalTab('servers')
+              setIsAuthModalOpen(true)
+            }}
+          />
         </header>
 
         <div className="p-6 md:p-8 max-w-6xl mx-auto w-full pb-20">
@@ -447,6 +469,7 @@ export default function ChannelPage() {
       <TelegramAuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
+        initialTab={authModalTab}
       />
     </div>
   )
