@@ -56,6 +56,7 @@ import {
   checkBackendHealth,
   isAutoFailoverEnabled,
   setAutoFailoverEnabled,
+  saveTelegramConfig,
   TelegramStatus,
 } from '@/lib/api'
 
@@ -99,6 +100,7 @@ export default function TelegramAuthModal({
   const [isAppCode, setIsAppCode] = useState(true)
   const [passwordHint, setPasswordHint] = useState('')
   const [showAdvancedConfig, setShowAdvancedConfig] = useState(false)
+  const [savingApiKeys, setSavingApiKeys] = useState(false)
 
   // Manual Session auth state
   const [sessionString, setSessionString] = useState('')
@@ -124,6 +126,7 @@ export default function TelegramAuthModal({
       setStatus(data)
       setCurrentUser(userRes.user)
       if (data.apiId) setApiId(String(data.apiId))
+      if (!data.hasServerConfig) setShowAdvancedConfig(true)
       if (stCfg) {
         setStreamtapeConfig(stCfg)
         if (stCfg.login) setStLogin(stCfg.login)
@@ -135,6 +138,24 @@ export default function TelegramAuthModal({
       setErrorMsg('Failed to check status.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleSaveApiKeys = async () => {
+    if (!apiId.trim() || !apiHash.trim()) {
+      setErrorMsg('Please enter both API ID and API Hash.')
+      return
+    }
+    setSavingApiKeys(true)
+    setErrorMsg('')
+    try {
+      await saveTelegramConfig(apiId.trim(), apiHash.trim())
+      setSuccessMsg('Telegram API ID & Hash saved to database successfully!')
+      fetchStatus()
+    } catch (err: any) {
+      setErrorMsg(err?.response?.data?.error || 'Failed to save API credentials.')
+    } finally {
+      setSavingApiKeys(false)
     }
   }
 
@@ -599,36 +620,56 @@ export default function TelegramAuthModal({
                             </p>
                           </div>
 
-                          {/* Optional Custom API Credentials Collapsible */}
+                          {/* Telegram API Credentials (for SnapDeploy or custom hosts) */}
                           <div className="pt-1">
                             <button
                               type="button"
                               onClick={() => setShowAdvancedConfig(!showAdvancedConfig)}
-                              className="text-[11px] text-zinc-500 hover:text-zinc-400 flex items-center gap-1 transition-colors"
+                              className="text-[11px] text-zinc-400 hover:text-zinc-200 flex items-center justify-between w-full py-1 transition-colors"
                             >
-                              {showAdvancedConfig ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                              {showAdvancedConfig ? 'Hide custom API credentials' : 'Custom Telegram API ID & Hash (Optional)'}
+                              <span className="flex items-center gap-1.5 font-medium">
+                                <Key size={13} className="text-indigo-400" />
+                                Telegram API ID & Hash {!status?.hasServerConfig && <span className="text-amber-400 text-[10px] bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">Required on SnapDeploy</span>}
+                              </span>
+                              {showAdvancedConfig ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                             </button>
 
                             {showAdvancedConfig && (
-                              <div className="grid grid-cols-2 gap-3 mt-2.5 p-3 rounded-xl bg-zinc-900/50 border border-zinc-800/80">
-                                <div className="space-y-1">
-                                  <label className="text-[11px] font-medium text-zinc-400">Custom API ID</label>
-                                  <Input 
-                                    placeholder="Optional" 
-                                    value={apiId} 
-                                    onChange={(e) => setApiId(e.target.value)} 
-                                    className="bg-zinc-900 border-zinc-800 text-xs h-9" 
-                                  />
+                              <div className="space-y-3 mt-2 p-3.5 rounded-xl bg-zinc-900/70 border border-zinc-800">
+                                <p className="text-[11px] text-zinc-400 leading-relaxed">
+                                  If your host (like SnapDeploy) doesn't accept Telegram environment variables, you can save them directly to your database here.
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                  <div className="space-y-1">
+                                    <label className="text-[11px] font-medium text-zinc-300">Telegram API ID</label>
+                                    <Input 
+                                      placeholder="e.g. 21620723" 
+                                      value={apiId} 
+                                      onChange={(e) => setApiId(e.target.value)} 
+                                      className="bg-zinc-950 border-zinc-800 text-xs h-9 font-mono" 
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-[11px] font-medium text-zinc-300">Telegram API Hash</label>
+                                    <Input 
+                                      placeholder="32-character hex hash" 
+                                      value={apiHash} 
+                                      onChange={(e) => setApiHash(e.target.value)} 
+                                      className="bg-zinc-950 border-zinc-800 text-xs h-9 font-mono" 
+                                    />
+                                  </div>
                                 </div>
-                                <div className="space-y-1">
-                                  <label className="text-[11px] font-medium text-zinc-400">Custom API Hash</label>
-                                  <Input 
-                                    placeholder="Optional" 
-                                    value={apiHash} 
-                                    onChange={(e) => setApiHash(e.target.value)} 
-                                    className="bg-zinc-900 border-zinc-800 text-xs h-9 font-mono" 
-                                  />
+                                <div className="flex justify-end pt-1">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={handleSaveApiKeys}
+                                    disabled={savingApiKeys || !apiId.trim() || !apiHash.trim()}
+                                    className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-8 px-3 rounded-lg font-medium shadow"
+                                  >
+                                    {savingApiKeys ? <Loader2 className="animate-spin size-3.5 mr-1.5" /> : null}
+                                    Save Keys to Database
+                                  </Button>
                                 </div>
                               </div>
                             )}

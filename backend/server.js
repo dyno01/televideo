@@ -50,22 +50,15 @@ const app  = express();
 const PORT = process.env.PORT || 4000;
 
 // --- Middleware ---
-const allowedOrigins = process.env.CORS_ORIGINS 
-  ? process.env.CORS_ORIGINS.split(',') 
-  : [
-      'http://localhost:3000', 
-      'http://127.0.0.1:3000', 
-      'http://localhost:3001', 
-      'http://127.0.0.1:3001',
-      'https://televideo.vercel.app'
-    ];
-
 app.use(cors({
-  origin: allowedOrigins,
-  methods: ['GET', 'POST', 'DELETE', 'PUT', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Range'],
+  origin: true, // Allow frontend from any domain (Vercel, custom, localhost)
+  credentials: true,
+  methods: ['GET', 'POST', 'DELETE', 'PUT', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Range', 'Cache-Control', 'X-Requested-With'],
   exposedHeaders: ['Content-Range', 'Accept-Ranges', 'Content-Length'],
 }));
+app.options('*', cors());
+
 app.use(express.json());
 app.use(express.text({ type: ['text/plain', 'application/json'] }));
 app.use(express.urlencoded({ extended: true }));
@@ -81,8 +74,17 @@ app.use((req, res, next) => {
   next();
 });
 
-// ─── Health check ──────────────────────────────────────────────────────────
-app.get('/api/health', (_req, res) => {
+// ─── Root & Health checks ──────────────────────────────────────────────────
+app.get('/', (_req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'TeleVideo API Server',
+    message: 'Backend is online and running',
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get(['/api/health', '/api/auth/status'], (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 

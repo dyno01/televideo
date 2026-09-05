@@ -2,7 +2,7 @@ const express = require('express');
 const telegramClient = require('../telegramClient');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
-const { getSetting, db } = require('../db/database');
+const { getSetting, setSetting, db } = require('../db/database');
 const authMiddleware = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -63,11 +63,27 @@ router.get('/status', async (req, res) => {
     const config = telegramClient.getConfig(req.user.id);
     res.json({
       ...status,
+      apiId: config.apiId || null,
+      apiHash: config.apiHash ? '••••••••' + config.apiHash.slice(-4) : null,
       hasServerConfig: Boolean(config.apiId && config.apiHash),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+router.post('/config', (req, res) => {
+  const { apiId, apiHash } = req.body;
+  if (!apiId || !apiHash) {
+    return res.status(400).json({ error: 'Both API ID and API Hash are required' });
+  }
+  const parsedId = parseInt(apiId, 10);
+  if (!parsedId) return res.status(400).json({ error: 'API ID must be a valid number' });
+
+  setSetting('TELEGRAM_API_ID', parsedId);
+  setSetting('TELEGRAM_API_HASH', String(apiHash).trim());
+
+  res.json({ success: true, message: 'Telegram API credentials saved to database' });
 });
 
 router.post('/send-code', async (req, res) => {

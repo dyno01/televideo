@@ -83,6 +83,9 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   const [showSpeedMenu, setShowSpeedMenu] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [preferNative, setPreferNative] = useState(false)
+  const mirrors = ['streamta.pe', 'streamtape.com', 'antiadtape.com', 'strcloud.link']
+  const [mirrorIndex, setMirrorIndex] = useState(0)
+  const currentMirror = mirrors[mirrorIndex % mirrors.length]
   const isStreamtapeReady = !!(video.streamtape_id && video.streamtape_status === 'ready')
   const useStreamtape = isStreamtapeReady && !preferNative
 
@@ -720,7 +723,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
         <div className="relative w-full h-full">
           <iframe
             ref={iframeRef}
-            src={`https://streamtape.com/e/${video.streamtape_id}${initialTimestamp > 0 ? `#t=${Math.floor(initialTimestamp)}` : ''}`}
+            src={`https://${currentMirror}/e/${video.streamtape_id}${initialTimestamp > 0 ? `#t=${Math.floor(initialTimestamp)}` : ''}`}
             className="w-full h-full border-0"
             allowFullScreen
             allow="autoplay; encrypted-media"
@@ -735,7 +738,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
-            <span>Streamtape CDN (0 Bandwidth)</span>
+            <span>Streamtape ({currentMirror.split('.')[0]})</span>
           </div>
 
           {/* Controls bar over iframe for sidebar & source toggle */}
@@ -743,6 +746,14 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
             "absolute top-3 right-3 z-40 flex items-center gap-2 transition-all duration-300",
             showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none"
           )}>
+            <button
+              onClick={() => setMirrorIndex(prev => (prev + 1) % mirrors.length)}
+              className="px-2.5 py-1 text-[11px] font-medium bg-zinc-900/90 text-zinc-300 hover:text-white rounded-lg border border-zinc-700/60 shadow backdrop-blur transition-all flex items-center gap-1"
+              title="Switch CDN mirror if video is buffering or blocked by your internet provider"
+            >
+              <span>Mirror: {currentMirror.split('.')[0]}</span>
+              <span className="text-zinc-500 text-[10px]">🔄</span>
+            </button>
             <button
               onClick={switchToNative}
               className="px-2.5 py-1 text-[11px] font-medium bg-zinc-900/90 text-zinc-300 hover:text-white rounded-lg border border-zinc-700/60 shadow backdrop-blur transition-all"

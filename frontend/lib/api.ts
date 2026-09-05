@@ -94,8 +94,8 @@ export const checkBackendHealth = async (url: string): Promise<{ ok: boolean; la
   const start = Date.now()
   try {
     const cleanUrl = url.trim().replace(/\/+$/, '')
-    const res = await axios.get(`${cleanUrl}/api/auth/status?_t=${Date.now()}`, {
-      timeout: 4000,
+    const res = await axios.get(`${cleanUrl}/api/health?_t=${Date.now()}`, {
+      timeout: 7000,
       headers: { 'Cache-Control': 'no-cache' }
     })
     return { ok: res.status >= 200 && res.status < 400, latency: Date.now() - start }
@@ -380,12 +380,20 @@ export interface TelegramStatus {
   hasSession?: boolean
   user: TelegramUser | null
   apiId?: number
+  apiHash?: string
   apiHashConfigured?: boolean
+  hasServerConfig?: boolean
   error?: string
 }
 
 export const getTelegramStatus = (): Promise<TelegramStatus> =>
   api.get<TelegramStatus>('/api/telegram/status').then(d)
+
+export const saveTelegramConfig = (
+  apiId: string | number,
+  apiHash: string
+): Promise<{ success: boolean; message: string }> =>
+  api.post('/api/telegram/config', { apiId, apiHash }).then(d)
 
 export const sendTelegramCode = (
   phoneNumber: string,
