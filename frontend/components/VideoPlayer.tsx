@@ -263,15 +263,16 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
       if (videoRef.current) {
         videoRef.current.currentTime = seconds
       }
-      if (useStreamtape && iframeRef.current) {
-        iframeRef.current.src = `https://${currentMirror}/e/${video.streamtape_id}?t=${Math.floor(seconds)}#t=${Math.floor(seconds)}`
-      }
       if (iframeRef.current?.contentWindow) {
         try {
-          iframeRef.current.contentWindow.postMessage(JSON.stringify({
-            method: 'setCurrentTime',
-            value: seconds
-          }), '*')
+          // 1. Standard Player.js specification
+          iframeRef.current.contentWindow.postMessage(JSON.stringify({ context: 'player.js', method: 'setCurrentTime', value: seconds }), '*')
+          iframeRef.current.contentWindow.postMessage(JSON.stringify({ method: 'setCurrentTime', value: seconds }), '*')
+          // 2. PlayerJS platform format
+          iframeRef.current.contentWindow.postMessage(JSON.stringify({ api: 'seek', set: seconds }), '*')
+          iframeRef.current.contentWindow.postMessage(JSON.stringify({ api: 'seek', value: seconds }), '*')
+          // 3. Plain text command
+          iframeRef.current.contentWindow.postMessage(`seek:${seconds}`, '*')
         } catch (_) {}
       }
     },

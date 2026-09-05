@@ -21,6 +21,7 @@ import {
   Copy,
   Check,
   Pause,
+  Save,
   Video as VideoIcon
 } from 'lucide-react'
 import { 
@@ -710,9 +711,25 @@ return (
               <div className="flex items-center gap-2">
                 {isSavedNotice && (
                   <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1 animate-pulse">
-                    <CheckCircle2 size={12} /> Saved!
+                    <CheckCircle2 size={12} /> Progress Saved!
                   </span>
                 )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const dur = video.duration || 1
+                    persistProgress(sliderTime, dur, true)
+                    setVideo(prev => prev ? { ...prev, last_timestamp: sliderTime, watched_percentage: Math.round((sliderTime / dur) * 100) } : null)
+                    setIsSavedNotice(true)
+                    setTimeout(() => setIsSavedNotice(false), 2500)
+                  }}
+                  className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-zinc-800 hover:bg-zinc-700 text-emerald-400 border border-zinc-700 hover:border-emerald-500/40 transition-all flex items-center gap-1 shadow-sm cursor-pointer"
+                  title="Save this progress to your database so it will resume here next time"
+                >
+                  <Save size={12} className="text-emerald-400" />
+                  <span>Save Progress</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => {
@@ -724,9 +741,9 @@ return (
                     setTimeout(() => setIsSavedNotice(false), 2000)
                   }}
                   className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-all flex items-center gap-1 shadow-sm cursor-pointer"
-                  title="Reload / jump the player (both Streamtape embed & Our Player) to this timestamp"
+                  title="Jump the video player to this timestamp"
                 >
-                  <span>⏩ Jump Player to {formatDuration(sliderTime)}</span>
+                  <span>⏩ Jump to {formatDuration(sliderTime)}</span>
                 </button>
               </div>
             </div>
