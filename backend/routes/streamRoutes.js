@@ -113,14 +113,15 @@ async function handleStreamVideo(req, res) {
   if (isStreamtapeConfigured() && video.streamtape_status === 'ready' && video.streamtape_id) {
     try {
       const directUrl = await getDirectStreamLink(video.streamtape_id);
-      if (directUrl) {
+      if (directUrl && typeof directUrl === 'string' && (directUrl.includes('.tapecontent.net') || directUrl.includes('/stream') || directUrl.includes('get_video') || directUrl.includes('dl?'))) {
         return res.redirect(directUrl);
       }
-    } catch (_) {}
-
-    if (video.streamtape_url) {
-      return res.redirect(video.streamtape_url);
+    } catch (err) {
+      console.warn('[Streamtape Direct Link Error]:', err.message);
     }
+    // Note: Do NOT redirect to video.streamtape_url because that is an HTML webpage,
+    // which causes the HTML5 <video> player to buffer or error.
+    // Instead, smoothly fall through to direct Telegram streaming below!
   }
 
   const userId = getUserIdFromRequest(req, video);

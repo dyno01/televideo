@@ -21,7 +21,8 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  ListVideo
+  ListVideo,
+  ExternalLink
 } from 'lucide-react'
 import { cn, getMediaTokenQuery } from '@/lib/utils'
 import { Video, getApiBase } from '@/lib/api'
@@ -726,7 +727,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
             src={`https://${currentMirror}/e/${video.streamtape_id}${initialTimestamp > 0 ? `#t=${Math.floor(initialTimestamp)}` : ''}`}
             className="w-full h-full border-0"
             allowFullScreen
-            allow="autoplay; encrypted-media"
+            allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+            referrerPolicy="no-referrer"
             onLoad={handleIframeLoad}
           />
           {/* Streamtape Fast CDN Badge */}
@@ -746,6 +748,16 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
             "absolute top-3 right-3 z-40 flex items-center gap-2 transition-all duration-300",
             showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none"
           )}>
+            <a
+              href={`https://streamtape.com/v/${video.streamtape_id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-2.5 py-1 text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-lg backdrop-blur transition-all flex items-center gap-1 shrink-0"
+              title="Open video directly on Streamtape website in a new tab (runs at full speed)"
+            >
+              <span>Open on Streamtape</span>
+              <ExternalLink size={12} />
+            </a>
             <button
               onClick={() => setMirrorIndex(prev => (prev + 1) % mirrors.length)}
               className="px-2.5 py-1 text-[11px] font-medium bg-zinc-900/90 text-zinc-300 hover:text-white rounded-lg border border-zinc-700/60 shadow backdrop-blur transition-all flex items-center gap-1"
